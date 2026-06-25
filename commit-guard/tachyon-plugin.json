@@ -1,8 +1,7 @@
 {
   "name": "commit-guard",
-  "version": "1.0.0",
-  "description": "A demonstrable git pre-commit gate (spec 264 proof): blocks any commit whose staged diff contains the marker DONOTCOMMIT. Runtime-agnostic — runs for you, the agent, and your IDE. Declares claude only to satisfy the manifest's runtime requirement (it ships no runtime block).",
-  "runtimes": ["claude"],
+  "version": "1.0.1",
+  "description": "A demonstrable git pre-commit gate: blocks any commit whose staged diff contains the marker DONOTCOMMIT. Runtime-agnostic — runs for you, the agent, and your IDE; declares no runtime (git-hooks need none).",
   "gitHooks": {
     "pre-commit": { "leaf": "githooks/guard.sh" }
   }
