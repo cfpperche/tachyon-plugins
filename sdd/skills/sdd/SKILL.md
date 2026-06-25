@@ -30,18 +30,15 @@ Every spec is a directory `docs/specs/NNN-<slug>/` holding:
 
 ### `new <slug>`
 
-Scaffold a fresh spec.
+Scaffold a fresh spec. **From the workspace root**, run the bundled script (it lives in this skill's `scripts/` directory):
 
-1. Pick the next free `NNN` — list `docs/specs/` and take `max(NNN) + 1`, zero-padded to 3 digits.
-2. Create `docs/specs/NNN-<slug>/`.
-3. Copy the four templates bundled with this skill — they live in the **`templates/` directory alongside this `SKILL.md`** — into the new spec dir, renaming off the `.tmpl` suffix:
-   - `spec.md.tmpl` → `spec.md`
-   - `plan.md.tmpl` → `plan.md`
-   - `tasks.md.tmpl` → `tasks.md`
-   - `notes.md.tmpl` → `notes.md`
-4. **Report the four paths.** Do NOT auto-fill `spec.md` — intent is the human's. Offer to draft it from a conversational description, but only after they describe the change. If the idea is still vague, suggest interviewing it out first (see `plan`/refine flow below).
+```
+sh scripts/new.sh <slug>
+```
 
-`notes.md` stays empty at scaffold time — its job is in-flight design memory during implementation.
+The script is the executable contract — it sanitizes the slug, picks the next free `NNN` (strictly `NNN-*` dirs, default `001`), allocates the directory **atomically** (two agents racing the same number won't collide), copies the four templates, and substitutes the known values (`NNN`, slug, date) while leaving content placeholders intact. It prints the four paths. Doing it by hand instead of via the script is error-prone (literal `NNN`/`{{slug}}` leak into the spec) — prefer the script.
+
+After scaffolding: **do NOT auto-fill `spec.md`** — intent is the human's. Offer to draft it from a conversational description, but only after they describe the change. `notes.md` stays empty at scaffold time — its job is in-flight design memory during implementation.
 
 ### `plan`
 
