@@ -1,0 +1,6 @@
+{
+  "name": "sdd",
+  "version": "1.0.0",
+  "description": "Spec-driven development scaffolding — intent before code. Scaffolds and progresses docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md. Runtime-neutral (claude + codex).",
+  "runtimes": ["claude", "codex"]
+}

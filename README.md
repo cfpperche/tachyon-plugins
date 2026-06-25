@@ -16,6 +16,7 @@ github:<owner>/tachyon-plugins@<ref>#path=<plugin-dir>
 
 | Plugin | What it does | Runtimes |
 |---|---|---|
+| [`sdd`](./sdd) | Spec-driven development scaffolding — a portable skill that scaffolds and progresses `docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md`. Materializes into `.claude/skills/` and `.agents/skills/`. | claude · codex |
 | [`hello-marker`](./hello-marker) | Benign round-trip proof: wires a harmless no-op `PreToolUse` marker hook. Exercises the full install→wire→update→remove lifecycle without touching security or project state. | claude · codex |
 
 ## Manifest format
