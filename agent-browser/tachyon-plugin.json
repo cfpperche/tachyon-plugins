@@ -8,9 +8,9 @@
       "version": "0.31.0",
       "launchPolicy": {
         "env": {
-          "AGENT_BROWSER_CONFIRM_ACTIONS": "click,dblclick,fill,type,press,key,select,check,uncheck,upload,drag,eval,download"
+          "AGENT_BROWSER_CONFIRM_ACTIONS": "click,dblclick,fill,type,press,key,keydown,keyup,keyboard,hover,focus,select,check,uncheck,upload,drag,eval,download,scroll,scrollintoview,mouse,open,goto,navigate,back,forward,reload,pushstate,set,network,storage,cookies,tab,window,frame,dialog,clipboard,auth,plugin,batch,chat,pdf,record,trace,profiler,stream,install,upgrade"
         },
-        "denyArgs": ["--confirm-actions", "--action-policy"],
+        "denyArgs": ["--confirm-actions", "--action-policy", "--config", "mcp", "batch"],
         "mode": "force"
       },
       "platforms": {

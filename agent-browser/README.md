@@ -10,9 +10,9 @@ accessibility snapshot with `@eN` element refs — not brittle CSS selectors.
 - **A pinned tool** — the `agent-browser` v0.31.0 binary, per platform (linux x64/arm64 glibc+musl, macOS
   x64/arm64), fetched over HTTPS, sha256-verified, content-addressed, and re-validated by the plugin launcher
   before every run. Invoke it only through `.tachyon/bin/_tachyon-tool agent-browser agent-browser …`.
-- **A thin skill** (`claude` + `codex`) — the read loop, per-agent session naming, the auth-state workflow, the
-  v1 confirmation policy, and a preflight `doctor`. The full, version-matched command surface loads on demand via
-  `agent-browser skills get core`.
+- **A thin skill** (`claude` + `codex`) — the read loop, form-driving with the held-write contract, per-agent
+  session naming, the auth-state workflow, and a preflight `doctor`. The authoritative, version-matched command
+  reference is the binary's own `--help` / `<command> --help` (the standalone binary ships no `skills` dir).
 
 ## v2 — form-driving with a mechanical write gate
 
@@ -24,8 +24,10 @@ Tachyon launcher force-enables agent-browser's action confirmation (spec 269 `la
 `--action-policy`) are refused. Reads stay frictionless. A human approves a held write with `agent-browser confirm
 <id>` (auto-denies after 60s).
 
-> The launcher enforces the *held* gate; a same-user shell agent could self-`confirm`, the same residual Tachyon
-> documents for any provisioned tool. The skill's contract makes the human the approver.
+> A **mechanical hold + cooperative approval**, not an airtight sandbox: the held-category list is best-effort (a
+> rare/renamed mutator could slip), on-disk config files aren't blocked, and a same-user shell agent could
+> self-`confirm` — the same residual Tachyon documents for any provisioned tool. The skill's contract makes the
+> human the approver.
 
 ## Requirements
 

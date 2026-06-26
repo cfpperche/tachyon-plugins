@@ -119,11 +119,12 @@ The agent **never handles credentials**. A human logs in once; the agent reuses 
 
 ## Form-driving — writes are MECHANICALLY held for confirmation (v2)
 
-Reads (navigate, `snapshot`, `screenshot`, `get text/html`) are free. Every **state-mutating** action —
-`click`, `dblclick`, `fill`, `type`, `press`, `select`, `check`, `upload`, `drag`, `eval`, `download` — is
-**held** for confirmation: Tachyon's launcher force-enables agent-browser's action confirmation (you do **not**
-set it, and you **cannot** turn it off — the `--confirm-actions`/`--action-policy` flags are refused). A write
-therefore does NOT run immediately; it returns:
+Reads (navigate, `snapshot`, `screenshot`, `get text/html`) are free. The **common state-mutating** actions —
+`click`, `fill`, `type`, `press`, `select`, `check`, `upload`, `drag`, `eval`, `download`, and more — are **held**
+for confirmation: Tachyon's launcher force-enables agent-browser's action confirmation (you do **not** set it, and
+you **cannot** turn it off — the `--confirm-actions`/`--action-policy`/`--config` flags and the `mcp`/`batch`
+subcommands are refused, and the action-policy/config env vars are scrubbed). A held write does NOT run
+immediately; it returns:
 
 ```json
 { "success": true, "data": { "action": "click", "confirmation_required": true, "confirmation_id": "r580423" } }
@@ -138,10 +139,11 @@ therefore does NOT run immediately; it returns:
    `AB deny <id>`); a pending confirmation **auto-denies after 60s**. Only after a human confirm does the write
    run — then re-`snapshot` to verify the effect.
 
-> Honesty: the gate **holds** every write (a real change from silent writes) and surfaces it for human approval —
-> but a same-user agent with a shell could self-`confirm`, exactly the residual Tachyon documents for any
-> provisioned tool (the launcher enforces the *held* gate, not a sandbox). The contract above is what makes the
-> human the approver; follow it.
+> Honesty (read this): this is a **mechanical hold + a cooperative human-approval protocol**, NOT an airtight
+> sandbox. Two limits: (a) the held categories are a best-effort list — a rare/renamed mutator could run ungated
+> (treat ANY write as needing the confirm protocol, not just the listed ones); (b) a same-user agent with a shell
+> could self-`confirm`, the same residual Tachyon documents for any provisioned tool. The contract above is what
+> makes the human the approver — follow it, and never self-confirm.
 
 **Prefer staging, and restrict where you can write.** Before a form-driving task, scope navigation to the target
 host so a write can't wander onto a sensitive domain:
