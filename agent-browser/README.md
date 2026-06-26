@@ -14,12 +14,18 @@ accessibility snapshot with `@eN` element refs — not brittle CSS selectors.
   v1 confirmation policy, and a preflight `doctor`. The full, version-matched command surface loads on demand via
   `agent-browser skills get core`.
 
-## v1 — read-first
+## v2 — form-driving with a mechanical write gate
 
-Navigation, inspection (`snapshot`), screenshots, and content extraction are the headline — **including from
-auth-gated pages** via the CLI's saved-session state (the LLM never sees a credential). Any **state-mutating**
-action (form submit, a write-click, or acting on a sensitive site) is **confirmation-gated** in v1. Full
-form-driving is **v2**.
+Navigation, inspection (`snapshot`), screenshots, and content extraction — **including from auth-gated pages** via
+the CLI's saved-session state (the LLM never sees a credential). v2 adds **form-driving**: every state-mutating
+action (`click`/`fill`/`type`/submit/`upload`/`eval`/`download`) is **mechanically held for confirmation** — the
+Tachyon launcher force-enables agent-browser's action confirmation (spec 269 `launchPolicy`), so a write returns
+`confirmation_required` + an id instead of running silently, and the override flags (`--confirm-actions`,
+`--action-policy`) are refused. Reads stay frictionless. A human approves a held write with `agent-browser confirm
+<id>` (auto-denies after 60s).
+
+> The launcher enforces the *held* gate; a same-user shell agent could self-`confirm`, the same residual Tachyon
+> documents for any provisioned tool. The skill's contract makes the human the approver.
 
 ## Requirements
 

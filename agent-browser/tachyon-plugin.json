@@ -1,11 +1,18 @@
 {
   "name": "agent-browser",
-  "version": "1.0.0",
-  "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content — including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). v1 is read-first: navigation, inspection, and extraction are free; state-mutating actions are skill-gated (the agent must ask for explicit human confirmation first). Needs a host Chrome/Chromium.",
+  "version": "2.0.0",
+  "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content — including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). v2 adds form-driving with a MECHANICAL write gate: the Tachyon launcher force-enables agent-browser's action confirmation, so every state-mutating action (click/fill/type/submit/upload/eval/download) is HELD for an explicit confirmation instead of running silently — reads (navigate/snapshot/screenshot/extract) stay frictionless. Needs a host Chrome/Chromium.",
   "runtimes": ["claude", "codex"],
   "tools": {
     "agent-browser": {
       "version": "0.31.0",
+      "launchPolicy": {
+        "env": {
+          "AGENT_BROWSER_CONFIRM_ACTIONS": "click,dblclick,fill,type,press,key,select,check,uncheck,upload,drag,eval,download"
+        },
+        "denyArgs": ["--confirm-actions", "--action-policy"],
+        "mode": "force"
+      },
       "platforms": {
         "linux-x64-glibc": {
           "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-linux-x64",

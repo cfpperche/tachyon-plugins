@@ -1,6 +1,6 @@
 ---
 name: agent-browser
-description: Drive a real Chrome browser to inspect pages, take screenshots, and extract web content — including from pages behind a login — using the pinned, checksum-verified agent-browser CLI. Use when a task needs to see or read a web page (visual inspection, scraping rendered content, reading auth-gated content, checking how a deployed UI renders). v1 is read-first — navigation, inspection, and extraction are free, while any state-mutating action (submitting a form, a click that writes, or acting on a sensitive site) requires explicit human confirmation. Needs a host Chrome/Chromium.
+description: Drive a real Chrome browser to inspect pages, take screenshots, extract web content (including from pages behind a login), AND drive forms — using the pinned, checksum-verified agent-browser CLI. Use when a task needs to see, read, or interact with a web page (visual inspection, scraping rendered content, reading auth-gated content, filling/submitting a form, checking a deployed UI). Reads are free; every state-mutating action (click/fill/type/submit/upload/eval/download) is mechanically HELD for human confirmation by the Tachyon launcher — it does not run silently and the gate cannot be turned off. Needs a host Chrome/Chromium.
 compatibility: Runtime-neutral. Works on any runtime that can run a bundled skill's shell scripts (claude, codex). Invokes the browser only through the plugin-scoped launcher; resolves it relative to the workspace root — no host-specific path assumptions.
 license: MIT
 ---
@@ -38,7 +38,7 @@ test (you can also just run `AB doctor` directly). If it prints `BROWSER_RUNTIME
 the remediation it gives (install Chrome, or `AB install --with-deps` to fetch a pinned Chrome-for-Testing). Do
 not attempt to browse until doctor passes — a missing browser must never look like a successful empty read.
 
-## Step 1 — the read loop (the v1 core)
+## Step 1 — the read loop (the core)
 
 ```sh
 AB --session "$SESSION" open https://example.com     # navigate
@@ -117,18 +117,49 @@ The agent **never handles credentials**. A human logs in once; the agent reuses 
 - **Expiry:** if a previously-working authenticated nav now returns 401/403 or redirects to a login page, the
   session expired. Do **not** silently retry — remove the stale state file and ask the human to log in again.
 
-## v1 read-first — what needs human confirmation
+## Form-driving — writes are MECHANICALLY held for confirmation (v2)
 
-Free (no confirmation): navigate, `snapshot`, `screenshot`, `get text/html`, read-only inspection of ordinary
-pages.
+Reads (navigate, `snapshot`, `screenshot`, `get text/html`) are free. Every **state-mutating** action —
+`click`, `dblclick`, `fill`, `type`, `press`, `select`, `check`, `upload`, `drag`, `eval`, `download` — is
+**held** for confirmation: Tachyon's launcher force-enables agent-browser's action confirmation (you do **not**
+set it, and you **cannot** turn it off — the `--confirm-actions`/`--action-policy` flags are refused). A write
+therefore does NOT run immediately; it returns:
 
-**Ask for explicit human confirmation first** before:
-- submitting a form, or any `click`/`fill`/`press` that **writes** or triggers an action;
-- extracting content from an **authenticated** page (you may be reading private data);
-- acting on a **sensitive** domain (admin consoles, banking, anything destructive).
+```json
+{ "success": true, "data": { "action": "click", "confirmation_required": true, "confirmation_id": "r580423" } }
+```
 
-Full form-driving (clicks/fills/uploads as a first-class flow) is **v2** — until then, treat write-actions as
-confirmation-gated exceptions, not the default.
+**The contract (do this exactly):**
+1. Issue the write (e.g. `AB --session "$SESSION" --json click @e7`).
+2. If the result is `confirmation_required`, the action is **pending, not done**. **Surface the pending action +
+   its `confirmation_id` to the human and STOP** — describe what it will do ("submit the login form on
+   staging.example.com").
+3. **Do NOT confirm it yourself.** A human approves out of band with `AB confirm <id>` (or rejects with
+   `AB deny <id>`); a pending confirmation **auto-denies after 60s**. Only after a human confirm does the write
+   run — then re-`snapshot` to verify the effect.
+
+> Honesty: the gate **holds** every write (a real change from silent writes) and surfaces it for human approval —
+> but a same-user agent with a shell could self-`confirm`, exactly the residual Tachyon documents for any
+> provisioned tool (the launcher enforces the *held* gate, not a sandbox). The contract above is what makes the
+> human the approver; follow it.
+
+**Prefer staging, and restrict where you can write.** Before a form-driving task, scope navigation to the target
+host so a write can't wander onto a sensitive domain:
+
+```sh
+export AGENT_BROWSER_ALLOWED_DOMAINS="staging.example.com,localhost"
+```
+
+**Keep an action trail.** Append each write's `--json` result (action, target, url, outcome) to a gitignored log
+so what the agent did on the web is auditable:
+
+```sh
+AB --session "$SESSION" --json click @e7 | tee -a .tachyon/browser-actions.log
+```
+
+**Still get explicit human go-ahead** before extracting from an **authenticated** page or acting on a
+**sensitive** domain (admin/banking/destructive) — the held-write gate covers the click, not your judgment about
+where to point it.
 
 ## Cross-references
 
