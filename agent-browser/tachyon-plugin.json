@@ -1,0 +1,37 @@
+{
+  "name": "agent-browser",
+  "version": "1.0.0",
+  "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content — including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). v1 is read-first: navigation, inspection, and extraction are free; state-mutating actions are confirmation-gated. Needs a host Chrome/Chromium.",
+  "runtimes": ["claude", "codex"],
+  "tools": {
+    "agent-browser": {
+      "version": "0.31.0",
+      "platforms": {
+        "linux-x64-glibc": {
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-linux-x64",
+          "sha256": "71dbe415ab3ded286c71eca67933575eb9f451be9155283a2e3a1ab878d75eff"
+        },
+        "linux-x64-musl": {
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-linux-musl-x64",
+          "sha256": "8d355ca93f95d3bae47aad6509433ab2312384fee81eb39a903ad5fade38f4e8"
+        },
+        "linux-arm64-glibc": {
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-linux-arm64",
+          "sha256": "bb2827dede43536e402cba8bc74249cdaa5af9aee291d185083c7bbdb7d62b14"
+        },
+        "linux-arm64-musl": {
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-linux-musl-arm64",
+          "sha256": "0506cb206c39c75b746d16571a75dc2752cd9968e154dcb8a0e203614552d392"
+        },
+        "darwin-x64": {
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-darwin-x64",
+          "sha256": "a53b1156dd36f1a11e324a1aa45636f481b09aa690ea774d10776446dc758bfa"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-darwin-arm64",
+          "sha256": "21da37d1e3707786ca5ceb04455bdeccaf93fa9077e3983a6f4dcce52817c4d8"
+        }
+      }
+    }
+  }
+}
