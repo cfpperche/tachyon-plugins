@@ -1,6 +1,6 @@
 ---
 name: agent-browser
-description: Drive a real Chrome browser to inspect pages, take screenshots, extract web content (including from pages behind a login), AND drive forms — using the pinned, checksum-verified agent-browser CLI. Use when a task needs to see, read, or interact with a web page (visual inspection, scraping rendered content, reading auth-gated content, filling/submitting a form, checking a deployed UI). Reads are free; every state-mutating action (click/fill/type/submit/upload/eval/download) is mechanically HELD for human confirmation by the Tachyon launcher — it does not run silently and the gate cannot be turned off. Needs a host Chrome/Chromium.
+description: Drive a real Chrome browser to inspect pages, take screenshots, extract web content (including from pages behind a login), AND drive forms — using the pinned, checksum-verified agent-browser CLI. Use when a task needs to see, read, or interact with a web page (visual inspection, scraping rendered content, reading auth-gated content, filling/submitting a form, checking a deployed UI). Reads are free; every state-mutating action (click/fill/type/submit/upload/eval/download) is mechanically HELD for human confirmation by the Tachyon launcher — it does not run silently, and the AGENT cannot turn the gate off (only the human can, by editing the bundled config via Tachyon's Plugins Config editor). Needs a host Chrome/Chromium.
 compatibility: Runtime-neutral. Works on any runtime that can run a bundled skill's shell scripts (claude, codex). Invokes the browser only through the plugin-scoped launcher; resolves it relative to the workspace root — no host-specific path assumptions.
 license: MIT
 ---
@@ -121,9 +121,11 @@ The agent **never handles credentials**. A human logs in once; the agent reuses 
 
 Reads (navigate, `snapshot`, `screenshot`, `get text/html`) are free. The **common state-mutating** actions —
 `click`, `fill`, `type`, `press`, `select`, `check`, `upload`, `drag`, `eval`, `download`, and more — are **held**
-for confirmation: Tachyon's launcher force-enables agent-browser's action confirmation (you do **not** set it, and
-you **cannot** turn it off — the `--confirm-actions`/`--action-policy`/`--config` flags and the `mcp`/`batch`
-subcommands are refused). A held write does NOT run immediately; it returns:
+for confirmation: Tachyon's launcher feeds the **human-owned** agent-browser config (its native `confirmActions`)
+to the CLI and refuses **your** attempts to change it — the `--confirm-actions`/`--action-policy`/`--config` flags,
+the `mcp`/`batch` subcommands, and the matching env vars are all blocked. So **you** cannot turn the gate off; only
+the **human** can, by editing the bundled config through Tachyon's Plugins → Config editor (the default holds every
+write). A held write does NOT run immediately; it returns:
 
 ```json
 { "success": true, "data": { "action": "click", "confirmation_required": true, "confirmation_id": "r580423" } }

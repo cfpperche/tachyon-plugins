@@ -1,0 +1,4 @@
+{
+  "$schema": "./schema.json",
+  "confirmActions": "click,dblclick,fill,type,press,key,keydown,keyup,keyboard,select,check,uncheck,upload,drag,eval,download"
+}

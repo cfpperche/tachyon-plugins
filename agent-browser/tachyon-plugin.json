@@ -1,18 +1,26 @@
 {
   "name": "agent-browser",
-  "version": "2.0.1",
-  "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content \u2014 including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). v2 adds form-driving with a MECHANICAL write gate: the Tachyon launcher force-enables agent-browser's action confirmation, so every state-mutating action (click/fill/type/submit/upload/eval/download) is HELD for an explicit confirmation instead of running silently \u2014 reads (navigate/snapshot/screenshot/extract) stay frictionless. Needs a host Chrome/Chromium.",
+  "version": "2.1.0",
+  "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content \u2014 including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). A MECHANICAL write gate holds every state-mutating action (click/fill/type/submit/upload/eval/download) for an explicit confirmation; reads (navigate/snapshot/screenshot/extract) stay frictionless. v2.1 makes the gate HUMAN-CONFIGURABLE: edit the bundled agent-browser config (native confirmActions / allowedDomains / timeouts; published schema) through the Plugins Config editor \u2014 Tachyon feeds your config to the CLI and refuses the agent's attempts to override it. Needs a host Chrome/Chromium.",
   "runtimes": [
     "claude",
     "codex"
   ],
+  "config": {
+    "file": "config/agent-browser.json",
+    "schemaFile": "config/schema.json"
+  },
+  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/agent-browser",
   "tools": {
     "agent-browser": {
       "version": "0.31.0",
       "launchPolicy": {
-        "env": {
-          "AGENT_BROWSER_CONFIRM_ACTIONS": "click,dblclick,fill,type,press,key,keydown,keyup,keyboard,select,check,uncheck,upload,drag,eval,download"
-        },
+        "configArg": "--config",
+        "scrubEnv": [
+          "AGENT_BROWSER_CONFIRM_ACTIONS",
+          "AGENT_BROWSER_ACTION_POLICY",
+          "AGENT_BROWSER_CONFIG"
+        ],
         "denyArgs": [
           "--confirm-actions",
           "--action-policy",
