@@ -123,8 +123,7 @@ Reads (navigate, `snapshot`, `screenshot`, `get text/html`) are free. The **comm
 `click`, `fill`, `type`, `press`, `select`, `check`, `upload`, `drag`, `eval`, `download`, and more — are **held**
 for confirmation: Tachyon's launcher force-enables agent-browser's action confirmation (you do **not** set it, and
 you **cannot** turn it off — the `--confirm-actions`/`--action-policy`/`--config` flags and the `mcp`/`batch`
-subcommands are refused, and the action-policy/config env vars are scrubbed). A held write does NOT run
-immediately; it returns:
+subcommands are refused). A held write does NOT run immediately; it returns:
 
 ```json
 { "success": true, "data": { "action": "click", "confirmation_required": true, "confirmation_id": "r580423" } }
@@ -133,11 +132,18 @@ immediately; it returns:
 **The contract (do this exactly):**
 1. Issue the write (e.g. `AB --session "$SESSION" --json click @e7`).
 2. If the result is `confirmation_required`, the action is **pending, not done**. **Surface the pending action +
-   its `confirmation_id` to the human and STOP** — describe what it will do ("submit the login form on
-   staging.example.com").
-3. **Do NOT confirm it yourself.** A human approves out of band with `AB confirm <id>` (or rejects with
-   `AB deny <id>`); a pending confirmation **auto-denies after 60s**. Only after a human confirm does the write
-   run — then re-`snapshot` to verify the effect.
+   the EXACT `confirm` command (including the SAME `--session`) to the human, then STOP** — describe what it will
+   do ("submit the login form on staging.example.com"). The confirmation lives in *that session's* daemon, so the
+   command MUST carry the same session — show the literal session name (a separate terminal won't have your
+   `$SESSION` shell var):
+
+   ```sh
+   .tachyon/bin/_tachyon-tool agent-browser agent-browser --session <your-literal-session> confirm r580423
+   ```
+3. **Do NOT confirm it yourself.** A human runs that exact command (or `… --session <same> deny r580423` to
+   reject); a pending confirmation **auto-denies after 60s** (so surface it promptly). **`confirm`/`deny` WITHOUT
+   the matching `--session` returns "No pending confirmation"** — it is not a timeout, it is the wrong daemon. Only
+   after a human confirm does the write run — then re-`snapshot` to verify the effect.
 
 > Honesty (read this): this is a **mechanical hold + a cooperative human-approval protocol**, NOT an airtight
 > sandbox. Two limits: (a) the held categories are a best-effort list — a rare/renamed mutator could run ungated
