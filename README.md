@@ -18,6 +18,8 @@ github:<owner>/tachyon-plugins@<ref>#path=<plugin-dir>
 |---|---|---|
 | [`sdd`](./sdd) | Spec-driven development scaffolding — a portable skill that scaffolds and progresses `docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md`. Materializes into `.claude/skills/` and `.agents/skills/`. | claude · codex |
 | [`hello-marker`](./hello-marker) | Benign round-trip proof: wires a harmless no-op `PreToolUse` marker hook. Exercises the full install→wire→update→remove lifecycle without touching security or project state. | claude · codex |
+| [`secrets-guard`](./secrets-guard) | A git **pre-commit secrets gate** powered by gitleaks. Tachyon fetches the pinned, checksum-verified gitleaks binary (tool provisioning) and wires a `pre-commit` hook that blocks any commit whose staged changes contain a detected secret. | any (git hook) |
+| [`commit-guard`](./commit-guard) | A demonstrable git **pre-commit gate**: blocks any commit whose staged diff contains the marker `DONOTCOMMIT`. The minimal git-hook-only plugin (no tool, no runtime). | any (git hook) |
 
 ## Manifest format
 

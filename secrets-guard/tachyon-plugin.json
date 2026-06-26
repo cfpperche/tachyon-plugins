@@ -1,0 +1,45 @@
+{
+  "name": "secrets-guard",
+  "version": "1.0.0",
+  "description": "A git pre-commit secrets gate powered by gitleaks. Tachyon fetches the pinned gitleaks binary (checksum-verified, content-addressed, human-consented) and wires a pre-commit hook that blocks any commit whose staged changes contain a detected secret. Runtime-agnostic — runs for you, the agent, and your IDE.",
+  "gitHooks": {
+    "pre-commit": { "argv": ["${tool:gitleaks}", "protect", "--staged", "--no-banner", "--redact"] }
+  },
+  "tools": {
+    "gitleaks": {
+      "version": "8.18.4",
+      "platforms": {
+        "linux-x64-glibc": {
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz",
+          "sha256": "ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d",
+          "archive": { "type": "tar.gz", "innerPath": "gitleaks", "binSha256": "46a05260e7cce527f132cb618de59d22262b8b5eb47f66c288447b95c7a98b7e" }
+        },
+        "linux-x64-musl": {
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz",
+          "sha256": "ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d",
+          "archive": { "type": "tar.gz", "innerPath": "gitleaks", "binSha256": "46a05260e7cce527f132cb618de59d22262b8b5eb47f66c288447b95c7a98b7e" }
+        },
+        "linux-arm64-glibc": {
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_arm64.tar.gz",
+          "sha256": "bf5f7f466ebfade1296c8bd32cf7d3f592c2aa78836aa9980ffbe2cadca7a861",
+          "archive": { "type": "tar.gz", "innerPath": "gitleaks", "binSha256": "fc286fab02c3a0ba80670fc9f8cb1b495a2f62eb953d26113cfa3562f76b340b" }
+        },
+        "linux-arm64-musl": {
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_arm64.tar.gz",
+          "sha256": "bf5f7f466ebfade1296c8bd32cf7d3f592c2aa78836aa9980ffbe2cadca7a861",
+          "archive": { "type": "tar.gz", "innerPath": "gitleaks", "binSha256": "fc286fab02c3a0ba80670fc9f8cb1b495a2f62eb953d26113cfa3562f76b340b" }
+        },
+        "darwin-x64": {
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_darwin_x64.tar.gz",
+          "sha256": "1a69e5666b13cd374889cbcb1939ed1573b63b551251283d5d2329a53cf58e2f",
+          "archive": { "type": "tar.gz", "innerPath": "gitleaks", "binSha256": "3f83ea726b8f10c16dfa7ea08c73d1474ddbfe24db4a00e6764ec9abac05e19e" }
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_darwin_arm64.tar.gz",
+          "sha256": "a480d8593acd8215b22402cf0f3f88b01dcd3610c63b5391db640f7767e62104",
+          "archive": { "type": "tar.gz", "innerPath": "gitleaks", "binSha256": "a86787a498e702f8820fc73c219ca44ecdf1f415eed8daf922888ffd6c4cf680" }
+        }
+      }
+    }
+  }
+}
