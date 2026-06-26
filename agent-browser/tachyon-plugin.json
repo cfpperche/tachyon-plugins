@@ -1,7 +1,7 @@
 {
   "name": "agent-browser",
   "version": "1.0.0",
-  "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content — including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). v1 is read-first: navigation, inspection, and extraction are free; state-mutating actions are confirmation-gated. Needs a host Chrome/Chromium.",
+  "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content — including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). v1 is read-first: navigation, inspection, and extraction are free; state-mutating actions are skill-gated (the agent must ask for explicit human confirmation first). Needs a host Chrome/Chromium.",
   "runtimes": ["claude", "codex"],
   "tools": {
     "agent-browser": {

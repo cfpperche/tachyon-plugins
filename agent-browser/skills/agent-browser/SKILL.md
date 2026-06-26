@@ -25,16 +25,18 @@ For brevity below, treat `AB` as that prefix (e.g. `AB open https://example.com`
 
 ## Step 0 — doctor first (every session)
 
-Before the first browse in a session, run the preflight (the bundled script lives in this skill's `scripts/`
-directory):
+Before the first browse in a session, run the preflight. The bundled script lives in the materialized skill dir,
+so use the path for your runtime (run from the workspace root):
 
 ```sh
-sh scripts/doctor.sh
+sh .claude/skills/agent-browser/scripts/doctor.sh     # claude
+sh .agents/skills/agent-browser/scripts/doctor.sh     # codex
 ```
 
-It proves the binary runs and a usable Chrome is present. If it prints `BROWSER_RUNTIME_MISSING`, **stop** and
-surface the remediation it gives (install Chrome, or `AB install` to fetch a pinned Chrome-for-Testing). Do not
-attempt to browse until doctor passes — a missing browser must never look like a successful empty read.
+It delegates to the CLI's own `AB doctor` — a real check of the binary, Chrome detection, AND a headless launch
+test (you can also just run `AB doctor` directly). If it prints `BROWSER_RUNTIME_MISSING`, **stop** and surface
+the remediation it gives (install Chrome, or `AB install --with-deps` to fetch a pinned Chrome-for-Testing). Do
+not attempt to browse until doctor passes — a missing browser must never look like a successful empty read.
 
 ## Step 1 — the read loop (the v1 core)
 
@@ -46,23 +48,31 @@ AB --session "$SESSION" get text @e5                  # extract a specific eleme
 ```
 
 `snapshot -i` is your primary "what is on this page" call. Read, screenshot, and extract freely on ordinary
-pages — that is the read-first contract. For the **full**, version-matched command surface (network capture,
-React inspection, diffing, PDF, tabs, …) load it on demand:
+pages — that is the read-first contract. For the **full** command surface (network capture, React inspection,
+diffing, PDF, tabs, …), the binary's built-in help is the authoritative, version-matched reference:
 
 ```sh
-AB skills get core
+AB --help            # all commands
+AB snapshot --help   # one command's flags
 ```
 
-## Sessions — one isolated browser per agent
+(`AB skills get core` is NOT available for this provisioned binary — the skill content ships only with an npm
+install, not the standalone binary. Use `--help`.)
 
-Always pass a stable, agent-scoped session so concurrent agents never share a browser:
+## Sessions — pick ONE name and reuse it for the whole task
+
+Each `--session` gets its own daemon + Chrome. **Critical:** every Tachyon shell call is a separate process, so a
+per-process value like `$$` would give `open` and `snapshot` *different* sessions — the snapshot would not see the
+page you opened. Choose **one fixed session string at the start of the task** and pass that exact literal to every
+command. Use the Tachyon agent id when available, else a fixed task label:
 
 ```sh
-SESSION="tachyon-$(basename "$(pwd)")-${TACHYON_AGENT_ID:-$$}"
+SESSION="tachyon-${TACHYON_AGENT_ID:-myTaskLabel}"   # decide once; reuse verbatim every call
+AB --session "$SESSION" open https://example.com
+AB --session "$SESSION" snapshot -i                   # same SESSION → same browser
 ```
 
-Each `--session` gets its own daemon + Chrome. Set an idle timeout so abandoned daemons self-close, and clean up
-explicitly when done:
+Set an idle timeout so abandoned daemons self-close, and clean up explicitly when done:
 
 ```sh
 export AGENT_BROWSER_IDLE_TIMEOUT_MS=300000   # 5 min
@@ -73,12 +83,21 @@ AB --session "$SESSION" close                 # or: AB --session "$SESSION" quit
 
 The agent **never handles credentials**. A human logs in once; the agent reuses the saved session headlessly.
 
-1. **Human headed login (once per host).** A human opens a headed browser, logs in, and saves the session state
-   into the per-workspace, gitignored, credential-class store:
+0. **Prepare the store (once).** Create the credential-class dir with tight perms and confirm it is git-ignored —
+   these files are equivalent to a saved password and must never be committed:
 
    ```sh
-   AB --profile "$PWD/.tachyon/browser-state/<host>-profile" open https://<host>/login   # human logs in here
-   AB state save "$PWD/.tachyon/browser-state/<host>.json"
+   mkdir -p .tachyon/browser-state && chmod 700 .tachyon/browser-state
+   git check-ignore -q .tachyon/browser-state || echo "WARNING: .tachyon/browser-state is NOT gitignored — add it before saving any session."
+   ```
+
+1. **Human headed login (once per host).** A human opens a **headed** browser in a **dedicated login session**,
+   logs in, and saves the state:
+
+   ```sh
+   AB --session login-<host> --headed --profile "$PWD/.tachyon/browser-state/<host>-profile" open https://<host>/login
+   # ↑ human logs in in the window that opens, then:
+   AB --session login-<host> state save "$PWD/.tachyon/browser-state/<host>.json"
    ```
 
 2. **Agent reuses it headlessly:**
@@ -91,8 +110,8 @@ The agent **never handles credentials**. A human logs in once; the agent reuses 
    Prefer `--session <name> --restore` with `--restore-check-url`/`--restore-check-text` so a stale session is
    detected before you trust it.
 
-- State files live **only** under `.tachyon/browser-state/` — gitignored, credential-class (cookies + tokens =
-  a password). Encrypt at rest by exporting `AGENT_BROWSER_ENCRYPTION_KEY` (a 64-hex key) before save/load.
+- State files live **only** under `.tachyon/browser-state/` — credential-class (cookies + tokens = a password).
+  Encrypt at rest by exporting `AGENT_BROWSER_ENCRYPTION_KEY` (a 64-hex key) before save/load.
 - **Never** point `--profile` at the human's real Chrome profile; use an isolated path under
   `.tachyon/browser-state/` only.
 - **Expiry:** if a previously-working authenticated nav now returns 401/403 or redirects to a login page, the
@@ -115,4 +134,5 @@ confirmation-gated exceptions, not the default.
 
 - The browser binary is provisioned + hash-validated per Tachyon's tool-provisioning model; you only ever reach
   it through `.tachyon/bin/_tachyon-tool`.
-- `AB skills get core` is the authoritative, version-matched command reference for the installed binary.
+- `AB --help` (and `AB <command> --help`) is the authoritative, version-matched command reference for the
+  installed binary. `AB doctor` is the full environment + launch self-check.
