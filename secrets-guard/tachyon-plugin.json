@@ -1,7 +1,9 @@
 {
   "name": "secrets-guard",
-  "version": "1.0.0",
-  "description": "A git pre-commit secrets gate powered by gitleaks. Tachyon fetches the pinned gitleaks binary (checksum-verified, content-addressed, human-consented) and wires a pre-commit hook that blocks any commit whose staged changes contain a detected secret. Runtime-agnostic — runs for you, the agent, and your IDE.",
+  "version": "2.0.0",
+  "description": "A two-layer git secrets gate powered by gitleaks. Layer 1: a pre-commit git-hook scans staged changes (Tachyon fetches the pinned, checksum-verified gitleaks binary). Layer 2: a per-runtime PreToolUse shape-gate stops an agent from silently bypassing layer 1 via --no-verify / compound / -a. Together they make the gate hard to slip — for you, the agent, and your IDE.",
+  "runtimes": ["claude", "codex"],
+  "blocks": { "claude": "claude/", "codex": "codex/" },
   "gitHooks": {
     "pre-commit": { "argv": ["${tool:gitleaks}", "protect", "--staged", "--no-banner", "--redact"] }
   },
