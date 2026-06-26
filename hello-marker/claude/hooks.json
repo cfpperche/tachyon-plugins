@@ -3,7 +3,7 @@
     {
       "matcher": "Bash",
       "hooks": [
-        { "type": "command", "command": "\"${PLUGIN_ROOT}\"/marker.sh" }
+        { "type": "command", "command": "\"${TACHYON_PLUGIN_ROOT}\"/marker.sh" }
       ]
     }
   ]

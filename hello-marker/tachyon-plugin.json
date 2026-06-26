@@ -1,8 +1,11 @@
 {
   "name": "hello-marker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Benign round-trip proof plugin: wires a harmless no-op PreToolUse marker into claude + codex. Exercises the full install/wire/update/remove lifecycle without touching security, secrets, or project state.",
-  "runtimes": ["claude", "codex"],
+  "runtimes": [
+    "claude",
+    "codex"
+  ],
   "blocks": {
     "claude": "claude/",
     "codex": "codex/"
