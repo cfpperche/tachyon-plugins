@@ -6,6 +6,9 @@
     "claude",
     "codex"
   ],
+  "dependencies": [
+    "agent-browser@^2.1.0"
+  ],
   "config": {
     "file": "config/visual-qa.json",
     "schemaFile": "config/schema.json"
