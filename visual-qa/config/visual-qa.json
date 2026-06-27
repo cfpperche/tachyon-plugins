@@ -1,0 +1,12 @@
+{
+  "$schema": "./schema.json",
+  "anchor": {
+    "text": "REPLACE ME — describe how this UI should look, or set anchor.path to a design doc. Without an anchor the verdict is 'unable_to_judge'."
+  },
+  "routes": [
+    { "name": "home", "url": "http://localhost:3000/" }
+  ],
+  "viewports": [
+    { "name": "desktop", "width": 1440, "height": 900 }
+  ]
+}

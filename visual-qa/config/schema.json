@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Visual QA Configuration",
+  "description": "What the project DECLARES for Visual QA — the things an agent must not guess: the design-intent anchor (required) and the web routes to judge (required). v1 does not infer these.",
+  "type": "object",
+  "required": ["anchor", "routes"],
+  "additionalProperties": false,
+  "properties": {
+    "anchor": {
+      "type": "object",
+      "description": "The design-intent anchor the judge compares against. Provide AT LEAST ONE of text/path/url. Without an anchor a verdict is just taste — the skill returns 'unable_to_judge'. Prior screenshots are context, never a canonical baseline.",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "description": "Inline design intent: how this UI should look / the invariants that matter." },
+        "path": { "type": "string", "description": "Repo-relative path to a design doc / design-system the judge should read." },
+        "url": { "type": "string", "description": "Link to the design system / reference (https://…)." }
+      }
+    },
+    "routes": {
+      "type": "array",
+      "description": "The bounded list of pages/states to judge — NOT 'the whole UI'. Each is reached by a direct URL.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "url"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "description": "A short label used in the screenshot filename + the verdict." },
+          "url": { "type": "string", "description": "The direct URL of the page/state (e.g. http://localhost:3000/settings)." }
+        }
+      }
+    },
+    "viewports": {
+      "type": "array",
+      "description": "Viewports to capture each route at. Defaults to desktop 1440x900; add mobile (390x844) only when you want it judged.",
+      "items": {
+        "type": "object",
+        "required": ["name", "width", "height"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "width": { "type": "integer", "minimum": 200 },
+          "height": { "type": "integer", "minimum": 200 }
+        }
+      }
+    }
+  }
+}
