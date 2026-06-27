@@ -1,6 +1,6 @@
 {
   "name": "visual-qa",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Advisory Visual QA for a web UI a worktree changed. An agent drives the page (via the agent-browser plugin), screenshots the declared routes, judges them against YOUR declared design-intent anchor (not a pixel baseline), and attaches a verdict + durable screenshots to the worktree's evidence channel. Advisory — it never gates a merge; it informs the parent. Web-only (a real URL); native/desktop is out of scope. Requires the agent-browser plugin (browser-driving) installed alongside; degrades to 'unable_to_judge' when it or the anchor/routes are missing.",
   "runtimes": [
     "claude",
