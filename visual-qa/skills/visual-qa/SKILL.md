@@ -17,8 +17,11 @@ The first **producer** for the worktree evidence channel: look at a UI change, j
    NOT infer routes from the project).
 2. **agent-browser available?** This skill delegates browser-driving to the **agent-browser** plugin. If it isn't
    installed / its CLI is unavailable → `unable_to_judge` ("install the agent-browser plugin to capture the UI").
-3. **App reachable?** The declared route URLs must respond (the app's dev server is running). If not → ask the
-   human to start it; don't fabricate.
+3. **Run `config.setup` (if present), then check reachability.** `setup` is the project's own "how to make my UI
+   reachable" (human/agent-authored — same trust as a project CLAUDE.md): if `setup.command` is set, run it in the
+   background and poll `setup.readyUrl` until it responds; follow `setup.notes`. This is how a UI with NO URL (e.g.
+   a VS Code extension webview) gets one — serve a preview harness and point `routes` at it. Then confirm the route
+   URLs respond; if not → ask the human to start the app; don't fabricate.
 
 ## Flow
 

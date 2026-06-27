@@ -8,5 +8,8 @@
   ],
   "viewports": [
     { "name": "desktop", "width": 1440, "height": 900 }
-  ]
+  ],
+  "setup": {
+    "notes": "OPTIONAL — delete if your app's dev server is already running. If your UI has NO URL (e.g. a VS Code extension webview), serve a preview harness here and point routes at its URLs, e.g. command: 'npm run preview:webview', readyUrl: 'http://localhost:5174/'."
+  }
 }

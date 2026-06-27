@@ -6,6 +6,16 @@
   "required": ["anchor", "routes"],
   "additionalProperties": false,
   "properties": {
+    "setup": {
+      "type": "object",
+      "description": "OPTIONAL project-specific 'how to make my UI reachable' — authored by you (or your agent), the same trust as a project CLAUDE.md (NOT a security input). The skill follows this before capturing. Most web apps need nothing (the dev server is already up). A VS Code extension (a webview with no URL) sets command to serve its preview harness + readyUrl to wait on, then points routes at the harness URLs.",
+      "additionalProperties": false,
+      "properties": {
+        "command": { "type": "string", "description": "A shell command to start/serve the UI (e.g. 'npm run dev' or 'npm run preview:webview'). The agent runs it in the background and waits for readyUrl before capturing." },
+        "readyUrl": { "type": "string", "description": "A URL that returns 200 once the UI is ready (the agent polls it after running command)." },
+        "notes": { "type": "string", "description": "Any other prelude an agent must do/know before capture (auth, seeding, which fixture states to render)." }
+      }
+    },
     "anchor": {
       "type": "object",
       "description": "The design-intent anchor the judge compares against. Provide AT LEAST ONE of text/path/url. Without an anchor a verdict is just taste — the skill returns 'unable_to_judge'. Prior screenshots are context, never a canonical baseline.",
