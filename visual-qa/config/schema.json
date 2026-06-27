@@ -6,6 +6,7 @@
   "required": ["anchor", "routes"],
   "additionalProperties": false,
   "properties": {
+    "$schema": { "type": "string", "description": "Editor hint (the relative schema path) — allowed, not part of the config." },
     "setup": {
       "type": "object",
       "description": "OPTIONAL project-specific 'how to make my UI reachable' — authored by you (or your agent), the same trust as a project CLAUDE.md (NOT a security input). The skill follows this before capturing. Most web apps need nothing (the dev server is already up). A VS Code extension (a webview with no URL) sets command to serve its preview harness + readyUrl to wait on, then points routes at the harness URLs.",
