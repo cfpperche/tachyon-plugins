@@ -1,9 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Visual QA Configuration",
-  "description": "What the project DECLARES for Visual QA — the things an agent must not guess: the design-intent anchor (required) and the web routes to judge (required). v1 does not infer these.",
+  "description": "The PERSISTENT BASELINE for Visual QA — the design-intent anchor + the routes judged every run when the skill is invoked with no args. Both are OPTIONAL: the skill is invocation-driven (`/visual-qa <url> --anchor \"<intent>\"`) and the invocation overrides the baseline. An empty config is valid (useful only for invocation-driven runs). The skill enforces 'an anchor must come from EITHER the invocation OR this config' as a RUNTIME check, not a schema requirement — schema-valid does NOT mean a no-args run is runnable.",
   "type": "object",
-  "required": ["anchor", "routes"],
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string", "description": "Editor hint (the relative schema path) — allowed, not part of the config." },
