@@ -1,6 +1,6 @@
 {
   "name": "transcribe",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local speech-to-text: turn an audio or video file into a transcript, fully on-device via whisper.cpp. Tachyon provisions the pinned, checksummed ggml model (read-only) and detects + assist-installs the whisper-cli and ffmpeg system tools it needs. The audio content never leaves the machine; only the model weights are fetched once, pinned. Outputs txt (default) or srt/vtt/json. Not text-to-speech, not remote/paid transcription.",
   "runtimes": [
     "claude",
@@ -28,7 +28,7 @@
           ]
         }
       },
-      "manual": "Install whisper.cpp's whisper-cli — macOS: `brew install whisper-cpp`; Debian sid: `sudo apt install whisper.cpp-tools`; otherwise build from https://github.com/ggerganov/whisper.cpp (the binary must be named whisper-cli)."
+      "manual": "Install whisper.cpp's whisper-cli — Debian/Ubuntu: `sudo apt install whisper.cpp` (ships /usr/bin/whisper-cli); macOS: `brew install whisper-cpp`; otherwise build from https://github.com/ggerganov/whisper.cpp (the binary must be named whisper-cli, on a root-owned system PATH dir)."
     },
     "ffmpeg": {
       "detect": [
