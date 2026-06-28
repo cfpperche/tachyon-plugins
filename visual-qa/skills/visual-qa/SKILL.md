@@ -56,9 +56,37 @@ Then apply the **runtime-readiness branches** (these are NOT schema errors — a
    or its harness. NEVER run it for an arbitrary inline URL (a baseline `npm run preview:webview` is meaningless for
    `https://example.com`). An inline direct URL is assumed reachable; if it isn't, ask the human to start the app.
 
-**Named surface, no route catalog yet:** a named target ("the Agent Studio tabs") needs DISCOVERY to map name→route.
-That discovery doesn't exist yet. If the name matches a `config.routes` entry, use it. Otherwise ASK the human for the
-direct URL (first-class) — never fabricate one.
+### Named surface → URL: catalog resolution (spec 281)
+
+When the target is a NAMED surface (not a direct URL), resolve it in this ORDER — run the steps, don't improvise:
+
+1. **`config.routes` named entry** — if the name matches one, use its URL (the spec-277 path).
+2. **`config.catalog` resolution** — if a catalog is declared (`config.catalog = {path, base}`) and no routes entry
+   matched, run this checklist:
+   a. **Run `config.setup` FIRST** so `base` is reachable. If setup fails or `base` doesn't respond →
+      **`unable_to_capture`** (a capture/setup failure — NOT a visual `fail`, NOT `unable_to_judge`), recording the
+      candidate you were resolving. Never judge against an unreachable base.
+   b. **Match the view — DETERMINISTIC FIRST:** read the catalog JSON at `config.catalog.path`. Parse a `view:fixture`
+      syntax if present. Match the surface name to an entry by **exact `view` id → exact `title` → an `aliases` entry**,
+      case-insensitive. ONLY if nothing matches deterministically, pick the best entry by a semantic/`tags` read — but
+      if **>1 plausible view** exists (e.g. "pin" → pin-studio AND pin-preview), STATE the candidates and ASK; tags
+      alone never decide.
+   c. **Pick the fixture:** the named fixture (`view:fixture`), else the view's `default`. If the phrase names a STATE,
+      LIST that view's fixtures and pick/ask for the matching one (the defect may live in a non-default fixture).
+   d. **Join the URL (relative-only):** `resolved_url = base` (drop a trailing `/`) `+ entry.url` (keep its leading `/`,
+      preserve the query). The catalog `url` MUST be relative — REJECT an absolute catalog url (absolute targets belong
+      in `config.routes`, not catalog data).
+   e. **Open + VERIFY (anti-stale):** open `resolved_url`, then confirm the page rendered the resolved surface via the
+      harness marker — `document.body.dataset.previewView` / `…previewFixture` must equal the resolved `view`/`fixture`.
+      On a mismatch → **`unable_to_capture`** + ask (a stale catalog rendering a DIFFERENT surface must never be judged
+      as the named one).
+   f. **Record provenance** in the verdict `data`: `resolution_source: "config.routes" | "catalog" | "human"`, `view`,
+      `fixture`, `catalog_path`, `catalog_base`, `resolved_url`, and `catalog_hash` (a short hash of the catalog file),
+      so a reviewer sees exactly what was QA'd.
+3. **Otherwise ASK the human for the direct URL** (first-class) — never fabricate one.
+
+Resolution is ADDITIVE and TRANSPARENT: always state the surface you resolved to. The anchor stays mandatory — no
+anchor → `unable_to_judge`, never "resolution failed".
 
 **Inline target overrides the ENTIRE config route set** for that run — ad-hoc means "judge THIS now", not "append to
 the baseline suite".
