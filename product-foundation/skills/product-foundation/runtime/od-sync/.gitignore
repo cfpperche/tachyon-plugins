@@ -1,0 +1,10 @@
+# OD sync runtime artifacts — ALL local, none tracked (spec 206 hygiene).
+# Daily --check / apply reports (*.md) are regenerable verbose logs and are NO
+# LONGER committed: they leaked absolute paths into a public repo and shipped
+# needlessly to consumers. The durable audit (vendor SHA + last_check timestamps
+# + history) lives in vendor/open-design/MANIFEST.json. Tarball cache, extraction
+# scratch, and staging dirs were never tracked.
+*.md
+tarball-*.tar.gz
+extracted-*/
+staging-*/

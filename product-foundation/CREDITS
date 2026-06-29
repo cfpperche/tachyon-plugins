@@ -1,0 +1,16 @@
+product-foundation — third-party attributions
+==============================================
+
+This plugin bundles a vendored snapshot of the Open Design design-system
+catalogue used by the design-system step (Step 14).
+
+Open Design content (skills/product-foundation/design-systems/ and
+skills/product-foundation/vendor/open-design/) is licensed under the
+Apache License, Version 2.0. The full license text and the per-source
+attribution notices are preserved verbatim at:
+
+  skills/product-foundation/vendor/open-design/LICENSE
+  skills/product-foundation/vendor/open-design/NOTICE
+
+The concept and the specific design-system content are the upstream
+authors'; only the pipeline that consumes them is original to this plugin.

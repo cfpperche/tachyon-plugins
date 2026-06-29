@@ -1,0 +1,1794 @@
+{
+  "generated_at": "2026-06-02T23:30:01.144Z",
+  "pinned_sha": "c128ffd53bba3f3080b2d0b7d656d1634016e10a",
+  "count": 150,
+  "systems": [
+    {
+      "name": "agentic",
+      "mood": "Conversational AI-first interface with minimal controls, clear outcomes, and delegated task flows for agentic workflows.",
+      "palette_summary": [
+        "#ff5701",
+        "#f6f6f1",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "airbnb",
+      "mood": "Travel marketplace. Warm coral accent, photography-driven, rounded UI.",
+      "palette_summary": [
+        "#ff385c",
+        "#222222",
+        "#92174d",
+        "#460479",
+        "#e00b41",
+        "#428bff"
+      ]
+    },
+    {
+      "name": "airtable",
+      "mood": "Spreadsheet-database hybrid. Colorful, friendly, structured data aesthetic.",
+      "palette_summary": [
+        "#181d26",
+        "#1b61c9",
+        "#ffffff",
+        "#006400",
+        "#333333",
+        "#254fad"
+      ]
+    },
+    {
+      "name": "ant",
+      "mood": "Structured, enterprise-focused design system emphasizing clarity, consistency, and efficiency for data-dense web applications.",
+      "palette_summary": [
+        "#1677ff",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "apple",
+      "mood": "Consumer electronics. Premium white space, SF Pro, cinematic imagery.",
+      "palette_summary": [
+        "#000000",
+        "#f5f5f7",
+        "#0071e3",
+        "#0066cc",
+        "#2997ff",
+        "#1d1d1f"
+      ]
+    },
+    {
+      "name": "application",
+      "mood": "App dashboard with purple-themed aesthetic, top-bar navigation, card-based layouts, and developer-first workflows.",
+      "palette_summary": [
+        "#9333ea",
+        "#a855f7",
+        "#10b981",
+        "#f59e0b",
+        "#ef4444",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "arc",
+      "mood": "\"The browser that browses for you.\" Translucent surfaces, gradient warmth, sidebar-first layout.",
+      "palette_summary": [
+        "#ff7e5f",
+        "#feb47b",
+        "#7f5af0",
+        "#e84393",
+        "#16f2b3",
+        "#0db4f7"
+      ]
+    },
+    {
+      "name": "artistic",
+      "mood": "High-contrast, expressive style with creative typography and bold color choices for visually striking interfaces.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "atelier-zero",
+      "mood": "A magazine-grade, collage-driven visual system: warm paper canvas, surreal",
+      "palette_summary": [
+        "#efe7d2",
+        "#ece4cf",
+        "#ddd2b6",
+        "#f7f1de",
+        "#15140f",
+        "#2a2620"
+      ]
+    },
+    {
+      "name": "bento",
+      "mood": "Modular grid layout with card-like blocks, clear hierarchy, soft spacing, and subtle visual contrast for organized, scannable interfaces.",
+      "palette_summary": [
+        "#fad4c0",
+        "#80a1c1",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#fff5e6"
+      ]
+    },
+    {
+      "name": "binance",
+      "mood": "Crypto exchange. Bold yellow accent on monochrome, trading-floor urgency.",
+      "palette_summary": [
+        "#222126",
+        "#f0b90b",
+        "#ffd000",
+        "#f8d12f",
+        "#d0980b",
+        "#1eaedb"
+      ]
+    },
+    {
+      "name": "bmw",
+      "mood": "Luxury automotive. Dark premium surfaces, precise German engineering aesthetic.",
+      "palette_summary": [
+        "#1c69d4",
+        "#0653b6",
+        "#757575",
+        "#ffffff",
+        "#262626",
+        "#bbbbbb"
+      ]
+    },
+    {
+      "name": "bmw-m",
+      "mood": "Motorsport performance sub-brand. Near-black cockpit surfaces, BMW M tricolor accents, sharp engineering geometry.",
+      "palette_summary": [
+        "#0066b1",
+        "#1c69d4",
+        "#e22718",
+        "#ffffff",
+        "#0653b6",
+        "#000000"
+      ]
+    },
+    {
+      "name": "bold",
+      "mood": "Strong visual presence with heavyweight typography, high-contrast colors, and commanding layouts.",
+      "palette_summary": [
+        "#0077bc",
+        "#009866",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#111111"
+      ]
+    },
+    {
+      "name": "brutalism",
+      "mood": "Raw, anti-design aesthetic inspired by concrete architecture with unadorned elements, jarring layouts, and functional minimalism.",
+      "palette_summary": [
+        "#dd614c",
+        "#daa144",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "bugatti",
+      "mood": "Hypercar brand. Cinema-black canvas, monochrome austerity, monumental display type.",
+      "palette_summary": [
+        "#000000",
+        "#ffffff",
+        "#999999",
+        "#0070cc"
+      ]
+    },
+    {
+      "name": "cafe",
+      "mood": "Cozy cafe-inspired interface with warm tones, soft typography, and clean layouts for a relaxed browsing experience.",
+      "palette_summary": [
+        "#5d4432",
+        "#e9e3dd",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#f9f7f5"
+      ]
+    },
+    {
+      "name": "cal",
+      "mood": "Open-source scheduling. Clean neutral UI, developer-oriented simplicity.",
+      "palette_summary": [
+        "#242424",
+        "#898989",
+        "#111111",
+        "#ffffff",
+        "#0099ff",
+        "#3b82f6"
+      ]
+    },
+    {
+      "name": "canva",
+      "mood": "Visual creation platform. Vivid purple-blue gradient, generous spacing, friendly geometry.",
+      "palette_summary": [
+        "#ffffff",
+        "#7d2ae8",
+        "#00c4cc",
+        "#ff5757",
+        "#f4f5f7",
+        "#e8eaed"
+      ]
+    },
+    {
+      "name": "cisco",
+      "mood": "Enterprise infrastructure brand. Dark trust surfaces, Cisco Blue signal, technical clarity.",
+      "palette_summary": [
+        "#049fd9",
+        "#64bbe3",
+        "#005073",
+        "#2b5592",
+        "#39393b",
+        "#58585b"
+      ]
+    },
+    {
+      "name": "claude",
+      "mood": "Anthropic's AI assistant. Warm terracotta accent, clean editorial layout.",
+      "palette_summary": [
+        "#f5f4ed",
+        "#c96442",
+        "#5e5d59",
+        "#87867f",
+        "#4d4c48",
+        "#f0eee6"
+      ]
+    },
+    {
+      "name": "clay",
+      "mood": "Creative agency. Organic shapes, soft gradients, art-directed layout.",
+      "palette_summary": [
+        "#faf9f7",
+        "#dad4c8",
+        "#eee9df",
+        "#000000",
+        "#ffffff",
+        "#84e7a5"
+      ]
+    },
+    {
+      "name": "claymorphism",
+      "mood": "Soft, rounded 3D-like shapes mimicking malleable clay with playful, puffy elements and colorful surfaces.",
+      "palette_summary": [
+        "#3b82f6",
+        "#ffffff",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#1c398e"
+      ]
+    },
+    {
+      "name": "clean",
+      "mood": "Simplicity-focused design with ample whitespace, legible typography, and a limited color palette to reduce visual clutter.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "clickhouse",
+      "mood": "Fast analytics database. Yellow-accented, technical documentation style.",
+      "palette_summary": [
+        "#000000",
+        "#414141",
+        "#faff69",
+        "#166534",
+        "#f4f692",
+        "#14572f"
+      ]
+    },
+    {
+      "name": "cohere",
+      "mood": "Enterprise AI platform. Vibrant gradients, data-rich dashboard aesthetic.",
+      "palette_summary": [
+        "#d9d9dd",
+        "#e5e7eb",
+        "#1863dc",
+        "#000000",
+        "#212121",
+        "#17171c"
+      ]
+    },
+    {
+      "name": "coinbase",
+      "mood": "Crypto exchange. Clean blue identity, trust-focused, institutional feel.",
+      "palette_summary": [
+        "#0052ff",
+        "#578bfa",
+        "#0a0b0d",
+        "#282b31",
+        "#eef0f3",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "colorful",
+      "mood": "Vibrant, high-contrast palettes and gradients for engaging, memorable, and modern user experiences.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "composio",
+      "mood": "Tool integration platform. Modern dark with colorful integration icons.",
+      "palette_summary": [
+        "#0f0f0f",
+        "#0007cd",
+        "#00ffff",
+        "#0089ff",
+        "#0096ff",
+        "#000000"
+      ]
+    },
+    {
+      "name": "contemporary",
+      "mood": "Current-era minimalist design with bento grids, dark mode support, and high-performance accessible layouts.",
+      "palette_summary": [
+        "#c800df",
+        "#e60076",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "corporate",
+      "mood": "Professional, brand-aligned design with structured grids, minimalist layouts, and consistent enterprise patterns.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "cosmic",
+      "mood": "Futuristic sci-fi aesthetic with dark themes, vibrant neon accents, and immersive spatial elements.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "creative",
+      "mood": "Playful, character-driven design with expressive typography and bold graphics for landing pages and creative projects.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "cursor",
+      "mood": "AI-first code editor. Sleek dark interface, gradient accents.",
+      "palette_summary": [
+        "#f2f1ed",
+        "#26251e",
+        "#e6e5e0",
+        "#ebeae5",
+        "#cf2d56",
+        "#f54e00"
+      ]
+    },
+    {
+      "name": "dashboard",
+      "mood": "Dark-themed cloud-platform aesthetic with modular grids, glass-like panels, and strong data hierarchy for productivity dashboards.",
+      "palette_summary": [
+        "#0c5cab",
+        "#0a4a8a",
+        "#10b981",
+        "#f59e0b",
+        "#ef4444",
+        "#09090b"
+      ]
+    },
+    {
+      "name": "default",
+      "mood": "A clean, product-oriented default. Use when the brief doesn't call for a",
+      "palette_summary": [
+        "#fafafa",
+        "#111111",
+        "#2f6feb",
+        "#6b6b6b",
+        "#e5e5e5",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "discord",
+      "mood": "Voice / chat platform. Deep blurple, dark-first surfaces, playful accent moments.",
+      "palette_summary": [
+        "#313338",
+        "#1e1f22",
+        "#5865f2",
+        "#2b2d31",
+        "#4752c4",
+        "#7289da"
+      ]
+    },
+    {
+      "name": "dithered",
+      "mood": "Dot-pattern rendering technique that simulates shades with a limited palette for nostalgic, retro, high-contrast visuals.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "doodle",
+      "mood": "Hand-drawn, sketch-like style with doodles, handwritten fonts, and imperfect lines for a playful, informal feel.",
+      "palette_summary": [
+        "#49b6e5",
+        "#263d5b",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "dramatic",
+      "mood": "High-contrast, theatrical design with bold layouts, immersive visuals, and unconventional compositions that command attention.",
+      "palette_summary": [
+        "#8b5cf6",
+        "#f43f5e",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#09090b"
+      ]
+    },
+    {
+      "name": "duolingo",
+      "mood": "Language-learning platform. Bright owl green, chunky shadows, gamified joy.",
+      "palette_summary": [
+        "#58cc02",
+        "#ffffff",
+        "#e5e5e5",
+        "#ff9600",
+        "#ce82ff",
+        "#58a700"
+      ]
+    },
+    {
+      "name": "editorial",
+      "mood": "Magazine-inspired editorial layout with refined serif typography, structured grids, and elegant reading experiences.",
+      "palette_summary": [
+        "#111111",
+        "#f1f1f1",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "elegant",
+      "mood": "Graceful, refined aesthetic with delicate typography, minimal palettes, and polished layouts that exude sophistication.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "elevenlabs",
+      "mood": "AI voice platform. Dark cinematic UI, audio-waveform aesthetics.",
+      "palette_summary": [
+        "#ffffff",
+        "#f5f5f5",
+        "#f5f2ef",
+        "#777169",
+        "#000000",
+        "#4e4e4e"
+      ]
+    },
+    {
+      "name": "energetic",
+      "mood": "Dynamic, vibrant style with thick borders, geometric shapes, high-contrast colors, and expressive typography conveying motion and vitality.",
+      "palette_summary": [
+        "#ea580b",
+        "#f59e0b",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffedd5"
+      ]
+    },
+    {
+      "name": "enterprise",
+      "mood": "Clean, high-contrast enterprise design for data-driven workflows with intuitive drag-and-drop patterns and structured layouts.",
+      "palette_summary": [
+        "#072c2c",
+        "#ff5f03",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#edeade"
+      ]
+    },
+    {
+      "name": "expo",
+      "mood": "React Native platform. Dark theme, tight letter-spacing, code-centric.",
+      "palette_summary": [
+        "#f0f0f3",
+        "#000000",
+        "#60646c",
+        "#b0b4ba",
+        "#555860",
+        "#1c2024"
+      ]
+    },
+    {
+      "name": "expressive",
+      "mood": "Vibrant, personality-driven design with bold colors, playful graphics, and dynamic layouts that balance creativity with structure.",
+      "palette_summary": [
+        "#db2777",
+        "#2563eb",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "fantasy",
+      "mood": "Game-inspired fantasy aesthetic with bold, premium visuals, rich color palettes, and immersive thematic elements.",
+      "palette_summary": [
+        "#0250cc",
+        "#fdc800",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "ferrari",
+      "mood": "Luxury automotive. Chiaroscuro editorial, Ferrari Red accents, cinematic black.",
+      "palette_summary": [
+        "#da291c",
+        "#303030",
+        "#8f8f8f",
+        "#d2d2d2",
+        "#fff200",
+        "#f6e500"
+      ]
+    },
+    {
+      "name": "figma",
+      "mood": "Collaborative design tool. Vibrant multi-color, playful yet professional.",
+      "palette_summary": [
+        "#000000",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "flat",
+      "mood": "Two-dimensional minimalist style with vibrant colors, clean typography, and no 3D effects for fast, user-friendly interfaces.",
+      "palette_summary": [
+        "#f2673c",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "framer",
+      "mood": "Website builder. Bold black and blue, motion-first, design-forward.",
+      "palette_summary": [
+        "#000000",
+        "#0099ff",
+        "#ffffff",
+        "#a6a6a6",
+        "#090909",
+        "#0000ee"
+      ]
+    },
+    {
+      "name": "friendly",
+      "mood": "Approachable, intuitive design with rounded elements, ample whitespace, and soft pastel color palettes.",
+      "palette_summary": [
+        "#f2d9dc",
+        "#d9f2d8",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "futuristic",
+      "mood": "Forward-looking design with tech-inspired typography, modern layouts, and a sleek, innovation-driven aesthetic.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "github",
+      "mood": "Code-forward platform. Functional density, blue-on-white precision, Primer foundations.",
+      "palette_summary": [
+        "#ffffff",
+        "#0d1117",
+        "#0969da",
+        "#1a7f37",
+        "#d0d7de",
+        "#f6f8fa"
+      ]
+    },
+    {
+      "name": "glassmorphism",
+      "mood": "Frosted glass effect with translucent layers, subtle blur, and luminous borders for depth and modern elegance.",
+      "palette_summary": [
+        "#1856ff",
+        "#3a344e",
+        "#07ca6b",
+        "#e89558",
+        "#ea2143",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "gradient",
+      "mood": "Smooth color transitions and gradient-rich surfaces for modern, playful interfaces with visual depth.",
+      "palette_summary": [
+        "#990ffa",
+        "#e60076",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "hashicorp",
+      "mood": "Infrastructure automation. Enterprise-clean, black and white.",
+      "palette_summary": [
+        "#15181e",
+        "#0d0e12",
+        "#7b42bc",
+        "#ffcf25",
+        "#14c6cb",
+        "#1868f2"
+      ]
+    },
+    {
+      "name": "hud",
+      "mood": "Fighter jet / helicopter head-up display. Phosphor green on near-black, all-caps data overlays, angular geometry. Zero ambiguity at speed and altitude.",
+      "palette_summary": [
+        "#0a0a0a",
+        "#111316",
+        "#1e2328",
+        "#00ff41",
+        "#7fff00",
+        "#5a9a5a"
+      ]
+    },
+    {
+      "name": "huggingface",
+      "mood": "ML community hub. Sunny yellow accent, monospace identity, cheerful and dense.",
+      "palette_summary": [
+        "#ffd21e",
+        "#fafafa",
+        "#0d1117",
+        "#f3f4f6",
+        "#e5e7eb",
+        "#f59e0b"
+      ]
+    },
+    {
+      "name": "ibm",
+      "mood": "Enterprise technology. Carbon design system, structured blue palette.",
+      "palette_summary": [
+        "#ffffff",
+        "#161616",
+        "#0f62fe",
+        "#f4f4f4",
+        "#262626",
+        "#393939"
+      ]
+    },
+    {
+      "name": "intercom",
+      "mood": "Customer messaging. Friendly blue palette, conversational UI patterns.",
+      "palette_summary": [
+        "#faf9f6",
+        "#111111",
+        "#ff5600",
+        "#dedbd6",
+        "#ffffff",
+        "#fe4c02"
+      ]
+    },
+    {
+      "name": "kami",
+      "mood": "Editorial paper system: warm parchment canvas, ink-blue accent, serif-led hierarchy. Built for resumes, one-pagers, white papers, portfolios, slide decks — anything that should feel like high-quality print rather than UI. Multilingual by design (EN · zh-CN · ja).",
+      "palette_summary": [
+        "#f5f4ed",
+        "#1b365d",
+        "#ffffff",
+        "#e4ecf5",
+        "#2d5a8a",
+        "#faf9f5"
+      ]
+    },
+    {
+      "name": "kraken",
+      "mood": "Crypto trading. Purple-accented dark UI, data-dense dashboards.",
+      "palette_summary": [
+        "#7132f5",
+        "#5741d8",
+        "#5b1ecf",
+        "#101114",
+        "#149e61",
+        "#686b82"
+      ]
+    },
+    {
+      "name": "lamborghini",
+      "mood": "Supercar brand. True black surfaces, gold accents, dramatic uppercase typography.",
+      "palette_summary": [
+        "#000000",
+        "#ffc000",
+        "#ffffff",
+        "#917300",
+        "#ffce3e",
+        "#29abe2"
+      ]
+    },
+    {
+      "name": "levels",
+      "mood": "Conversion-focused design that removes friction and guides users toward action through clarity, trust, and speed.",
+      "palette_summary": [
+        "#27272a",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "linear-app",
+      "mood": "Project management. Ultra-minimal, precise, purple accent.",
+      "palette_summary": [
+        "#08090a",
+        "#f7f8f8",
+        "#5e6ad2",
+        "#7170ff",
+        "#0f1011",
+        "#191a1b"
+      ]
+    },
+    {
+      "name": "lingo",
+      "mood": "Playful, minimal design with bright colors, rounded shapes, tactile 3D borders, and friendly illustrations for approachable interfaces.",
+      "palette_summary": [
+        "#58cc02",
+        "#ce82ff",
+        "#ffc800",
+        "#ff4b4b",
+        "#ffffff",
+        "#3c3c3c"
+      ]
+    },
+    {
+      "name": "loom",
+      "mood": "Loom async video. Purple primary, friendly surfaces, video-first layout. Clean and professional without being corporate.",
+      "palette_summary": [
+        "#625df5",
+        "#ffffff",
+        "#f7f7f8",
+        "#e4e4e7",
+        "#5048e5",
+        "#1f1f23"
+      ]
+    },
+    {
+      "name": "lovable",
+      "mood": "AI full-stack builder. Playful gradients, friendly dev aesthetic.",
+      "palette_summary": [
+        "#f7f4ed",
+        "#1c1c1c",
+        "#eceae4",
+        "#fcfbf8",
+        "#5f5f5d",
+        "#3b82f6"
+      ]
+    },
+    {
+      "name": "luxury",
+      "mood": "High-end dark aesthetic with bold headings, monochromatic palette, and premium feel for luxury brand experiences.",
+      "palette_summary": [
+        "#fafafa",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#000000",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "mastercard",
+      "mood": "Global payments network. Warm cream canvas, orbital pill shapes, editorial warmth.",
+      "palette_summary": [
+        "#f3f0ee",
+        "#141413",
+        "#eb001b",
+        "#f79e1b",
+        "#cf4500",
+        "#f37338"
+      ]
+    },
+    {
+      "name": "material",
+      "mood": "Google's Material Design with layered surfaces, dynamic theming, built-in motion, and responsive cross-platform patterns.",
+      "palette_summary": [
+        "#6442d6",
+        "#c8b3fd",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "meta",
+      "mood": "Tech retail store. Photography-first, binary light/dark surfaces, Meta Blue CTAs.",
+      "palette_summary": [
+        "#0064e0",
+        "#0143b5",
+        "#004bb9",
+        "#47a5fa",
+        "#1877f2",
+        "#d6311f"
+      ]
+    },
+    {
+      "name": "minimal",
+      "mood": "Stripped-back design emphasizing whitespace, clean typography, and restrained color for maximum clarity and focus.",
+      "palette_summary": [
+        "#0c0c09",
+        "#312c85",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#f4f4f1"
+      ]
+    },
+    {
+      "name": "minimax",
+      "mood": "AI model provider. Bold dark interface with neon accents.",
+      "palette_summary": [
+        "#ffffff",
+        "#1456f0",
+        "#3b82f6",
+        "#60a5fa",
+        "#ea5ec1",
+        "#222222"
+      ]
+    },
+    {
+      "name": "mintlify",
+      "mood": "Documentation platform. Clean, green-accented, reading-optimized.",
+      "palette_summary": [
+        "#ffffff",
+        "#0d0d0d",
+        "#18e299",
+        "#d4fae8",
+        "#0fa76e",
+        "#c37d0d"
+      ]
+    },
+    {
+      "name": "miro",
+      "mood": "Visual collaboration. Bright yellow accent, infinite canvas aesthetic.",
+      "palette_summary": [
+        "#1c1c1e",
+        "#5b76fe",
+        "#00b473",
+        "#ffffff",
+        "#2a41b6",
+        "#ffc6c6"
+      ]
+    },
+    {
+      "name": "mission-control",
+      "mood": "Space/aerospace mission monitoring. Dark command center, amber telemetry, monospace precision. Functional clarity above all else.",
+      "palette_summary": [
+        "#0b1120",
+        "#111827",
+        "#1a2535",
+        "#1e3a5f",
+        "#ffb800",
+        "#00d4ff"
+      ]
+    },
+    {
+      "name": "mistral-ai",
+      "mood": "Open-weight LLM provider. French-engineered minimalism, purple-toned.",
+      "palette_summary": [
+        "#fa520f",
+        "#ffd900",
+        "#ffa110",
+        "#fffaeb",
+        "#fb6424",
+        "#ff8105"
+      ]
+    },
+    {
+      "name": "modern",
+      "mood": "Contemporary editorial style with serif typography, minimal palettes, and clean layouts for polished digital products.",
+      "palette_summary": [
+        "#553f83",
+        "#111111",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "mongodb",
+      "mood": "Document database. Green leaf branding, developer documentation focus.",
+      "palette_summary": [
+        "#001e2b",
+        "#00ed64",
+        "#b8c4c2",
+        "#00684a",
+        "#006cfa",
+        "#3860be"
+      ]
+    },
+    {
+      "name": "mono",
+      "mood": "Monospace-driven, matrix-inspired design with high-contrast elements, compact density, and a hacker-chic aesthetic.",
+      "palette_summary": [
+        "#37f712",
+        "#00a6f4",
+        "#00a63d",
+        "#fe9900",
+        "#ff2157",
+        "#e7e5e4"
+      ]
+    },
+    {
+      "name": "neobrutalism",
+      "mood": "Modern take on brutalism with bold borders, vivid accent colors, and raw, high-contrast layouts on warm surfaces.",
+      "palette_summary": [
+        "#fdc800",
+        "#432dd7",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#fbfbf9"
+      ]
+    },
+    {
+      "name": "neon",
+      "mood": "Electric neon glow effects with high-contrast color pairings for bold, attention-grabbing interfaces.",
+      "palette_summary": [
+        "#bbf351",
+        "#00bcff",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "neumorphism",
+      "mood": "Soft, extruded UI elements with inner and outer shadows on monochromatic surfaces for a tactile, embedded look.",
+      "palette_summary": [
+        "#006666",
+        "#f1f2f5",
+        "#00a63d",
+        "#fe9900",
+        "#ff2157",
+        "#e7e5e4"
+      ]
+    },
+    {
+      "name": "nike",
+      "mood": "Athletic retail. Monochrome UI, massive uppercase type, full-bleed photography.",
+      "palette_summary": [
+        "#111111",
+        "#000000",
+        "#ffffff",
+        "#fafafa",
+        "#f5f5f5",
+        "#e5e5e5"
+      ]
+    },
+    {
+      "name": "notion",
+      "mood": "All-in-one workspace. Warm minimalism, serif headings, soft surfaces.",
+      "palette_summary": [
+        "#ffffff",
+        "#f6f5f4",
+        "#31302e",
+        "#615d59",
+        "#a39e98",
+        "#0075de"
+      ]
+    },
+    {
+      "name": "nvidia",
+      "mood": "GPU computing. Green-black energy, technical power aesthetic.",
+      "palette_summary": [
+        "#000000",
+        "#ffffff",
+        "#76b900",
+        "#bff230",
+        "#df6500",
+        "#ef9100"
+      ]
+    },
+    {
+      "name": "ollama",
+      "mood": "Run LLMs locally. Terminal-first, monochrome simplicity.",
+      "palette_summary": [
+        "#000000",
+        "#ffffff",
+        "#262626",
+        "#090909",
+        "#fafafa",
+        "#e5e5e5"
+      ]
+    },
+    {
+      "name": "openai",
+      "mood": "Calm, near-monochrome system anchored in deep teal-black with generous white space and editorial typography.",
+      "palette_summary": [
+        "#ffffff",
+        "#0d0d0d",
+        "#e5e5e5",
+        "#1a1a1a",
+        "#fafafa",
+        "#f5f5f5"
+      ]
+    },
+    {
+      "name": "opencode-ai",
+      "mood": "AI coding platform. Developer-centric dark theme.",
+      "palette_summary": [
+        "#201d1d",
+        "#fdfcfc",
+        "#9a9898",
+        "#007aff",
+        "#ff3b30",
+        "#30d158"
+      ]
+    },
+    {
+      "name": "pacman",
+      "mood": "Retro arcade-inspired design with pixel fonts, dotted borders, playful high-contrast colors, and 8-bit game aesthetics.",
+      "palette_summary": [
+        "#2a3fe5",
+        "#f4b9b0",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#000000"
+      ]
+    },
+    {
+      "name": "paper",
+      "mood": "Paper-textured, print-inspired design with minimal colors, clean serif/sans typography, and tactile surface qualities.",
+      "palette_summary": [
+        "#111111",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "perplexity",
+      "mood": "Conversational AI search engine. Deep-dark canvas, sharp typography, single violet accent, dense information hierarchy.",
+      "palette_summary": [
+        "#0f0f10",
+        "#19191a",
+        "#232325",
+        "#2e2e30",
+        "#f0f0f0",
+        "#9b9b9b"
+      ]
+    },
+    {
+      "name": "perspective",
+      "mood": "Spatial depth design with isometric views, vanishing points, and layered elements that guide attention through 3D-like realism.",
+      "palette_summary": [
+        "#00bd7d",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff",
+        "#111827"
+      ]
+    },
+    {
+      "name": "pinterest",
+      "mood": "Visual discovery. Red accent, masonry grid, image-first.",
+      "palette_summary": [
+        "#e60023",
+        "#91918c",
+        "#62625b",
+        "#e5e5e0",
+        "#211922",
+        "#103c25"
+      ]
+    },
+    {
+      "name": "playstation",
+      "mood": "Gaming console retail. Three-surface channel layout, quiet-authority display type, cyan hover-scale.",
+      "palette_summary": [
+        "#1eaedb",
+        "#0070cc",
+        "#d53b00",
+        "#000000",
+        "#ffffff",
+        "#1883fd"
+      ]
+    },
+    {
+      "name": "posthog",
+      "mood": "Product analytics. Playful hedgehog branding, developer-friendly dark UI.",
+      "palette_summary": [
+        "#fdfdf8",
+        "#f54e00",
+        "#1e1f23",
+        "#bfc1b7",
+        "#eeefe9",
+        "#4d4f46"
+      ]
+    },
+    {
+      "name": "premium",
+      "mood": "Apple-inspired premium aesthetic with precise spacing, modern typography, and a refined, polished visual language.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "professional",
+      "mood": "Polished, business-ready design with modern typography, structured layouts, and a trustworthy visual identity.",
+      "palette_summary": [
+        "#fece14",
+        "#000000",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "publication",
+      "mood": "Print-inspired visual language for books, magazines, and reports with editorial grids and expressive typography.",
+      "palette_summary": [
+        "#a855f7",
+        "#0a1829",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "raycast",
+      "mood": "Productivity launcher. Sleek dark chrome, vibrant gradient accents.",
+      "palette_summary": [
+        "#07080a",
+        "#ff6363",
+        "#ffffff",
+        "#55b3ff",
+        "#5fc992",
+        "#ffbc33"
+      ]
+    },
+    {
+      "name": "refined",
+      "mood": "Carefully curated, modern minimal style with elegant serif typography and understated, sophisticated palettes.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "renault",
+      "mood": "French automotive. Vibrant aurora gradients, NouvelR typography, bold energy.",
+      "palette_summary": [
+        "#efdf00",
+        "#1883fd",
+        "#000000",
+        "#ffffff",
+        "#f8eb4c",
+        "#d9d9d6"
+      ]
+    },
+    {
+      "name": "replicate",
+      "mood": "Run ML models via API. Clean white canvas, code-forward.",
+      "palette_summary": [
+        "#ea2804",
+        "#202020",
+        "#2b9a66",
+        "#dd4425",
+        "#24292e",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "resend",
+      "mood": "Email API. Minimal dark theme, monospace accents.",
+      "palette_summary": [
+        "#000000",
+        "#f0f0f0",
+        "#ffffff",
+        "#ff5900",
+        "#ff801f",
+        "#ffa057"
+      ]
+    },
+    {
+      "name": "retro",
+      "mood": "Throwback design with vintage-inspired typography, high-contrast retro palettes, and nostalgic visual elements.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "revolut",
+      "mood": "Digital banking. Sleek dark interface, gradient cards, fintech precision.",
+      "palette_summary": [
+        "#e23b4a",
+        "#ec7e00",
+        "#00a87e",
+        "#494fdf",
+        "#e61e49",
+        "#191c1f"
+      ]
+    },
+    {
+      "name": "runwayml",
+      "mood": "AI video generation. Cinematic dark UI, media-rich layout.",
+      "palette_summary": [
+        "#767d88",
+        "#7d848e",
+        "#000000",
+        "#030303",
+        "#1a1a1a",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "sanity",
+      "mood": "Headless CMS. Red accent, content-first editorial layout.",
+      "palette_summary": [
+        "#0b0b0b",
+        "#212121",
+        "#353535",
+        "#797979",
+        "#b9b9b9",
+        "#ededed"
+      ]
+    },
+    {
+      "name": "sentry",
+      "mood": "Error monitoring. Dark dashboard, data-dense, pink-purple accent.",
+      "palette_summary": [
+        "#1f1633",
+        "#150f23",
+        "#c2ef4e",
+        "#79628c",
+        "#362d59",
+        "#6a5fc1"
+      ]
+    },
+    {
+      "name": "shadcn",
+      "mood": "Shadcn/ui-inspired design with minimal, clean components, monochrome palette, and utility-first patterns.",
+      "palette_summary": [
+        "#000000",
+        "#111111",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "shopify",
+      "mood": "E-commerce platform. Dark-first cinematic, neon green accent, ultra-light type.",
+      "palette_summary": [
+        "#02090a",
+        "#061a1c",
+        "#102620",
+        "#36f4a4",
+        "#c1fbd4",
+        "#d4f9e0"
+      ]
+    },
+    {
+      "name": "simple",
+      "mood": "Straightforward, no-frills design with clean typography, neutral colors, and intuitive layouts that stay out of the way.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "skeumorphism",
+      "mood": "Real-world mimicry with textured surfaces, 3D effects, and familiar physical metaphors for intuitive digital interfaces.",
+      "palette_summary": [
+        "#fa3c00",
+        "#f08321",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "slack",
+      "mood": "Workplace communication platform. Aubergine-primary, multi-accent logo palette, light surfaces with dark sidebar, warm and approachable.",
+      "palette_summary": [
+        "#4a154b",
+        "#ffffff",
+        "#f8f8f8",
+        "#350d36",
+        "#611f69",
+        "#36c5f0"
+      ]
+    },
+    {
+      "name": "sleek",
+      "mood": "Modern minimalist aesthetic with clean lines, intentional color palette, subtle interactions, and consistent spacing.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "spacex",
+      "mood": "Space technology. Stark black and white, full-bleed imagery, futuristic.",
+      "palette_summary": [
+        "#000000",
+        "#f0f0fa"
+      ]
+    },
+    {
+      "name": "spacious",
+      "mood": "Generous whitespace, consistent padding, and grid-based layouts for clean, readable, and breathing interfaces.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "spotify",
+      "mood": "Music streaming. Vibrant green on dark, bold type, album-art-driven.",
+      "palette_summary": [
+        "#121212",
+        "#181818",
+        "#1f1f1f",
+        "#1ed760",
+        "#f3727f",
+        "#ffa42b"
+      ]
+    },
+    {
+      "name": "starbucks",
+      "mood": "Global coffee retail brand. Four-tier green system, warm cream canvas, full-pill buttons.",
+      "palette_summary": [
+        "#f2f0eb",
+        "#edebe9",
+        "#006241",
+        "#cba258",
+        "#00754a",
+        "#1e3932"
+      ]
+    },
+    {
+      "name": "storytelling",
+      "mood": "Narrative-driven design using visuals, copy, and interaction to guide users through engaging, emotionally resonant journeys.",
+      "palette_summary": [
+        "#3b82f6",
+        "#8b5cf6",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "stripe",
+      "mood": "Payment infrastructure. Signature purple gradients, weight-300 elegance.",
+      "palette_summary": [
+        "#ffffff",
+        "#061b31",
+        "#533afd",
+        "#ea2261",
+        "#f96bee",
+        "#1c1e54"
+      ]
+    },
+    {
+      "name": "supabase",
+      "mood": "Open-source Firebase alternative. Dark emerald theme, code-first.",
+      "palette_summary": [
+        "#0f0f0f",
+        "#171717",
+        "#3ecf8e",
+        "#00c573",
+        "#898989",
+        "#fafafa"
+      ]
+    },
+    {
+      "name": "superhuman",
+      "mood": "Fast email client. Premium dark UI, keyboard-first, purple glow.",
+      "palette_summary": [
+        "#1b1938",
+        "#e9e5dd",
+        "#cbb7fb",
+        "#292827",
+        "#714cb6",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "tesla",
+      "mood": "Electric automotive. Radical subtraction, full-viewport photography, near-zero UI.",
+      "palette_summary": [
+        "#3e6ae1",
+        "#ffffff",
+        "#f4f4f4",
+        "#171a20",
+        "#393c41",
+        "#5c5e62"
+      ]
+    },
+    {
+      "name": "tetris",
+      "mood": "Classic block-game inspired design with playful colors, bold display fonts, and compact, high-energy layouts.",
+      "palette_summary": [
+        "#1c202b",
+        "#7107e7",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#dfe7ff"
+      ]
+    },
+    {
+      "name": "theverge",
+      "mood": "Tech editorial media. Acid-mint and ultraviolet accents, Manuka display, rave-flyer story tiles.",
+      "palette_summary": [
+        "#131313",
+        "#3cffd0",
+        "#5200ff",
+        "#ffffff",
+        "#2d2d2d",
+        "#309875"
+      ]
+    },
+    {
+      "name": "together-ai",
+      "mood": "Open-source AI infrastructure. Technical, blueprint-style design.",
+      "palette_summary": [
+        "#010120",
+        "#ef2cc1",
+        "#fc4c02",
+        "#bdbbff",
+        "#ffffff",
+        "#000000"
+      ]
+    },
+    {
+      "name": "totality-festival",
+      "mood": "Surface: web",
+      "palette_summary": [
+        "#121318",
+        "#38393f",
+        "#0d0e13",
+        "#1a1b21",
+        "#1e1f25",
+        "#292a2f"
+      ]
+    },
+    {
+      "name": "trading-terminal",
+      "mood": "Bloomberg-style financial trading terminal. Dark-only, data-dense, cyan/coral buy/sell signals. Everything readable at a glance from two meters away.",
+      "palette_summary": [
+        "#00d4aa",
+        "#ff4757",
+        "#0d0d0d",
+        "#141414",
+        "#1a1a1a",
+        "#2a2a2a"
+      ]
+    },
+    {
+      "name": "uber",
+      "mood": "Mobility platform. Bold black and white, tight type, urban energy.",
+      "palette_summary": [
+        "#000000",
+        "#ffffff",
+        "#e2e2e2",
+        "#f3f3f3",
+        "#efefef",
+        "#4b4b4b"
+      ]
+    },
+    {
+      "name": "urdu",
+      "mood": "Urdu Modern (Indus Script System)",
+      "palette_summary": [
+        "#0f595e",
+        "#f4f1ea",
+        "#c05621",
+        "#1a202c",
+        "#4a5568",
+        "#e2e8f0"
+      ]
+    },
+    {
+      "name": "vercel",
+      "mood": "Frontend deployment. Black and white precision, Geist font.",
+      "palette_summary": [
+        "#ffffff",
+        "#171717",
+        "#ff5b4f",
+        "#de1d8d",
+        "#0a72ef",
+        "#000000"
+      ]
+    },
+    {
+      "name": "vibrant",
+      "mood": "Lively, colorful design with bold playful typography, warm accents, and dynamic visual energy.",
+      "palette_summary": [
+        "#7c61d4",
+        "#eaae87",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "vintage",
+      "mood": "1950s-1990s nostalgia with skeuomorphic touches, grainy textures, retro color palettes, and pixel-style typography.",
+      "palette_summary": [
+        "#008080",
+        "#c0c0c0",
+        "#16a34a",
+        "#d97706",
+        "#dc2626",
+        "#000000"
+      ]
+    },
+    {
+      "name": "vodafone",
+      "mood": "Global telecom brand. Monumental uppercase display, Vodafone Red chapter bands.",
+      "palette_summary": [
+        "#e60000",
+        "#25282b",
+        "#ffffff",
+        "#3860be",
+        "#ac1811",
+        "#f2f2f2"
+      ]
+    },
+    {
+      "name": "voltagent",
+      "mood": "AI agent framework. Void-black canvas, emerald accent, terminal-native.",
+      "palette_summary": [
+        "#050507",
+        "#00d992",
+        "#3d3a39",
+        "#8b949e",
+        "#b8b3b0",
+        "#2fd6a1"
+      ]
+    },
+    {
+      "name": "warm-editorial",
+      "mood": "A serif-led magazine aesthetic. Terracotta accent on warm off-white paper —",
+      "palette_summary": [
+        "#faf7f2",
+        "#1c1a17",
+        "#c0512f",
+        "#2f5b4f",
+        "#8a817a",
+        "#ffffff"
+      ]
+    },
+    {
+      "name": "warp",
+      "mood": "Modern terminal. Dark IDE-like interface, block-based command UI.",
+      "palette_summary": [
+        "#faf9f6",
+        "#353534",
+        "#868584",
+        "#afaeac",
+        "#666469",
+        "#454545"
+      ]
+    },
+    {
+      "name": "webex",
+      "mood": "Collaboration platform. Momentum typography, blue action system, multi-user accent spectrum.",
+      "palette_summary": [
+        "#1170cf",
+        "#0353a8",
+        "#063a75",
+        "#64b4fa",
+        "#ffffff",
+        "#000000"
+      ]
+    },
+    {
+      "name": "webflow",
+      "mood": "Visual web builder. Blue-accented, polished marketing site aesthetic.",
+      "palette_summary": [
+        "#146ef5",
+        "#080808",
+        "#7a3dff",
+        "#ed52cb",
+        "#00d722",
+        "#ff6b00"
+      ]
+    },
+    {
+      "name": "wechat",
+      "mood": "Brand visual language for WeChat Mini Programs, official accounts, and open ecosystem extensions.",
+      "palette_summary": [
+        "#07c160",
+        "#10b160",
+        "#059050",
+        "#95ec69",
+        "#ffffff",
+        "#1a1a1a"
+      ]
+    },
+    {
+      "name": "wired",
+      "mood": "Tech magazine. Paper-white broadsheet density, custom serif display, mono kickers, ink-blue links.",
+      "palette_summary": [
+        "#057dbc",
+        "#000000",
+        "#1a1a1a",
+        "#ffffff",
+        "#e2e8f0",
+        "#757575"
+      ]
+    },
+    {
+      "name": "wise",
+      "mood": "Money transfer. Bright green accent, friendly and clear.",
+      "palette_summary": [
+        "#0e0f0c",
+        "#9fe870",
+        "#163300",
+        "#e2f6d5",
+        "#cdffad",
+        "#054d28"
+      ]
+    },
+    {
+      "name": "x-ai",
+      "mood": "Elon Musk's AI lab. Stark monochrome, futuristic minimalism.",
+      "palette_summary": [
+        "#1f2228",
+        "#ffffff",
+        "#000000"
+      ]
+    },
+    {
+      "name": "xiaohongshu",
+      "mood": "Lifestyle UGC social platform. Singular brand red, generous radius, content-first.",
+      "palette_summary": [
+        "#ffffff",
+        "#f5f5f5",
+        "#ff2442",
+        "#ff2e4d",
+        "#fdbc5f",
+        "#fafafa"
+      ]
+    },
+    {
+      "name": "zapier",
+      "mood": "Automation platform. Warm orange, friendly illustration-driven.",
+      "palette_summary": [
+        "#fffefb",
+        "#201515",
+        "#ff4f00",
+        "#c5c0b1",
+        "#939084",
+        "#eceae3"
+      ]
+    }
+  ]
+}
