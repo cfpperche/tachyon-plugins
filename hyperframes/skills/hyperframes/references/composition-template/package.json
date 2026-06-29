@@ -1,0 +1,11 @@
+{
+  "name": "tachyon-hyperframes-composition",
+  "private": true,
+  "type": "module",
+  "comment": "Pinned HyperFrames engine. This plugin depends on the npm ENGINE only (via npx), never the upstream agent-skill installer. Bump the pin deliberately (a major HyperFrames bump can change render output).",
+  "scripts": {
+    "preview": "npx --yes hyperframes@0.7.18 preview",
+    "check": "npx --yes hyperframes@0.7.18 lint",
+    "render": "npx --yes hyperframes@0.7.18 render"
+  }
+}
