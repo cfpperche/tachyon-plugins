@@ -1,0 +1,44 @@
+{
+  "_note": "Paid creative-audio tier → fal model oracle for the sound plugin. The script carries NO model IDs/body shapes/url paths — it reads them here. Verify endpoints/prices/body+url shapes via fal docs before first real use. Each tier: model (fal endpoint), prompt_field (body key for the prompt), duration_field (body key for length, or null), duration_unit (seconds|ms — how the engine writes the duration into the body), output_url_path (jq path to the audio url), price, price_unit (per_second|per_minute|per_gen), default_duration (seconds).",
+  "confirm_threshold_usd": 0.25,
+  "default_tier_music": "standard",
+  "default_tier_sfx": "sfx",
+  "tiers": {
+    "standard": {
+      "kind": "music",
+      "model": "cassetteai/music-generator",
+      "prompt_field": "prompt",
+      "duration_field": "duration",
+      "duration_unit": "seconds",
+      "output_url_path": ".audio_file.url",
+      "price": 0.02,
+      "price_unit": "per_minute",
+      "default_duration": 30,
+      "note": "CassetteAI Music — ~$0.02/min, fast instrumental from a text prompt."
+    },
+    "premium": {
+      "kind": "music",
+      "model": "fal-ai/elevenlabs/music",
+      "prompt_field": "prompt",
+      "duration_field": "music_length_ms",
+      "duration_unit": "ms",
+      "output_url_path": ".audio.url",
+      "price": 0.80,
+      "price_unit": "per_minute",
+      "default_duration": 30,
+      "note": "ElevenLabs Music — ~$0.80/min, highest quality. Endpoint/body UNVERIFIED; confirm at first premium call (this oracle is the single edit point)."
+    },
+    "sfx": {
+      "kind": "sfx",
+      "model": "fal-ai/elevenlabs/sound-effects/v2",
+      "prompt_field": "text",
+      "duration_field": "duration_seconds",
+      "duration_unit": "seconds",
+      "output_url_path": ".audio.url",
+      "price": 0.002,
+      "price_unit": "per_second",
+      "default_duration": 5,
+      "note": "ElevenLabs Sound Effects v2 — ~$0.002/sec, short SFX from a text prompt."
+    }
+  }
+}
