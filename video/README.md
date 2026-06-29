@@ -17,7 +17,7 @@ half of the split video capability; its deterministic/free sibling is the `hyper
 |---|---|---|---|---|
 | draft | fal-ai/wan/v2.2-a14b/image-to-video | ~$0.10/s | 5s | image→video |
 | standard | fal-ai/kling-video/v3/pro/image-to-video | ~$0.112/s | 15s | image→video |
-| premium | fal-ai/veo/3.1 | ~$0.40/s | 8s | text or image (audio) — endpoint UNVERIFIED |
+| premium | fal-ai/veo/3.1 | ≤$0.60/s | 8s | text or image (audio) — endpoint UNVERIFIED |
 
 ## Usage
 

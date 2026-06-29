@@ -29,6 +29,7 @@ resolve_tools() {
 }
 need_key() { [ -n "${FAL_KEY:-}" ] || { echo "video: unavailable: FAL_KEY is not set — this is a PAID capability. Set FAL_KEY (https://fal.ai) and re-run. Tachyon never stores the key." >&2; exit 1; }; _FAL="$FAL_KEY"; unset FAL_KEY; }
 auth_cfg() { ( umask 077; printf 'header = "Authorization: Key %s"\n' "$_FAL" > "$1" ); }   # 0600 curl --config (not argv/env)
+b64d() { base64 -d 2>/dev/null || base64 -D; }   # portable base64 decode (GNU -d / BSD -D)
 
 SUB="${1:-}"; [ $# -gt 0 ] && shift || true
 [ -n "$SUB" ] || { usage; exit 64; }
@@ -80,6 +81,8 @@ case "$SUB" in
     [ "$(awk -v c="$CONFIRM" -v e="$EST" 'BEGIN{print (c>=e)?1:0}')" = "1" ] || { echo "video: refused: --confirm-cost-usd $CONFIRM is below the estimate \$$EST. NO call was made." >&2; exit 1; }
     need_key
     mkdir -p -- "$JOBS_DIR"
+    # preflight ledger writability BEFORE the paid network call (codex MEDIUM — don't bill then lose the request_id)
+    [ -w "$JOBS_DIR" ] && { : >> "$LEDGER"; } 2>/dev/null || { echo "video: unavailable: the job ledger ($LEDGER) is not writable — fix that before a paid submit" >&2; exit 1; }
     WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT; CFG="$WORK/cfg"; auth_cfg "$CFG"
     # build the body (prompt + duration + image_url when applicable)
     if [ -n "$IMG" ]; then
@@ -95,11 +98,15 @@ case "$SUB" in
     fi
     REQ_ID="$("$JQ" -r '.request_id // empty' "$WORK/resp.json")"
     [ -n "$REQ_ID" ] || { echo "video: error: submit response carried no request_id — run 'video poll --all' to check before re-submitting." >&2; exit 1; }
-    STATUS_URL="$("$JQ" -r '.status_url // empty' "$WORK/resp.json")"; RESPONSE_URL="$("$JQ" -r '.response_url // empty' "$WORK/resp.json")"
+    # validate the fal request_id BEFORE it ever reaches a path/URL (codex HIGH — fal/mock-controlled)
+    echo "$REQ_ID" | grep -Eq '^[A-Za-z0-9_-]{1,128}$' || { echo "video: error: fal returned an unexpected request_id shape '$REQ_ID' — check your fal dashboard for a queued job before re-submitting (avoid a double charge)." >&2; exit 1; }
     OUT_NAME="${NAME:-$REQ_ID}"
-    # APPEND the `submitted` event IMMEDIATELY (D4 anti-orphan)
-    "$JQ" -nc --arg id "$REQ_ID" --arg model "$MODEL" --arg tier "$TIER" --arg est "$EST" --arg su "$STATUS_URL" --arg ru "$RESPONSE_URL" --arg up "$URL_PATH" --arg name "$OUT_NAME" --argjson dur "$DURATION" \
-      '{event:"submitted", request_id:$id, model:$model, tier:$tier, estimate_usd:($est|tonumber), duration_s:$dur, status_url:$su, response_url:$ru, output_url_path:$up, name:$name}' >> "$LEDGER"
+    # APPEND the `submitted` event IMMEDIATELY (D4 anti-orphan). status/result URLs are CONSTRUCTED from model+id at
+    # poll time (not stored from the response) so the FAL_KEY auth only ever goes to queue.fal.run (codex BLOCKER).
+    if ! "$JQ" -nc --arg id "$REQ_ID" --arg model "$MODEL" --arg tier "$TIER" --arg est "$EST" --arg up "$URL_PATH" --arg name "$OUT_NAME" --argjson dur "$DURATION" \
+      '{event:"submitted", request_id:$id, model:$model, tier:$tier, estimate_usd:($est|tonumber), duration_s:$dur, output_url_path:$up, name:$name}' >> "$LEDGER"; then
+      echo "video: error: a job was SUBMITTED but the ledger write failed — RECORD THIS to poll it (do not re-submit): request_id=$REQ_ID model=$MODEL" >&2; exit 1
+    fi
     echo "video: status=submitted"
     echo "  request_id=$REQ_ID  tier=$TIER  est~\$$EST  — a paid render is queued (~5 min)."
     echo "  reap it later with:  video poll --all   (or  video poll --id $REQ_ID)"
@@ -129,25 +136,31 @@ case "$SUB" in
     [ -n "$PENDING" ] || { echo "video: poll: no pending jobs"; exit 0; }
     reaped=0
     for row in $PENDING; do
-      J="$(printf '%s' "$row" | base64 -d)"
+      J="$(printf '%s' "$row" | b64d)"
       ID="$(printf '%s' "$J" | "$JQ" -r '.request_id')"
       [ "$MODE" = "all" ] || [ "$ID" = "$ONLY_ID" ] || continue
-      MODEL="$(printf '%s' "$J" | "$JQ" -r '.model')"; SU="$(printf '%s' "$J" | "$JQ" -r '.status_url // empty')"; RU="$(printf '%s' "$J" | "$JQ" -r '.response_url // empty')"
-      URL_PATH="$(printf '%s' "$J" | "$JQ" -r '.output_url_path')"; NAME="$(printf '%s' "$J" | "$JQ" -r '.name')"
-      [ -n "$SU" ] || SU="$QUEUE_BASE/$MODEL/requests/$ID/status"
-      [ -n "$RU" ] || RU="$QUEUE_BASE/$MODEL/requests/$ID"
+      MODEL="$(printf '%s' "$J" | "$JQ" -r '.model')"; URL_PATH="$(printf '%s' "$J" | "$JQ" -r '.output_url_path')"; NAME="$(printf '%s' "$J" | "$JQ" -r '.name')"
+      # RE-VALIDATE every ledger field on read — a hand-edited ledger must not reach a path/URL/jq filter (codex HIGH/MEDIUM)
+      echo "$ID"       | grep -Eq '^[A-Za-z0-9_-]{1,128}$' || { echo "video: skip: invalid request_id in ledger" >&2; continue; }
+      echo "$MODEL"    | grep -Eq '^[A-Za-z0-9._/-]{1,200}$' || { echo "video: skip $ID: invalid model in ledger" >&2; continue; }
+      echo "$NAME"     | grep -Eq '^[A-Za-z0-9_-]{1,128}$' || { echo "video: skip $ID: invalid name in ledger" >&2; continue; }
+      echo "$URL_PATH" | grep -Eq '^\.[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$' || { echo "video: skip $ID: invalid output_url_path in ledger" >&2; continue; }
+      # status/result URLs CONSTRUCTED from validated model+id → the FAL_KEY auth ONLY ever hits queue.fal.run (codex BLOCKER)
+      SU="$QUEUE_BASE/$MODEL/requests/$ID/status"; RU="$QUEUE_BASE/$MODEL/requests/$ID"
       ST="$("$CURL" -sS --config "$CFG" "$SU" --max-time 30 2>/dev/null | "$JQ" -r '.status // empty' 2>/dev/null || true)"
       case "$ST" in
         COMPLETED)
           if "$CURL" -sS --config "$CFG" -o "$WORK/res.json" "$RU" --max-time 30 2>/dev/null; then
-            URL="$(printf '%s' "$URL_PATH" | { read -r p; "$JQ" -r "($p) // empty" "$WORK/res.json"; } 2>/dev/null)"
-            if [ -n "$URL" ] && "$CURL" -fsSL --config "$CFG" -o "$WORK/clip" "$URL" --max-time 600 2>/dev/null && [ -s "$WORK/clip" ]; then
+            URL="$("$JQ" -r "($URL_PATH) // empty" "$WORK/res.json" 2>/dev/null)"
+            # the clip url is an arbitrary CDN host → download WITHOUT the auth config (never send FAL_KEY off fal); https-only.
+            case "$URL" in https://*) ;; *) echo "video: $ID: result carried no https clip url — re-poll" >&2; continue ;; esac
+            if "$CURL" -fsSL -o "$WORK/clip" "$URL" --max-time 600 2>/dev/null && [ -s "$WORK/clip" ]; then
               OUT="$OUT_REAL/$(date -u +%Y-%m-%d)-$NAME.mp4"; mv -f -- "$WORK/clip" "$OUT"
               "$JQ" -nc --arg id "$ID" --arg out "${OUT#"$ROOT/"}" '{event:"completed", request_id:$id, output:$out}' >> "$LEDGER"
               echo "video: reaped $ID → ${OUT#"$ROOT/"}"; reaped=$((reaped+1))
             else
-              "$JQ" -nc --arg id "$ID" '{event:"download_failed", request_id:$id}' >> "$LEDGER"
-              echo "video: $ID completed but the clip download failed (will not retry the paid job; re-poll to retry the download)" >&2
+              # transient download failure → DON'T append a terminal event (the job STAYS pending → re-pollable; codex HIGH)
+              echo "video: $ID completed but the clip download failed — re-poll to retry the download (the paid job is NOT re-run)" >&2
             fi
           else
             echo "video: $ID completed but the result fetch failed — re-poll" >&2

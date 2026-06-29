@@ -19,7 +19,7 @@ bash "$V" poll --id <request_id>
 ```
 
 - **`--tier`** — `draft` (Wan ~$0.10/s, ≤5s, image→video) · `standard` (Kling ~$0.112/s, ≤15s, image→video) ·
-  `premium` (Veo ~$0.40/s, ≤8s, text or image, audio).
+  `premium` (Veo ≤$0.60/s worst-case, ≤8s, text or image, audio).
 - **`--image-url`** — REQUIRED https URL for the image→video tiers (draft/standard); the source image (e.g. an
   `image`-plugin output you hosted publicly). premium can be text-only.
 - **`--duration`** — seconds, bounded by the tier max. **`--confirm-cost-usd`** — REQUIRED, must cover the estimate.

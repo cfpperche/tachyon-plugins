@@ -37,13 +37,13 @@
       "requires_image_url": false,
       "max_duration_seconds": 8,
       "default_duration": 5,
-      "price_usd_per_second": 0.40,
+      "price_usd_per_second": 0.60,
       "prompt_field": "prompt",
       "duration_field": "duration",
       "image_field": "image_url",
       "output_url_path": ".video.url",
       "audio": true,
-      "note": "Veo 3.1 class — highest fidelity, text-or-image, audio. $0.20/s (1080p no-audio) to $0.60/s (4K+audio); 0.40 is a mid estimate. UNVERIFIED endpoint/body — confirm at first premium call."
+      "note": "Veo 3.1 class — highest fidelity, text-or-image, audio. Real price ranges $0.20/s (1080p no-audio) to $0.60/s (4K+audio); priced here at the WORST CASE $0.60/s so the cost estimate is a hard CEILING, never a midpoint that could under-charge the gate (codex). UNVERIFIED endpoint/body — confirm at first premium call."
     }
   }
 }
