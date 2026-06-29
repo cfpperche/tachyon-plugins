@@ -1,0 +1,34 @@
+{
+  "name": "diagram",
+  "version": "0.1.0",
+  "description": "Deterministic technical diagrams: turn a Mermaid source into a tracked SVG/PNG/PDF asset, locally and free. Renders via the Mermaid CLI (mmdc, fetched on first run via npx at a pinned version) in a system headless Chrome. Detects the browser (google-chrome / chromium / ...) and offers a consent-gated assisted install; degrades to structural validation (source kept) when no browser is present. Not organic/photo imagery, not motion, not custom design craft.",
+  "runtimes": [
+    "claude",
+    "codex"
+  ],
+  "externalTools": {
+    "chrome": {
+      "names": [
+        "google-chrome",
+        "google-chrome-stable",
+        "chromium",
+        "chromium-browser"
+      ],
+      "install": {
+        "apt": {
+          "argv": ["sudo", "apt-get", "install", "-y", "chromium"]
+        },
+        "dnf": {
+          "argv": ["sudo", "dnf", "install", "-y", "chromium"]
+        },
+        "pacman": {
+          "argv": ["sudo", "pacman", "-S", "--noconfirm", "chromium"]
+        },
+        "brew": {
+          "argv": ["brew", "install", "--cask", "google-chrome"]
+        }
+      },
+      "manual": "Install a Chromium-based browser so mmdc can render headlessly — Debian `sudo apt install chromium`; Ubuntu ships it as a snap (`sudo snap install chromium`); Fedora `sudo dnf install chromium`; Arch `sudo pacman -S chromium`; macOS `brew install --cask google-chrome`. Any of google-chrome / google-chrome-stable / chromium / chromium-browser on a system PATH works."
+    }
+  }
+}
