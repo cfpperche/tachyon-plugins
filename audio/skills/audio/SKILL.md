@@ -5,8 +5,9 @@ description: Local-first text-to-speech. Use when the user wants to turn text in
 
 # audio — local-first text-to-speech
 
-Turn text into a spoken `wav`/`mp3`, fully on-device. Everything is resolved through Tachyon's shims — the skill never
-runs a tool off the bare PATH and never downloads the pinned voice itself.
+Turn text into a spoken `wav`/`mp3`, fully on-device. System tools (espeak-ng, ffmpeg) + the pinned voice are resolved
+through Tachyon's shims (never off the bare PATH); the `uvx` RUNNER is resolved on the ambient PATH (like `npx` — uv
+installs to a user dir). The skill never downloads the pinned voice itself.
 
 ## Invocation
 

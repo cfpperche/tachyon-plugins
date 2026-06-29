@@ -2,8 +2,9 @@
 # audio (spec 290) — LOCAL-first text-to-speech. Two on-device engines: piper (DEFAULT, self-contained, a pinned
 # checksummed voice) and kokoro (opt-in, higher quality + multilingual, needs espeak-ng). Both run through uv's tool
 # runner `uvx` (acquired at PINNED package versions — a lower-trust, NON-engine-checksummed lane, the diagram-npx
-# analog). Everything is resolved through Tachyon's shims (_tachyon-external for uvx/espeak-ng/ffmpeg, _tachyon-data
-# for the default voice). Fail-closed: `unavailable` (a dep is missing) vs `error` (a present engine failed); never an
+# analog). System tools are resolved through Tachyon's shims (_tachyon-external for espeak-ng/ffmpeg, _tachyon-data
+# for the default voice); the uvx RUNNER is resolved on the ambient PATH (like npx — uv installs to a user dir).
+# Fail-closed: `unavailable` (a dep is missing) vs `error` (a present engine failed); never an
 # empty/fake audio file. NO paid/remote lane (ElevenLabs lives in a separate integration plugin).
 set -euo pipefail
 
@@ -107,8 +108,8 @@ if [ "$ENGINE" = "piper" ]; then
     CFG="$("$DATA_SHIM" "$PLUGIN" voice-config 2>/dev/null)"  || { record unavailable ""; echo "audio: unavailable: the default voice config is not provisioned — reinstall the audio plugin (or Rehydrate)" >&2; exit 1; }
     # Tachyon stores data by content hash (the two files are NOT on-disk siblings) → materialize them as the
     # sibling pair piper expects (D3).
-    cp -- "$ONNX" "$WORK/$VOICE.onnx"
-    cp -- "$CFG"  "$WORK/$VOICE.onnx.json"
+    cp -- "$ONNX" "$WORK/$VOICE.onnx"      2>/dev/null || { record unavailable ""; echo "audio: unavailable: could not materialize the voice model (unreadable data artifact) — reinstall the audio plugin (or Rehydrate)" >&2; exit 1; }
+    cp -- "$CFG"  "$WORK/$VOICE.onnx.json" 2>/dev/null || { record unavailable ""; echo "audio: unavailable: could not materialize the voice config (unreadable data artifact) — reinstall the audio plugin (or Rehydrate)" >&2; exit 1; }
   else
     # on-demand, UNPINNED HF fetch for a non-default voice (the voice name is allowlist-validated above → safe to
     # build the nested rhasspy/piper-voices path). VOICE = <locale>-<name>-<quality>, e.g. en_US-lessac-medium.
@@ -126,25 +127,31 @@ else
   # ── kokoro: needs espeak-ng (presence-gated via the shim) + the shipped python helper, run via uvx ──
   ESPEAK="$("$EXT_SHIM" "$PLUGIN" espeak-ng 2>/dev/null)" || { record unavailable ""; echo "audio: unavailable: kokoro needs espeak-ng (a system tool) — the plugin's card offers an assisted install (apt/dnf/pacman/brew). Or use --engine piper (self-contained)." >&2; exit 1; }
   [ -f "$HERE/audio-kokoro.py" ] || { record error ""; echo "audio: error: kokoro helper missing from the plugin payload ($HERE/audio-kokoro.py)" >&2; exit 1; }
-  if ! "$UVX" --with "$KOKORO_PKG" --with "$SOUNDFILE_PKG" python "$HERE/audio-kokoro.py" --text "$TEXT" --voice "$VOICE" --lang "$LANG_CODE" --out "$WAV" >"$WORK/kokoro.log" 2>&1; then
+  # bind kokoro's phonemizer to the TRUSTED espeak-ng (codex HIGH): run with a sanitized PATH that puts the resolved
+  # espeak's dir first + only system dirs after — never the workspace/cwd, so a planted espeak-ng can't be picked up.
+  if ! env PATH="$(dirname "$ESPEAK"):/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" "$UVX" --with "$KOKORO_PKG" --with "$SOUNDFILE_PKG" python "$HERE/audio-kokoro.py" --text "$TEXT" --voice "$VOICE" --lang "$LANG_CODE" --out "$WAV" >"$WORK/kokoro.log" 2>&1; then
     record error ""; echo "audio: error: kokoro synthesis failed (voice=$VOICE lang=$LANG_CODE). Log: $(tail -3 "$WORK/kokoro.log" 2>/dev/null | tr '\n' ' ')" >&2; exit 1
   fi
 fi
 
 [ -s "$WAV" ] || { record error ""; echo "audio: error: the engine produced no audio" >&2; exit 1; }
 
-# ── encode to the requested format (wav = copy; mp3 = ffmpeg, falls back to wav if ffmpeg absent) ──
+# ── encode (wav = copy; mp3 = ffmpeg, falls back to wav). Produce into a FRESH temp file inside the out dir, then
+#    `mv -f` over the final path — a pre-existing symlink at the destination is REPLACED, not followed (codex HIGH:
+#    symlink containment bypass; also prevents a stale/partial file on a failed mp3 encode — codex MEDIUM). ──
 OUTPUT="$OUT_DIR/$STEM.$FORMAT"
+TMP_OUT="$(mktemp -- "$OUT_DIR/.audio-XXXXXX")"
 if [ "$FORMAT" = "wav" ]; then
-  cp -- "$WAV" "$OUTPUT"
+  cp -- "$WAV" "$TMP_OUT"
 else
   FFMPEG="${AUDIO_FFMPEG_BIN:-}"; [ -n "$FFMPEG" ] || FFMPEG="$("$EXT_SHIM" "$PLUGIN" ffmpeg 2>/dev/null || true)"
-  if [ -n "$FFMPEG" ] && "$FFMPEG" -nostdin -y -i "$WAV" "$OUTPUT" >/dev/null 2>&1; then :; else
-    OUTPUT="$OUT_DIR/$STEM.wav"; FORMAT="wav"; cp -- "$WAV" "$OUTPUT"
-    echo "audio: note: ffmpeg unavailable for mp3 — wrote wav instead ($OUTPUT)" >&2
+  if [ -n "$FFMPEG" ] && "$FFMPEG" -nostdin -y -i "$WAV" -f mp3 "$TMP_OUT" >/dev/null 2>&1 && [ -s "$TMP_OUT" ]; then :; else
+    cp -- "$WAV" "$TMP_OUT"; OUTPUT="$OUT_DIR/$STEM.wav"; FORMAT="wav"
+    echo "audio: note: ffmpeg unavailable/failed for mp3 — wrote wav instead ($OUTPUT)" >&2
   fi
 fi
-[ -s "$OUTPUT" ] || { rm -f -- "$OUTPUT" 2>/dev/null || true; record error ""; echo "audio: error: no output written" >&2; exit 1; }
+[ -s "$TMP_OUT" ] || { rm -f -- "$TMP_OUT" 2>/dev/null || true; record error ""; echo "audio: error: no output written" >&2; exit 1; }
+mv -f -- "$TMP_OUT" "$OUTPUT"
 
 # warn (not fail) if the asset lands on a git-ignored path
 if git -C "$ROOT" check-ignore -q -- "$OUTPUT" 2>/dev/null; then
