@@ -90,7 +90,7 @@ When the audit ran in branch (i) **measurable** (HTML inputs, real numbers in th
 
 The artifact MUST include the `validation_mode:` line on its own line near the top — the orchestrator extracts the `validation_mode:` line into `.state.json.validation_mode`, and Layer 1 rejects the submission if it's missing. Write `validation-report.md` to `docs/` — but ONLY after the step's Layer-1 validation passes; write it atomically (mktemp + rename) so it lands whole or not at all.
 
-Step 4 is the **last step of the Discovery phase**. After a clean write, advancing `.state.json` closes the Discovery gate — the orchestrator pauses at the gate before advancing (the pipeline's gates fire after steps 4, 7, and 12). The parent asks the user to explicitly confirm Discovery is ready to close, records the Discovery gate as passed in `.state.json.gates_passed`, then advances `.state.json` again to enter the Identity phase (step 5, brand).
+Step 4 is the **last step of the Discovery phase** (Phase 1 = steps 01-04). After a clean write, advancing `.state.json` closes the Discovery gate (`gate_discovery`) — the orchestrator pauses at the gate before advancing. The parent asks the user to explicitly confirm Discovery is ready to close, records the Discovery gate as passed in `.state.json.gates_passed`, then advances `.state.json` again to enter the Specification phase, beginning at step 5 (PRD).
 
 ---
 

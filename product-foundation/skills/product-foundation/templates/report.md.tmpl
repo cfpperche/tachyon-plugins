@@ -76,7 +76,7 @@ Every US-NN from `prd/v1.md` is mapped in the atlas § PRD Coverage Matrix (cove
 
 ## Visual check (best-effort agent-browser)
 
-_If `agent-browser` was available (`route` = `primary`), each hi-fi mood screen was swept with `agent-browser.sh audit … --structure optional` over `file://` — screenshotted at 375 px + 1280 px and probed for horizontal overflow (`scrollWidth > clientWidth`). If unavailable, this section records `visual-gate-skipped: agent-browser unavailable` (no MCP fallback, spec 153)._
+_If the **agent-browser plugin** was available, each hi-fi mood screen was opened over `file://` and screenshotted at 375 px + 1280 px, then checked for horizontal overflow. If the plugin (or host Chrome) was unavailable, this section records `visual-gate-skipped: agent-browser plugin unavailable` (no MCP fallback)._
 
 {{visual_check_section}}
 

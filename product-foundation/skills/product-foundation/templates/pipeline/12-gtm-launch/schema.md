@@ -75,3 +75,17 @@ Unless Step 09 legal posture confirms those certifications are actually in place
 
 - `prompt.md` — full sub-agent brief
 - `.claude/skills/product-foundation/references/pipeline-coverage.md` § Step 12
+
+## Layer-1 floor (machine-readable — `validate-step.ts` consumes this)
+
+```required_files
+{
+  "required_files": [
+    {
+      "path": "gtm-launch.md",
+      "min_size": 4096,
+      "contains": ["## Positioning Canvas", "## Launch Plan", "## Pricing Strategy", "## Open Decisions"]
+    }
+  ]
+}
+```

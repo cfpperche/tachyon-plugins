@@ -350,13 +350,13 @@ Advance `.state.json` to step 3 (spec). Step 2 carries a Layer 3 checkpoint inte
 ## What this step does NOT do
 
 - Pixel-perfect production code. The HTML is mood-board / hi-fi mockup — interactivity is CSS-only unless an interaction is core to the direction's expression
-- Framework code (.tsx / .vue / .svelte). Step 13 (prototype-v3) synthesizes the picked direction into stack-native code when the spec demands it
+- Framework code (.tsx / .vue / .svelte). The visual-contract phase (step 15) synthesizes the picked direction into stack-native code when the spec demands it
 - Brand voice deep-dive. Step 5 (brand) covers voice, copy patterns, illustration style
 - Design tokens for code consumption. Step 6 (design-system) emits the `tokens.css` consumed by step 7 + step 13
 - User testing of the mockups. Step 4 (validation) validates via intuition-mode or tested-mode
 
 ## Scope notes
 
-This step ships the `html-mockup` mode of prototype generation. The `stack-native` half (full-product / mobile-native / shadcn-bootstrap framework-synthesis) is OUT OF SCOPE — that reappears if and when a future prototype-v3 step (step 13) gets the framework-synthesis port.
+This step ships the `html-mockup` mode of prototype generation. The `stack-native` half (full-product / mobile-native / shadcn-bootstrap framework-synthesis) is OUT OF SCOPE — that reappears if and when a future framework-synthesis step gets the framework-synthesis port.
 
 The Open Design (OD) vendor bundle **ships inside the `/product-foundation` skill**: 150 vendored `DESIGN.md` design systems at `.claude/skills/product-foundation/design-systems/<vendor>/DESIGN.md`, 33 skill bundles + 5-school direction library at `.claude/skills/product-foundation/vendor/open-design/`, pinned and checksum-verified. The agent picks systems from the catalogue index at `.claude/skills/product-foundation/references/od-catalog-index.json` and `Read`s the chosen `DESIGN.md` paths directly — see `references/od-bridge.md` for the pre-flight read sequence. DESIGN.md citation by name + path is mandatory (`schema.md` enforces it). The pre-OD inline 5-school description is retained in `references/pipeline.md` § "Manual escape — OD vendor unavailable" as a documented fallback for broken installs.

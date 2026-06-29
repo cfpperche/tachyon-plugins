@@ -1,6 +1,6 @@
-# Step 12 — Schema (legal-posture — single artifact)
+# Step 09 — Schema (legal-posture — single artifact)
 
-The submitted `legal-posture.md` MUST contain the level-2 markdown headings below + meet the Layer 1 size/content floor in the JSON fenced block. Both checks fire on submit; missing sections OR Layer 1 failures produce `code: "schema-incomplete"` with the failure list. Single-artifact step — no `extra_files`.
+The produced `legal-posture.md` MUST contain the level-2 markdown headings below + meet the Layer 1 size/content floor in the JSON fenced block. Both checks fire before the artifact is written; missing sections OR Layer 1 failures produce `code: "schema-incomplete"` with the failure list. Single-artifact step — no `extra_files`.
 
 ## Size floor (anti-stub; CONDITIONAL model)
 
@@ -72,7 +72,7 @@ The schema does NOT structurally enforce the product-class calibration (Consumer
 The step-12 calibration revisions applied 2026-05-16 (per `prompt.md § What this step ports vs diverges § Calibration revisions applied`) introduce two new posture surfaces — **patent strategy** (KEEP 5) and **IP-assignment / PIIA** (KEEP 2) — that the prompt mandates but the Layer 1 schema does NOT enforce as literal-contains anchors. Three reasons for the soft-enforcement choice:
 
 1. **Anchor surface is wide.** Patent posture may legitimately phrase as `Alice/Mayo`, `Alice / Mayo`, `§ 101`, `Section 101`, `no patent filings`, `no software-only patent filings`, `Patent strategy posture`, `Patent posture`, or any English paraphrase. A single literal anchor under-fires; an `any_of_contains` covering all variants would over-fire on cosmetic differences. Hard-coding the variant set risks an arms-race against the agent's phrasing latitude.
-2. **The schema parser does not support multiple `any_of_contains` arrays per file.** Only one such array is parsed (see `src/templates.ts:275`), and that slot is already used by the terms-section-variant tolerance check. Adding a second `any_of_contains_patent` field would be silently ignored — the false-confidence anti-pattern.
+2. **The schema parser does not support multiple `any_of_contains` arrays per file.** Only one such array is parsed by the bundled validator, and that slot is already used by the terms-section-variant tolerance check. Adding a second `any_of_contains_patent` field would be silently ignored — the false-confidence anti-pattern.
 3. **Soft enforcement matches the discipline.** Patent omission and PIIA-burial are content-shape regressions that surface at counsel-review time (the lawyer notices "the document doesn't mention patents") AND at investor-diligence time (Series A IP-chain-of-title pass surfaces the PIIA gap). The discipline lives in the prompt's § 4 step 5 (Licensing) + § Voice & rigor + the Calibration revisions paragraph, not in a brittle literal-anchor check.
 
 **For agents writing `legal-posture.md`:** the patent-posture line and the IP-assignment posture (with PIIA + Founder IPAA § Open Decisions rows) are MANDATORY per the prompt's § Voice & rigor. The Layer 1 schema check does NOT block submission on their absence; counsel-review at Phase 5 + investor-diligence at Series A will catch the gaps. Treat the prompt's mandate as the binding contract.
@@ -120,7 +120,7 @@ The schema enforces presence + floor; *depth* is the agent's responsibility, rei
 
 ### Operating mode (declared inline; NOT a separate section)
 
-The agent declares product class + AI-stack signal at top of `legal-posture.md` in § Overview opening sentence: `**v1 legal posture for a B2B SaaS with AI-stack (full template applied; § AI-Specific fires).**` Visible to downstream consumers (step 13 reads to size the prototype-v3 compliance UI surface — privacy-notice screens, consent dialogs, terms-acceptance flows).
+The agent declares product class + AI-stack signal at top of `legal-posture.md` in § Overview opening sentence: `**v1 legal posture for a B2B SaaS with AI-stack (full template applied; § AI-Specific fires).**` Visible to downstream consumers (the visual-contract phase reads it to size the compliance UI surface — privacy-notice screens, consent dialogs, terms-acceptance flows).
 
 When product class is Micro-Product or Consumer-with-no-PII-collection, § Privacy + § Data Handling + § Sub-Processors degrade explicitly:
 - § Privacy → `*No PII collected; section degenerates per Compact calibration*` (still emits the H2 so schema check passes)
@@ -132,6 +132,6 @@ Schema does NOT structurally validate degeneration shape — the prompt's § 5 p
 
 The orchestrator validates `legal-posture.md` against both layers (section presence + Layer 1 contains/size) before writing. On any failure, validation fails as `schema-incomplete`, listing exactly which file/section/check failed; nothing is written and the step does not advance. On success, the file writes via mktemp+rename — atomic, or absent.
 
-## Gate behavior (step 12 closes Specification)
+## Gate behavior (legal is Step 09, mid-Specification — no gate)
 
-Step 12 is a **gate-closer**. The pipeline's gates fire after steps 4, 7, and 12: after a clean write for step 12, the step closes the Specification phase's gate — the orchestrator pauses at the gate before advancing. The parent confirms with the user that Specification phase is ready to close, records the Specification gate as passed in `.state.json.gates_passed` (only after the user explicitly confirms the phase is ready to close), then advances `.state.json` again to enter step 13 (prototype-v3 — the visual contract). Step 12 is NOT the final step — step 13 closes the pipeline (step 13 is the in-phase final deliverable of specification; after step 13, the pipeline completes and surfaces the SDD handoff (`/sdd new <slug>`)).
+Legal is **Step 09**, mid-Specification (Phase 2 = steps 05-12) — it closes NO gate. After a clean write, advance `.state.json` to step 10 (roadmap). The `gate_specification` gate fires later, after step 12 (gtm-launch), the last Specification step; the orchestrator owns it (SKILL.md § Phase 2). The pipeline closes only at Phase 5 (the SDD handoff), after the Identity (13-14) and Visual-contract (15) phases.

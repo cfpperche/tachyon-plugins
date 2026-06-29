@@ -12,7 +12,7 @@ delegation_hint: "draft step-12 legal-posture.md from step-8 PRD + step-9 system
 
 **Output file:** `legal-posture.md` in `docs/`. Single-artifact — no `extra_files`.
 
-**Gate behavior:** step 12 closes the Specification phase gate (the pipeline's gates fire after steps 4, 7, and 12). After a clean write, the step closes the Specification phase's gate — the orchestrator pauses at the gate before advancing. Parent confirms with user, records the Specification gate as passed in `.state.json.gates_passed` (only after the user explicitly confirms the phase is ready to close), then advances `.state.json` again to enter step 13 (prototype-v3 — the visual contract). Step 12 is NOT the final step — step 13 closes the pipeline.
+**Gate behavior:** legal is **Step 09**, mid-Specification (Phase 2 = steps 05-12) — it does NOT close a gate. After a clean write, advance `.state.json` to step 10 (roadmap). The Specification phase gate (`gate_specification`) fires later, after step 12 (gtm-launch), the last Specification step; the orchestrator owns that gate (see SKILL.md § Phase 2).
 
 ---
 
@@ -173,9 +173,9 @@ The § Privacy Posture data-categories table MAY cite step-4 (validation) findin
 
 Write `legal-posture.md` (the full posture) to `docs/` — but ONLY after the step's Layer-1 validation passes; write the artifact atomically (mktemp + rename) so it lands whole or not at all. Single-artifact step — no companion files.
 
-Schema enforces section presence + Layer 1 contains/size floors (literal H2 anchors + at least 2 markdown-table-header literals + the `[counsel-review]` concern-tag literal as the calibration anchor). On success, advancing `.state.json` closes the Specification phase's gate — the orchestrator pauses at the gate before advancing (the pipeline's gates fire after steps 4, 7, and 12). Parent asks the user to confirm Specification phase is ready to close, records the Specification gate as passed in `.state.json.gates_passed`, then advances `.state.json` again to enter step 13 (prototype-v3 — the visual contract).
+Schema enforces section presence + Layer 1 contains/size floors (literal H2 anchors + at least 2 markdown-table-header literals + the `[counsel-review]` concern-tag literal as the calibration anchor). On success, advance `.state.json` to step 10 (roadmap) — legal (Step 09) is mid-Specification and closes no gate.
 
-**Step 12 is NOT the final step.** Step 13 (prototype-v3) closes the pipeline. Step 13 (prototype-v3) does NOT close a phase — it's the in-phase final deliverable of specification; after step 13, the pipeline completes and surfaces the SDD handoff (`/sdd new <slug>`). Step 12 closes the gate; step 13 closes the pipeline.
+The pipeline does not close here. After the remaining Specification steps (10 roadmap, 11 cost, 12 gtm-launch) and the Identity + Visual-contract phases (steps 13-15), Phase 5 scaffolds the SDD umbrella + foundation child and the run completes.
 
 ---
 

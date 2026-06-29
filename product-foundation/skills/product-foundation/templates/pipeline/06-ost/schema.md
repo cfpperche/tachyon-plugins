@@ -58,3 +58,17 @@ Sub-agent picks based on clarity at actual tree depth.
 
 - `prompt.md` — full sub-agent brief
 - `.claude/skills/product-foundation/references/pipeline-coverage.md` § Step 06
+
+## Layer-1 floor (machine-readable — `validate-step.ts` consumes this)
+
+```required_files
+{
+  "required_files": [
+    {
+      "path": "ost.md",
+      "min_size": 3072,
+      "contains": ["# OST", "## Desired Outcome", "## Opportunities"]
+    }
+  ]
+}
+```

@@ -68,3 +68,17 @@ See `.claude/skills/product-foundation/references/sitemap-schema.md` § "Validat
 - `prompt.md` — full sub-agent brief
 - `.claude/skills/product-foundation/references/sitemap-schema.md` — canonical binding schema
 - `.claude/skills/product-foundation/references/delegation-briefs.md` § Step 07
+
+## Layer-1 floor (machine-readable — `validate-step.ts` consumes this)
+
+```required_files
+{
+  "required_files": [
+    {
+      "path": "sitemap.yaml",
+      "min_size": 2048,
+      "contains": ["slug:", "platform:", "stack:", "required_categories:", "routes:", "category:", "covers_us:"]
+    }
+  ]
+}
+```

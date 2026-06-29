@@ -45,6 +45,15 @@ browser of its own.
 
 `--out` is required (a docs-first tree is written under `<out>/docs/`). Resume a partial run with `--from-step=NN`.
 
+## Bundled scripts (Bun required)
+
+The pipeline ships TS helper scripts run with **Bun** (`bun scripts/...`):
+
+- `validate-step.ts` — the **Layer-1 schema-floor validator** (a HARD gate: the orchestrator runs it after each step
+  and does NOT advance on a `schema-incomplete` result). **Bun is required for the pipeline** to enforce the floors.
+- `craft-floor-check.ts` (anti-slop) + `staleness-check.ts` (post-run drift) — **advisory**, non-blocking; if Bun is
+  missing these checks are skipped, the run is unaffected.
+
 ## Bundled design systems
 
 Step 14 (design system) draws from a bundled catalogue of ~150 vendored **Open-Design** design systems

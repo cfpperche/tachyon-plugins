@@ -4,7 +4,7 @@ Canonical structure for `prd.md`. Inline examples + the load-bearing US-NN stabi
 
 ## US-NN user-story ID convention (the port discipline)
 
-Every user story carries a **stable, zero-padded sequential ID**: `US-01`, `US-02`, ..., `US-29`, `US-30`. The ID is the contract between the PRD and downstream consumers — step 13 (prototype-v3 NEW) reads the PRD for coverage scoring, mapping each `US-NN` to a screen in `screens/`. Without stable IDs, the coverage map breaks silently.
+Every user story carries a **stable, zero-padded sequential ID**: `US-01`, `US-02`, ..., `US-29`, `US-30`. The ID is the contract between the PRD and downstream consumers — the screen-atlas step (step 15) reads the PRD for coverage scoring, mapping each `US-NN` to a screen in `screens/`. Without stable IDs, the coverage map breaks silently.
 
 ### ID stability rules (append, don't renumber)
 

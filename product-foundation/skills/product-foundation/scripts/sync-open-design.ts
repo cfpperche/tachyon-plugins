@@ -662,7 +662,7 @@ async function cmdApply(): Promise<void> {
   await writeManifest(manifest);
 
   // ── Regenerate both consumed indices (spec 141) ──────────────────────────
-  // ds-index.json is the engine/MCP cache; od-catalog-index.json is the
+  // ds-index.json is the engine cache; od-catalog-index.json is the
   // pipeline-facing curated catalogue steps 02 + 14 actually Read. The old
   // `--apply` regenerated only the former, leaving new systems invisible to
   // /product-foundation — acceptance 4 fixes that by regenerating both.
@@ -993,7 +993,7 @@ interface DsIndexEntry {
 
 /**
  * Generate `vendor/open-design/.cache/ds-index.json` — a one-line-per-system
- * digest the MCP `product_design_systems_index` tool returns without walking the
+ * digest the cached design-system index provides without walking the
  * filesystem per call. Called at the end of `--apply`; also runnable standalone
  * via `--gen-ds-index` for the spec-027 bootstrap.
  *

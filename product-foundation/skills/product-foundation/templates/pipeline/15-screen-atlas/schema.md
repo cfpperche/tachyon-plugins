@@ -42,3 +42,17 @@ Step 15a writes ONE markdown file. There is no `required_glob` for a `screens/*.
 - `REPORT.md` is authored by the orchestrator at Phase 4 step 4 (from `templates/report.md.tmpl`), not by this sub-agent.
 
 A Step 15a sub-agent that writes any `app/`, `.tsx`, `.html`, or layout file has overstepped its brief — the atlas is markdown only.
+
+## Layer-1 floor (machine-readable — `validate-step.ts` consumes this)
+
+```required_files
+{
+  "required_files": [
+    {
+      "path": "screen-atlas.md",
+      "min_size": 10240,
+      "contains": ["## Overview", "## Screens Index", "## Sitemap Coverage Cross-Check", "## PRD Coverage Matrix", "## Design Fidelity", "## States Coverage Matrix", "## User Flow Walkthrough", "## Open Decisions", "## PRD coverage:", "Closed-beta partner", "Deciding signal"]
+    }
+  ]
+}
+```
