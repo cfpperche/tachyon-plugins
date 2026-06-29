@@ -19,6 +19,13 @@ github:<owner>/tachyon-plugins@<ref>#path=<plugin-dir>
 | [`sdd`](./sdd) | Spec-driven development scaffolding — a portable skill that scaffolds and progresses `docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md`. Materializes into `.claude/skills/` and `.agents/skills/`. | claude · codex |
 | [`hello-marker`](./hello-marker) | Benign round-trip proof: wires a harmless no-op `PreToolUse` marker hook. Exercises the full install→wire→update→remove lifecycle without touching security or project state. | claude · codex |
 | [`secrets-guard`](./secrets-guard) | A **two-layer git secrets gate** powered by gitleaks. Layer 1: a `pre-commit` git-hook scans staged changes (Tachyon fetches the pinned, checksum-verified gitleaks binary). Layer 2: a per-runtime `PreToolUse` shape-gate stops an agent from silently bypassing layer 1 via `--no-verify`/compound/`-a`. Combines **hooks + git-hooks + tools**. | claude · codex (+ git hook) |
+| [`transcribe`](./transcribe) | **Local-first speech-to-text** — an audio or video file → transcript via whisper.cpp (content never leaves the machine). The model ships as a checksummed data artifact; whisper-cli + ffmpeg as external tools. | claude · codex |
+| [`diagram`](./diagram) | **Deterministic technical diagrams** (architecture / flowchart / sequence / ER / class / state) from Mermaid → tracked SVG/PNG/PDF, local + free (npx `mmdc` + system Chrome). | claude · codex |
+| [`audio`](./audio) | **Text-to-speech** — text → spoken audio/voiceover, local-first + free (Kokoro / Piper via uvx). | claude · codex |
+| [`image`](./image) | **Paid AI image generation** via fal.ai (needs `FAL_KEY`) — draft mockups, brand text/photo, hero art; a cost gate prints the spend before each call. | claude · codex |
+| [`sound`](./sound) | **Paid music + sound effects** via fal.ai (`--kind music\|sfx`, needs `FAL_KEY`); cost-gated. | claude · codex |
+| [`hyperframes`](./hyperframes) | **Deterministic local video from code** — HTML → MP4 via ffmpeg, free, git-tracked source. The local/free half of the split video capability. | claude · codex |
+| [`video`](./video) | **Paid generative AI video** via the fal.ai queue (Wan / Kling / Veo class, needs `FAL_KEY`) — async fire-and-forget `submit`→`poll`, hard `--confirm-cost-usd` gate on every submit. The generative/paid half (sibling of `hyperframes`). | claude · codex |
 
 ## Manifest format
 
