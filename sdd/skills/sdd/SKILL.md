@@ -54,27 +54,27 @@ List the specs under `docs/specs/` with their status (read the `**Status:**` lin
 
 ### `verify <spec>`
 
-Re-run a spec's declared verification command(s) to prove its mechanical claim still holds. A spec opts in by declaring one or more `**Verify:** ` `` `<cmd>` `` lines in its `tasks.md` (canonical; `spec.md` is the fallback). **From the workspace root**, run the bundled script (it lives in this skill's `scripts/` directory and requires `bash`):
+Re-run a spec's declared verification command(s) to prove its mechanical claim still holds. A spec opts in by declaring one or more `**Verify:** ` `` `<cmd>` `` lines in its `tasks.md` (canonical; `spec.md` is the fallback). The bundled script lives in **this skill's `scripts/` directory** and requires `bash`; invoke it by that path (resolve this skill's dir — `.claude/skills/sdd/` on Claude, `.agents/skills/sdd/` on Codex — and run from anywhere inside the workspace; it finds the repo root via git). The spec target may be the dir (`docs/specs/NNN-<slug>`) or just the `NNN`:
 
 ```
-bash scripts/spec-verify.sh docs/specs/NNN-<slug>
+bash "<this-skill-dir>"/scripts/spec-verify.sh docs/specs/NNN-<slug>
 ```
 
 **Preview by default — this runs NOTHING.** It prints the resolved spec + the extracted command(s) and exits. To actually execute, add `--run`:
 
 ```
-bash scripts/spec-verify.sh docs/specs/NNN-<slug> --run
+bash "<this-skill-dir>"/scripts/spec-verify.sh docs/specs/NNN-<slug> --run
 ```
 
 **Pass `--run` ONLY after the user has authorized the displayed command(s)** — or the current prompt clearly asks to run that spec's verification. The command is selected from a markdown file, so a `--run` supplied unprompted could execute something unintended: preview it, show the command, get the go-ahead, then `--run`. With `--run`, each command runs from the repo root and a timestamped pass/fail block is appended to the spec's `notes.md` under `## Verification log`. Exit: `0` (preview shown, or `--run` and all passed) · `1` (`--run` and a command failed) · `2` (no `**Verify:**` declared — `notes.md` untouched). Targets outside `docs/specs/` are refused.
 
 ### `close [<spec>]`
 
-Audit a shipped spec's artifacts against its declared status — a **read-only** closure-hygiene check (writes nothing). **From the workspace root** (requires `bash`):
+Audit a shipped spec's artifacts against its declared status — a **read-only** closure-hygiene check (writes nothing). Invoke the bundled script by its path in this skill's `scripts/` dir (requires `bash`; run from anywhere inside the workspace — it finds the repo root via git):
 
 ```
-bash scripts/sdd-close.sh                        # sweep every shipped spec
-bash scripts/sdd-close.sh docs/specs/NNN-<slug>  # just one
+bash "<this-skill-dir>"/scripts/sdd-close.sh                        # sweep every shipped spec
+bash "<this-skill-dir>"/scripts/sdd-close.sh docs/specs/NNN-<slug>  # just one (or just NNN)
 ```
 
 For each spec whose `**Status:**` is `shipped` (or `shipped-partial`) it reports: `tasks-unchecked` (`- [ ]` left in `tasks.md`), `acceptance-unchecked` (`- [ ]` left in `spec.md` § Acceptance criteria), `placeholders` (surviving `{{...}}` in `spec.md`/`tasks.md`), `missing-closure` (no `**Closure:**` line in `spec.md`). Non-shipped specs are skipped. Exit `0` clean · `1` findings. `--json` emits a machine-readable report. A clean close = the boxes are checked, the placeholders are gone, and a `**Closure:**` line records what shipped.

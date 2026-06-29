@@ -41,7 +41,8 @@ while [ $# -gt 0 ]; do
 done
 
 # Workspace root: git first; else $PWD only if it holds docs/specs (D1 — never the
-# materialized skill path, which is not a repo anchor).
+# materialized skill path, which is not a repo anchor). PHYSICAL paths (pwd -P) so a
+# symlinked spec dir cannot escape containment.
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -z "$ROOT" ]; then
   if [ -d "$PWD/docs/specs" ]; then ROOT="$PWD"; else
@@ -49,13 +50,8 @@ if [ -z "$ROOT" ]; then
     exit 64
   fi
 fi
-SPECS_ROOT="$(cd "$ROOT/docs/specs" 2>/dev/null && pwd || true)"
-
-# Reject any target outside <root>/docs/specs/* (D1 — never audit a random dir's markdown).
-contained() {  # $1 = absolute dir → 0 if under SPECS_ROOT
-  [ -n "$SPECS_ROOT" ] || return 1
-  case "$1/" in "$SPECS_ROOT"/*/) return 0 ;; *) return 1 ;; esac
-}
+ROOT="$(cd "$ROOT" && pwd -P)"
+SPECS_ROOT="$(cd "$ROOT/docs/specs" 2>/dev/null && pwd -P || true)"
 
 json_escape() {
   local s="$1"
@@ -64,14 +60,28 @@ json_escape() {
   printf '%s' "$s"
 }
 
+# Resolve <arg> (an NNN alias, or a spec dir) to a CONTAINED physical path.
+resolve_spec() {
+  local arg="$1" cand="" m _n=0
+  if printf '%s' "$arg" | grep -qE '^[0-9]+$'; then
+    for m in "$SPECS_ROOT/$arg"-*/; do
+      [ -d "$m" ] || continue
+      cand="${m%/}"; _n=$((_n + 1))
+    done
+    [ "$_n" -eq 1 ] || { printf '%s: %s for NNN '\''%s'\'' under docs/specs\n' "$SELF" "$([ "$_n" -eq 0 ] && printf 'no spec' || printf 'multiple specs')" "$arg" >&2; exit 64; }
+  elif [ -d "$arg" ]; then cand="$arg"
+  elif [ -d "$ROOT/$arg" ]; then cand="$ROOT/$arg"
+  else printf '%s: spec dir not found: %s\n' "$SELF" "$arg" >&2; exit 64; fi
+  local abs; abs="$(cd "$cand" 2>/dev/null && pwd -P)" || { printf '%s: cannot resolve: %s\n' "$SELF" "$arg" >&2; exit 64; }
+  case "$abs/" in "$SPECS_ROOT"/*/) ;; *) printf '%s: refusing a target outside docs/specs: %s\n' "$SELF" "$arg" >&2; exit 64 ;; esac
+  printf '%s' "$abs"
+}
+
 # Build the target list of spec dirs.
 TARGETS=""
 if [ -n "$SPEC_DIR" ]; then
-  if [ -d "$SPEC_DIR" ]; then _abs="$(cd "$SPEC_DIR" && pwd)"
-  elif [ -d "$ROOT/$SPEC_DIR" ]; then _abs="$(cd "$ROOT/$SPEC_DIR" && pwd)"
-  else printf '%s: spec dir not found: %s\n' "$SELF" "$SPEC_DIR" >&2; exit 64; fi
-  contained "$_abs" || { printf '%s: refusing a target outside docs/specs: %s\n' "$SELF" "$SPEC_DIR" >&2; exit 64; }
-  TARGETS="$_abs"
+  [ -n "$SPECS_ROOT" ] || { printf '%s: no docs/specs under the workspace root (%s)\n' "$SELF" "$ROOT" >&2; exit 64; }
+  TARGETS="$(resolve_spec "$SPEC_DIR")" || exit 64
 else
   [ -n "$SPECS_ROOT" ] || { [ "$OUT_JSON" -eq 1 ] && printf '{"specs":[],"total_findings":0,"specs_with_findings":0}\n'; exit 0; }
   for _d in "$SPECS_ROOT"/*/; do

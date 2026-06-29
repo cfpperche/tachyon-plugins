@@ -49,7 +49,8 @@ done
 [ -n "$SPEC_DIR" ] || { printf '%s: a spec directory is required (e.g. docs/specs/NNN-slug)\n' "$SELF" >&2; exit 64; }
 
 # Workspace root: git first; else $PWD only if it holds docs/specs (D1 — never the
-# materialized skill path, which is not a repo anchor).
+# materialized skill path, which is not a repo anchor). PHYSICAL paths (pwd -P) so a
+# symlinked spec dir cannot escape containment.
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -z "$ROOT" ]; then
   if [ -d "$PWD/docs/specs" ]; then ROOT="$PWD"; else
@@ -57,18 +58,32 @@ if [ -z "$ROOT" ]; then
     exit 64
   fi
 fi
-SPECS_ROOT="$(cd "$ROOT/docs/specs" 2>/dev/null && pwd || true)"
+ROOT="$(cd "$ROOT" && pwd -P)"
+SPECS_ROOT="$(cd "$ROOT/docs/specs" 2>/dev/null && pwd -P || true)"
+# REQUIRE docs/specs to exist — else the containment glob below would degrade to `/*/` and accept anything (BLOCKER).
+[ -n "$SPECS_ROOT" ] || { printf '%s: no docs/specs under the workspace root (%s) — nothing to verify\n' "$SELF" "$ROOT" >&2; exit 64; }
 
-# Normalise the spec dir to an absolute path (accept relative-to-cwd or relative-to-root).
-if [ -d "$SPEC_DIR" ]; then ABS_SPEC="$(cd "$SPEC_DIR" && pwd)"
-elif [ -d "$ROOT/$SPEC_DIR" ]; then ABS_SPEC="$(cd "$ROOT/$SPEC_DIR" && pwd)"
-else printf '%s: spec dir not found: %s\n' "$SELF" "$SPEC_DIR" >&2; exit 64; fi
-
-# Reject any target outside <root>/docs/specs/* (D1 — never run a random dir's markdown).
-case "$ABS_SPEC/" in
-  "$SPECS_ROOT"/*/) ;;
-  *) printf '%s: refusing a target outside docs/specs: %s\n' "$SELF" "$SPEC_DIR" >&2; exit 64 ;;
-esac
+# Resolve <arg> (an NNN alias, or a spec dir relative to cwd/root) to a CONTAINED physical path.
+resolve_spec() {
+  local arg="$1" cand="" m _n=0
+  if printf '%s' "$arg" | grep -qE '^[0-9]+$'; then
+    for m in "$SPECS_ROOT/$arg"-*/; do
+      [ -d "$m" ] || continue
+      cand="${m%/}"; _n=$((_n + 1))
+    done
+    [ "$_n" -eq 1 ] || { printf '%s: %s for NNN '\''%s'\'' under docs/specs\n' "$SELF" "$([ "$_n" -eq 0 ] && printf 'no spec' || printf 'multiple specs')" "$arg" >&2; exit 64; }
+    printf '%s: NNN %s → docs/specs/%s\n' "$SELF" "$arg" "${cand##*/}" >&2
+  elif [ -d "$arg" ]; then cand="$arg"
+  elif [ -d "$ROOT/$arg" ]; then cand="$ROOT/$arg"
+  else printf '%s: spec dir not found: %s\n' "$SELF" "$arg" >&2; exit 64; fi
+  local abs; abs="$(cd "$cand" 2>/dev/null && pwd -P)" || { printf '%s: cannot resolve: %s\n' "$SELF" "$arg" >&2; exit 64; }
+  # Contained: physically under <root>/docs/specs/* (a trailing `/` in the pattern blocks the
+  # `docs/specs-evil` prefix collision; pwd -P above blocks a symlink escape; SPECS_ROOT itself
+  # does not match `<SPECS_ROOT>/*/`).
+  case "$abs/" in "$SPECS_ROOT"/*/) ;; *) printf '%s: refusing a target outside docs/specs: %s\n' "$SELF" "$arg" >&2; exit 64 ;; esac
+  printf '%s' "$abs"
+}
+ABS_SPEC="$(resolve_spec "$SPEC_DIR")" || exit 64
 
 SPEC_NAME="${ABS_SPEC##*/}"
 REL_SPEC="docs/specs/$SPEC_NAME"
@@ -147,7 +162,8 @@ old_ifs="$IFS"; IFS='
 '
 for cmd in $CMDS; do
   [ -n "$cmd" ] || continue
-  [ "$QUIET" -eq 0 ] && [ "$OUT_JSON" -eq 0 ] && printf '  running: %s\n' "$cmd"
+  # Always announce the command BEFORE it runs (the human must see what executes), even in --json mode.
+  [ "$QUIET" -eq 0 ] && printf '%s: running: %s\n' "$SELF" "$cmd" >&2
   if ( cd "$ROOT" && bash -c "$cmd" >/dev/null 2>&1 ); then
     res="pass"; PASSED=$((PASSED + 1))
   else
