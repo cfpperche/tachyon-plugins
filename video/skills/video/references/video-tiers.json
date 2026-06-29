@@ -1,0 +1,49 @@
+{
+  "_note": "Paid generative-video tier -> fal model oracle for the video plugin. The script carries NO model IDs/body shapes/url paths — it reads them here. VERIFY endpoint ids + prices + body/url shapes via fal docs before first real use (a wrong price under-estimates a paid call). Each tier: model (fal endpoint, no leading slash); input_kind (image|text_or_image); requires_image_url; max_duration_seconds; default_duration; price_usd_per_second; prompt_field/duration_field/image_field (request body keys); output_url_path (jq dotted path to the clip url); audio.",
+  "snapshot_date": "2026-06-29",
+  "stale_after_days": 60,
+  "tiers": {
+    "draft": {
+      "model": "fal-ai/wan/v2.2-a14b/image-to-video",
+      "input_kind": "image",
+      "requires_image_url": true,
+      "max_duration_seconds": 5,
+      "default_duration": 5,
+      "price_usd_per_second": 0.10,
+      "prompt_field": "prompt",
+      "duration_field": "duration",
+      "image_field": "image_url",
+      "output_url_path": ".video.url",
+      "audio": false,
+      "note": "Wan 2.2 class — cheapest preview path, image-to-video. Verify endpoint id at first use."
+    },
+    "standard": {
+      "model": "fal-ai/kling-video/v3/pro/image-to-video",
+      "input_kind": "image",
+      "requires_image_url": true,
+      "max_duration_seconds": 15,
+      "default_duration": 5,
+      "price_usd_per_second": 0.112,
+      "prompt_field": "prompt",
+      "duration_field": "duration",
+      "image_field": "image_url",
+      "output_url_path": ".video.url",
+      "audio": false,
+      "note": "Kling v3 Pro class — production short-form, image-to-video. Audio variants cost more."
+    },
+    "premium": {
+      "model": "fal-ai/veo/3.1",
+      "input_kind": "text_or_image",
+      "requires_image_url": false,
+      "max_duration_seconds": 8,
+      "default_duration": 5,
+      "price_usd_per_second": 0.40,
+      "prompt_field": "prompt",
+      "duration_field": "duration",
+      "image_field": "image_url",
+      "output_url_path": ".video.url",
+      "audio": true,
+      "note": "Veo 3.1 class — highest fidelity, text-or-image, audio. $0.20/s (1080p no-audio) to $0.60/s (4K+audio); 0.40 is a mid estimate. UNVERIFIED endpoint/body — confirm at first premium call."
+    }
+  }
+}
