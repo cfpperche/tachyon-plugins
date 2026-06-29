@@ -41,14 +41,24 @@ case "$FORMAT" in svg|png|pdf) ;; *) echo "diagram: unknown --format '$FORMAT' (
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$ROOT" ] || { echo "diagram: unavailable: not inside a git work tree (the Tachyon shims live at <repo>/.tachyon/bin)" >&2; exit 1; }
 
+# ── output dir: default assets/diagrams/, CONTAINED to the workspace (codex MEDIUM — no `--out ../../escape`) ──
 OUT_DIR="${OUT_DIR:-assets/diagrams}"
-mkdir -p "$OUT_DIR" || { echo "diagram: error: cannot create output dir: $OUT_DIR" >&2; exit 1; }
+case "$OUT_DIR" in /*) ;; *) OUT_DIR="$ROOT/$OUT_DIR" ;; esac
+mkdir -p -- "$OUT_DIR" || { echo "diagram: error: cannot create output dir: $OUT_DIR" >&2; exit 1; }
+OUT_REAL="$(cd "$OUT_DIR" && pwd -P)" || { echo "diagram: error: bad output dir: $OUT_DIR" >&2; exit 1; }
+ROOT_REAL="$(cd "$ROOT" && pwd -P)"
+case "$OUT_REAL/" in "$ROOT_REAL"/*) ;; *) echo "diagram: error: --out must stay inside the workspace ($ROOT_REAL); refusing '$OUT_REAL'" >&2; exit 64 ;; esac
+OUT_DIR="$OUT_REAL"
 
 sha_of() { { sha256sum 2>/dev/null || shasum -a 256 2>/dev/null; } | awk '{print $1}'; }
 
-# ── resolve source: an existing .mmd file, or inline text persisted to a tracked .mmd (the source is the artifact) ──
+# ── resolve source: an existing .mmd file, or inline text → ALWAYS materialize a canonical tracked .mmd next to the
+#    render (the source is the durable artifact — codex MEDIUM D3: never an asset without its adjacent source) ──
 if [ -f "$SOURCE" ]; then
-  SRC="$SOURCE"; STEM="$(basename "$SOURCE")"; STEM="${STEM%.*}"
+  STEM="$(basename -- "$SOURCE")"; STEM="${STEM%.*}"
+  SRC="$OUT_DIR/$STEM.mmd"
+  SRC_IN_REAL="$(cd "$(dirname -- "$SOURCE")" && pwd -P)/$(basename -- "$SOURCE")"
+  [ "$SRC_IN_REAL" = "$OUT_DIR/$STEM.mmd" ] || cp -- "$SOURCE" "$SRC" # skip the copy if the input already IS the canonical file
 else
   SSHA="$(printf '%s' "$SOURCE" | sha_of)"
   STEM="diagram-${SSHA:0:8}"
@@ -83,32 +93,33 @@ else
   CHROME="$("$EXT_SHIM" "$PLUGIN" chrome 2>/dev/null)" || { record unavailable ""; echo "diagram: unavailable: no trusted system browser (google-chrome/chromium) — the plugin's card offers a consent-gated assisted install. Source VALIDATED + kept at $SRC" >&2; exit 1; }
 fi
 
-# ── resolve mmdc: override → a present global → pinned npx ──
+# ── resolve mmdc: test-only override → pinned npx. NO unpinned host-global fast path (codex HIGH/D1 — running a host
+#    `mmdc` of unknown version while recording provenance as the pinned npx version is both unpinned + false). ──
 declare -a MMDC
-if [ -n "$DIAGRAM_MMDC" ]; then read -r -a MMDC <<< "$DIAGRAM_MMDC"
-elif command -v mmdc >/dev/null 2>&1; then MMDC=(mmdc)
+if [ -n "$DIAGRAM_MMDC" ]; then read -r -a MMDC <<< "$DIAGRAM_MMDC"   # TEST-ONLY override
 elif command -v npx >/dev/null 2>&1; then MMDC=(npx -y -p "${MMDC_PKG}@${MMDC_VERSION}" mmdc)
 else record unavailable ""; echo "diagram: unavailable: no npx (Node) to acquire mmdc — source VALIDATED + kept at $SRC. Install Node, then re-run." >&2; exit 1; fi
 
 # ── puppeteer config reusing the resolved system browser (no Chromium download) ──
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 PCFG="$WORK/puppeteer.json"
-printf '{"executablePath":"%s","args":["--no-sandbox","--disable-gpu"]}\n' "$CHROME" > "$PCFG"
+CHROME_J="${CHROME//\\/\\\\}"; CHROME_J="${CHROME_J//\"/\\\"}"  # JSON-escape \ and " (defense-in-depth; CHROME is shim-trusted)
+printf '{"executablePath":"%s","args":["--no-sandbox","--disable-gpu"]}\n' "$CHROME_J" > "$PCFG"
 
 declare -a RENDER=("${MMDC[@]}" -i "$SRC" -o "$OUTPUT" --puppeteerConfigFile "$PCFG")
 [ -n "$THEME" ] && RENDER+=(-t "$THEME")
 
 # PUPPETEER_SKIP_DOWNLOAD=1 → reuse the system browser; npm_config_ignore_scripts=true → block npm lifecycle scripts.
 if ! PUPPETEER_SKIP_DOWNLOAD=1 npm_config_ignore_scripts=true "${RENDER[@]}" >"$WORK/mmdc.log" 2>&1; then
-  rm -f "$OUTPUT" 2>/dev/null || true
+  rm -f -- "$OUTPUT" 2>/dev/null || true
   record error ""
   echo "diagram: error: mmdc render failed (likely a Mermaid syntax error). Source kept at $SRC. Log: $(tail -3 "$WORK/mmdc.log" 2>/dev/null | tr '\n' ' ')" >&2
   exit 1
 fi
-[ -s "$OUTPUT" ] || { record error ""; echo "diagram: error: mmdc produced no output at $OUTPUT" >&2; exit 1; }
+[ -s "$OUTPUT" ] || { rm -f -- "$OUTPUT" 2>/dev/null || true; record error ""; echo "diagram: error: mmdc produced no output at $OUTPUT" >&2; exit 1; }
 
 # warn (not fail) if the asset lands on a git-ignored path
-if git -C "$ROOT" check-ignore -q "$OUTPUT" 2>/dev/null; then
+if git -C "$ROOT" check-ignore -q -- "$OUTPUT" 2>/dev/null; then
   echo "diagram: warning: '$OUTPUT' is git-ignored — the asset won't be tracked. Pass --out <tracked dir> or adjust .gitignore." >&2
 fi
 
