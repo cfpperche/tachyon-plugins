@@ -1,6 +1,6 @@
 ---
 name: sound
-description: PAID creative-audio generation (music + sound effects) via the fal.ai REST API (needs a FAL_KEY env var). Use when the user wants generated music or SFX from a text prompt — UI sounds, a soundtrack, a sting, an ambient bed. Music (--kind music: standard ~$0.02/min, premium ~$0.80/min) or SFX (--kind sfx ~$0.002/sec). Cost = price x duration; prints the estimate before it fires and HARD-refuses above $0.25 without --confirm-cost-usd. PAID — only run when the user authorized the spend. NOT speech/voiceover (audio plugin), NOT free/local.
+description: PAID creative-audio generation (music + sound effects) via the fal.ai REST API (needs a FAL_KEY env var). Use when the user wants generated music or SFX from a text prompt — UI sounds, a soundtrack, a sting, an ambient bed. Music (--kind music) at standard ~$0.02/min or premium ~$0.80/min, or SFX (--kind sfx) ~$0.002/sec. Cost = price x duration; prints the estimate before it fires and HARD-refuses above $0.25 without --confirm-cost-usd. PAID — only run when the user authorized the spend. NOT speech or voiceover (the audio plugin), NOT free or local.
 ---
 
 # sound — paid music + SFX generation (fal.ai)

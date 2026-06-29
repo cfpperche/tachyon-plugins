@@ -1,6 +1,6 @@
 ---
 name: image
-description: PAID AI image generation via the fal.ai REST API (needs a FAL_KEY env var). Use when the user wants a generated image — a mockup, brand asset, hero, or illustration from a prompt. Three tiers: draft (FLUX schnell, ~$0.003, throwaway), brand-text (gpt-image-2, ~$0.04+, crisp typography), brand-photo (Imagen 4 Ultra, ~$0.06, photo-real). Every call PRINTS the estimated cost before it fires. PAID — only run when the user wants to spend on image generation. NOT free/local, NOT music/SFX (sound plugin), NOT technical diagrams (diagram plugin).
+description: PAID AI image generation via the fal.ai REST API (needs a FAL_KEY env var). Use when the user wants a generated image — a mockup, brand asset, hero, or illustration from a prompt. Three tiers — draft (FLUX schnell, ~$0.003, throwaway), brand-text (gpt-image-2, ~$0.04+, crisp typography), brand-photo (Imagen 4 Ultra, ~$0.06, photo-real). Every call PRINTS the estimated cost before it fires. PAID — only run when the user wants to spend on image generation. NOT free or local, NOT music or SFX (the sound plugin), NOT technical diagrams (the diagram plugin).
 ---
 
 # image — paid AI image generation (fal.ai)
