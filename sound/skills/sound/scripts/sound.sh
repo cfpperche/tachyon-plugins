@@ -4,6 +4,8 @@
 # paths, never bare — D1). Needs FAL_KEY (env; never stored/echoed — D4). Cost = price x duration, PRINTED before the
 # call; a HARD --confirm-cost-usd gate is REQUIRED above the oracle threshold (D3) — checked BEFORE any network call.
 set -euo pipefail
+# sanitize PATH to trusted system dirs before any ambient tool (git/awk/jq-helpers…) runs (codex MEDIUM).
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 PLUGIN="sound"
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -37,7 +39,7 @@ done
 case "$KIND" in music|sfx) ;; *) echo "sound: --kind music|sfx is required" >&2; exit 64 ;; esac
 case "$FORMAT" in mp3|wav) ;; *) echo "sound: unknown --format '$FORMAT' (mp3|wav)" >&2; exit 64 ;; esac
 [ -n "$PROMPT" ] || { usage; exit 64; }
-[ -z "$DURATION" ] || echo "$DURATION" | grep -Eq '^[0-9]{1,4}$' || { echo "sound: --duration must be whole seconds (≤9999)" >&2; exit 64; }
+[ -z "$DURATION" ] || echo "$DURATION" | grep -Eq '^[0-9]{1,4}$' || { echo "sound: --duration must be whole seconds (1–9999)" >&2; exit 64; }
 [ -z "$CONFIRM" ] || echo "$CONFIRM" | grep -Eq '^[0-9]+(\.[0-9]+)?$' || { echo "sound: --confirm-cost-usd must be a number" >&2; exit 64; }
 
 # ── repo root + resolve curl/jq via the shim (TRUSTED; never bare — D1) ──
@@ -59,6 +61,11 @@ MODEL="$(field model)"; PROMPT_FIELD="$(field prompt_field)"; DUR_FIELD="$(field
 URL_PATH="$(field output_url_path)"; PRICE="$(field price)"; PRICE_UNIT="$(field price_unit)"; DEF_DUR="$(field default_duration)"
 THRESH="$("$JQ" -r '.confirm_threshold_usd // 0.25' "$ORACLE")"
 [ -n "$DURATION" ] || DURATION="$DEF_DUR"
+# duration MUST be >= 1s — a zero duration yields a $0.00 estimate that would BYPASS the confirm gate (codex HIGH).
+[ "${DURATION:-0}" -ge 1 ] 2>/dev/null || { echo "sound: --duration must be at least 1 second (got '$DURATION')" >&2; exit 64; }
+# the oracle's output_url_path is interpolated into a jq filter → enforce a STRICT dotted-field shape so a tampered
+# oracle can't smuggle jq code (data-must-not-become-code; codex MEDIUM).
+echo "$URL_PATH" | grep -Eq '^\.[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$' || { echo "sound: error: oracle output_url_path '$URL_PATH' is not a plain dotted field — refusing (tampered oracle?)" >&2; exit 1; }
 
 # ── cost = price x duration-in-unit (awk float) ──
 COST="$(awk -v p="$PRICE" -v d="$DURATION" -v u="$PRICE_UNIT" 'BEGIN{
@@ -76,8 +83,9 @@ if [ "$OVER" = "1" ]; then
   fi
 fi
 
-# ── FAL_KEY (env; never echoed — D4) ──
+# ── FAL_KEY (env; never echoed — D4). Copy to a NON-exported var + unset so no spawned tool inherits it (codex MEDIUM). ──
 [ -n "${FAL_KEY:-}" ] || { echo "sound: unavailable: FAL_KEY is not set — this is a PAID capability. Set FAL_KEY (https://fal.ai) and re-run. Tachyon never stores the key." >&2; exit 1; }
+_FAL="$FAL_KEY"; unset FAL_KEY
 
 # ── output dir (contained) — D6 ──
 OUT_DIR="${OUT_DIR:-assets/sound}"
@@ -95,9 +103,15 @@ if [ -n "$DUR_FIELD" ] && [ "$DUR_FIELD" != "null" ]; then
 else
   BODY="$("$JQ" -nc --arg p "$PROMPT" --arg pf "$PROMPT_FIELD" '{($pf):$p}')"
 fi
-HTTP="$("$CURL" -sS -o "$WORK/resp.json" -w '%{http_code}' -X POST "https://fal.run/$MODEL" \
-  -H "Authorization: Key $FAL_KEY" -H "Content-Type: application/json" --data-raw "$BODY" --max-time 300 2>"$WORK/curl.err" || printf '000')"
-[ "$HTTP" = "200" ] || { echo "sound: error: fal HTTP $HTTP for $MODEL. $(tail -2 "$WORK/resp.json" 2>/dev/null | tr '\n' ' ')" >&2; exit 1; }
+# pass the auth header via a 0600 curl config (NOT argv → not ps-visible; NOT env → not inherited) — codex MEDIUM.
+CFG="$WORK/curl.cfg"; ( umask 077; printf 'header = "Authorization: Key %s"\n' "$_FAL" > "$CFG" )
+HTTP="$("$CURL" -sS --config "$CFG" -o "$WORK/resp.json" -w '%{http_code}' -X POST "https://fal.run/$MODEL" \
+  -H "Content-Type: application/json" --data-raw "$BODY" --max-time 300 2>/dev/null || printf '000')"
+if [ "$HTTP" != "200" ]; then
+  # NEVER print the raw authenticated response body (codex HIGH) — only a safe parsed field.
+  EC="$("$JQ" -r '(.error.type // .error // .detail // .message // "no detail") | tostring' "$WORK/resp.json" 2>/dev/null | head -c 160)"
+  echo "sound: error: fal HTTP $HTTP for $MODEL (${EC:-no detail})" >&2; exit 1
+fi
 URL="$("$JQ" -r "($URL_PATH) // empty" "$WORK/resp.json" 2>/dev/null)"
 [ -n "$URL" ] || { echo "sound: error: fal response carried no audio url (oracle output_url_path=$URL_PATH)" >&2; exit 1; }
 "$CURL" -fsSL -o "$WORK/audio.src" "$URL" 2>/dev/null && [ -s "$WORK/audio.src" ] || { echo "sound: error: failed to download the generated audio" >&2; exit 1; }
@@ -106,11 +120,12 @@ URL="$("$JQ" -r "($URL_PATH) // empty" "$WORK/resp.json" 2>/dev/null)"
 OUTPUT="$OUT_REAL/$STEM.$FORMAT"
 TMP_OUT="$(mktemp -- "$OUT_REAL/.sound-XXXXXX")"
 if [ "$FORMAT" = "wav" ]; then
-  cp -- "$WORK/audio.src" "$TMP_OUT"
+  cp -- "$WORK/audio.src" "$TMP_OUT" || { rm -f -- "$TMP_OUT"; echo "sound: error: could not write the output file" >&2; exit 1; }
 else
   FFMPEG="${SOUND_FFMPEG_BIN:-}"; [ -n "$FFMPEG" ] || FFMPEG="$("$EXT_SHIM" "$PLUGIN" ffmpeg 2>/dev/null || true)"
   if [ -n "$FFMPEG" ] && "$FFMPEG" -nostdin -y -i "$WORK/audio.src" -f mp3 "$TMP_OUT" >/dev/null 2>&1 && [ -s "$TMP_OUT" ]; then :; else
-    cp -- "$WORK/audio.src" "$TMP_OUT"; OUTPUT="$OUT_REAL/$STEM.wav"; FORMAT="wav"
+    cp -- "$WORK/audio.src" "$TMP_OUT" || { rm -f -- "$TMP_OUT"; echo "sound: error: could not write the output file" >&2; exit 1; }
+    OUTPUT="$OUT_REAL/$STEM.wav"; FORMAT="wav"
     echo "sound: note: ffmpeg unavailable/failed for mp3 — wrote the raw asset as wav ($OUTPUT)" >&2
   fi
 fi

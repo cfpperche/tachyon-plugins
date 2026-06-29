@@ -4,6 +4,9 @@
 # D4). PRINTS the estimated cost BEFORE any paid request fires (D3). Fail-closed: `unavailable` (no key / missing
 # tool) vs `error` (a present call failed); never a silent paid call.
 set -euo pipefail
+# sanitize PATH to trusted system dirs BEFORE any ambient tool (git/awk/sha…) runs — a poisoned PATH could otherwise
+# return a fake repo root → a fake shim, or inherit the key (codex MEDIUM). Test overrides are absolute, unaffected.
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 PLUGIN="image"
 TIER=""; ASPECT="square"; NAME=""; PROMPT=""
@@ -61,8 +64,9 @@ JQ="${IMAGE_JQ:-}";     [ -n "$JQ" ]   || JQ="$("$EXT_SHIM" "$PLUGIN" jq 2>/dev/
 [ -n "$CURL" ] || { echo "image: unavailable: curl not installed/trusted — the plugin's card offers an assisted install (apt/dnf/pacman/brew)" >&2; exit 1; }
 [ -n "$JQ" ]   || { echo "image: unavailable: jq not installed/trusted — the plugin's card offers an assisted install (apt/dnf/pacman/brew)" >&2; exit 1; }
 
-# ── FAL_KEY (env; never echoed — D4) ──
+# ── FAL_KEY (env; never echoed — D4). Copy to a NON-exported var + unset, so no spawned tool inherits it (codex MEDIUM). ──
 [ -n "${FAL_KEY:-}" ] || { echo "image: unavailable: FAL_KEY is not set — this is a PAID capability. Set FAL_KEY in your env (https://fal.ai) and re-run. Tachyon never stores the key." >&2; exit 1; }
+_FAL="$FAL_KEY"; unset FAL_KEY
 
 # ── output path (contained; draft → gitignored mockups, brand → tracked) — D6 ──
 [ -n "$NAME" ] || NAME="$(printf '%s' "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-*//;s/-*$//' | cut -c1-40)"
@@ -79,9 +83,15 @@ echo "estimated: \$$COST for $MODEL at $DIMS ($ASPECT) — PAID call about to fi
 # ── generate: POST to fal.run (sync), extract the image URL, download — all via the TRUSTED curl/jq ──
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 BODY="$("$JQ" -nc --arg p "$PROMPT" --arg s "$IMAGE_SIZE" '{prompt:$p, image_size:$s, num_images:1}')"
-HTTP="$("$CURL" -sS -o "$WORK/resp.json" -w '%{http_code}' -X POST "https://fal.run/$MODEL" \
-  -H "Authorization: Key $FAL_KEY" -H "Content-Type: application/json" --data-raw "$BODY" --max-time 180 2>"$WORK/curl.err" || printf '000')"
-[ "$HTTP" = "200" ] || { echo "image: error: fal HTTP $HTTP for $MODEL. $(tail -2 "$WORK/resp.json" 2>/dev/null | tr '\n' ' ')" >&2; exit 1; }
+# pass the auth header via a 0600 curl config (NOT argv → not ps-visible; NOT env → not inherited) — codex MEDIUM.
+CFG="$WORK/curl.cfg"; ( umask 077; printf 'header = "Authorization: Key %s"\n' "$_FAL" > "$CFG" )
+HTTP="$("$CURL" -sS --config "$CFG" -o "$WORK/resp.json" -w '%{http_code}' -X POST "https://fal.run/$MODEL" \
+  -H "Content-Type: application/json" --data-raw "$BODY" --max-time 180 2>/dev/null || printf '000')"
+if [ "$HTTP" != "200" ]; then
+  # NEVER print the raw authenticated response body (codex HIGH) — extract only a safe parsed field.
+  EC="$("$JQ" -r '(.error.type // .error // .detail // .message // "no detail") | tostring' "$WORK/resp.json" 2>/dev/null | head -c 160)"
+  echo "image: error: fal HTTP $HTTP for $MODEL (${EC:-no detail})" >&2; exit 1
+fi
 URL="$("$JQ" -r '(.images[0].url // .image.url // .url // empty)' "$WORK/resp.json" 2>/dev/null)"
 [ -n "$URL" ] || { echo "image: error: fal response carried no image url" >&2; exit 1; }
 TMP_OUT="$(mktemp -- "$OUT_REAL/.image-XXXXXX")"
