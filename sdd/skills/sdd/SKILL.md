@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: Spec-driven development scaffolding. Use when starting non-trivial work (3+ files, a new module, an API/schema change, or a vague request that needs decomposition). Scaffolds and progresses docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md — intent before code. Subcommands - new <slug>, plan, tasks, list. Skip for one-file fixes, typos, or mechanical edits where the diff IS the spec.
+description: Spec-driven development scaffolding. Use when starting non-trivial work (3+ files, a new module, an API/schema change, or a vague request that needs decomposition). Scaffolds and progresses docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md — intent before code, then re-verifies and audits closure at the end. Subcommands - new <slug>, plan, tasks, list, verify <spec> (re-run a spec's declared check; preview by default), close (audit shipped specs for closure debt). Skip for one-file fixes, typos, or mechanical edits where the diff IS the spec.
 compatibility: Runtime-neutral. Works on any agent runtime that can read a bundled skill directory and run shell commands (claude, codex). Resolves its templates relative to this SKILL.md — no host-specific path assumptions.
 license: MIT
 ---
@@ -51,6 +51,41 @@ Given an agreed `plan.md`, decompose it into `tasks.md`: small, ordered, unambig
 ### `list`
 
 List the specs under `docs/specs/` with their status (read the `**Status:**` line of each `spec.md`).
+
+### `verify <spec>`
+
+Re-run a spec's declared verification command(s) to prove its mechanical claim still holds. A spec opts in by declaring one or more `**Verify:** ` `` `<cmd>` `` lines in its `tasks.md` (canonical; `spec.md` is the fallback). **From the workspace root**, run the bundled script (it lives in this skill's `scripts/` directory and requires `bash`):
+
+```
+bash scripts/spec-verify.sh docs/specs/NNN-<slug>
+```
+
+**Preview by default — this runs NOTHING.** It prints the resolved spec + the extracted command(s) and exits. To actually execute, add `--run`:
+
+```
+bash scripts/spec-verify.sh docs/specs/NNN-<slug> --run
+```
+
+**Pass `--run` ONLY after the user has authorized the displayed command(s)** — or the current prompt clearly asks to run that spec's verification. The command is selected from a markdown file, so a `--run` supplied unprompted could execute something unintended: preview it, show the command, get the go-ahead, then `--run`. With `--run`, each command runs from the repo root and a timestamped pass/fail block is appended to the spec's `notes.md` under `## Verification log`. Exit: `0` (preview shown, or `--run` and all passed) · `1` (`--run` and a command failed) · `2` (no `**Verify:**` declared — `notes.md` untouched). Targets outside `docs/specs/` are refused.
+
+### `close [<spec>]`
+
+Audit a shipped spec's artifacts against its declared status — a **read-only** closure-hygiene check (writes nothing). **From the workspace root** (requires `bash`):
+
+```
+bash scripts/sdd-close.sh                        # sweep every shipped spec
+bash scripts/sdd-close.sh docs/specs/NNN-<slug>  # just one
+```
+
+For each spec whose `**Status:**` is `shipped` (or `shipped-partial`) it reports: `tasks-unchecked` (`- [ ]` left in `tasks.md`), `acceptance-unchecked` (`- [ ]` left in `spec.md` § Acceptance criteria), `placeholders` (surviving `{{...}}` in `spec.md`/`tasks.md`), `missing-closure` (no `**Closure:**` line in `spec.md`). Non-shipped specs are skipped. Exit `0` clean · `1` findings. `--json` emits a machine-readable report. A clean close = the boxes are checked, the placeholders are gone, and a `**Closure:**` line records what shipped.
+
+## Verification & closure contract
+
+These two subcommands read three opt-in markdown conventions on a spec — nothing else gates:
+
+- **`**Verify:** ` `` `<cmd>` ``** in `tasks.md` (or `spec.md`) — declares the command(s) `verify` re-runs.
+- **`**Status:** shipped` (or `shipped-partial`)** — makes a spec eligible for the `close` audit.
+- **`**Closure:**`** in `spec.md` — the line that records what shipped; its absence is `close`'s `missing-closure` finding.
 
 ## Acceptance criteria shape
 

@@ -17,7 +17,11 @@ _Acceptance checks tied to `spec.md`. Each should map to a checklist item there.
 
 **Headless check:** `{{command, or "none"}}`
 <!-- A mechanical command an agent can run to validate this spec's implementation
-     without a human (tests / build / lint). Kept green = the spec stays delivered. -->
+     without a human (tests / build / lint). Kept green = the spec stays delivered.
+     To make `/sdd verify` re-run it, also declare it on a **Verify:** line, e.g.:
+       **Verify:** `npm test`
+     `/sdd verify` reads the FIRST backtick span per **Verify:** line, previews by
+     default, and runs only with --run. Multiple **Verify:** lines run in order. -->
 
 **Human approval:** optional
 <!-- Opt-in: a short walkthrough a human follows to approve the spec (demo steps,
