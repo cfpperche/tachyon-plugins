@@ -26,6 +26,7 @@ github:<owner>/tachyon-plugins@<ref>#path=<plugin-dir>
 | [`sound`](./sound) | **Paid music + sound effects** via fal.ai (`--kind music\|sfx`, needs `FAL_KEY`); cost-gated. | claude · codex |
 | [`hyperframes`](./hyperframes) | **Deterministic local video from code** — HTML → MP4 via ffmpeg, free, git-tracked source. The local/free half of the split video capability. | claude · codex |
 | [`video`](./video) | **Paid generative AI video** via the fal.ai queue (Wan / Kling / Veo class, needs `FAL_KEY`) — async fire-and-forget `submit`→`poll`, hard `--confirm-cost-usd` gate on every submit. The generative/paid half (sibling of `hyperframes`). | claude · codex |
+| [`product-foundation`](./product-foundation) | **Idea → a complete docs-first product foundation.** A 15-step pipeline produces every planning artifact (concept brief, spec with an assumption register, UX audit, PRD, OST, sitemap/IA, system design, legal, roadmap/cost/GTM, brand, design system) + a visual contract, then scaffolds the SDD umbrella + foundation child. NOT a runnable app. Optionally depends on the `agent-browser` plugin for the visual check. | claude |
 
 ## Manifest format
 
