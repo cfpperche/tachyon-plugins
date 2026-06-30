@@ -6,6 +6,7 @@
     "claude",
     "codex"
   ],
+  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/dep-audit",
   "tools": {
     "osv-scanner": {
       "version": "2.4.0",

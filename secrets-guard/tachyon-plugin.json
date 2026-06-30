@@ -6,6 +6,7 @@
     "claude",
     "codex"
   ],
+  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/secrets-guard",
   "blocks": {
     "claude": "claude/",
     "codex": "codex/"

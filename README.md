@@ -12,6 +12,9 @@ Via the Tachyon **Plugins View** → *Add by source*, with a pinned git ref:
 github:<owner>/tachyon-plugins@<ref>#path=<plugin-dir>
 ```
 
+Every first-party plugin directory now carries a local `README.md`, and every manifest exposes a `docsUrl` that the
+Plugins View can surface after install.
+
 ## Plugins
 
 | Plugin | What it does | Runtimes |
@@ -36,6 +39,7 @@ github:<owner>/tachyon-plugins@<ref>#path=<plugin-dir>
   "version": "1.0.0",                // semver
   "description": "…",
   "runtimes": ["claude", "codex"],   // v1 supported runtimes
+  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/hello-marker",
   "blocks": { "claude": "claude/", "codex": "codex/" }  // runtime → native block dir (optional per runtime)
 }
 ```

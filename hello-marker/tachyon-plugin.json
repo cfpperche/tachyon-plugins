@@ -6,6 +6,7 @@
     "claude",
     "codex"
   ],
+  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/hello-marker",
   "blocks": {
     "claude": "claude/",
     "codex": "codex/"
