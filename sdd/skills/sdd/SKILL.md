@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: Spec-driven development scaffolding. Use when starting non-trivial work (3+ files, a new module, an API/schema change, or a vague request that needs decomposition). Scaffolds and progresses docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md — intent before code, then re-verifies and audits closure at the end. Subcommands - new <slug>, plan, tasks, list, verify <spec> (re-run a spec's declared check; preview by default), close (audit shipped specs for closure debt). Skip for one-file fixes, typos, or mechanical edits where the diff IS the spec.
+description: Spec-driven development scaffolding. Use when starting non-trivial work (3+ files, a new module, an API/schema change, or a vague request that needs decomposition). Scaffolds and progresses docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md — intent before code, then re-verifies, dogfoods, and audits closure at the end. Subcommands - new <slug>, plan, tasks, list, verify <spec> (re-run a spec's declared check; preview by default), dogfood <spec> (run declared dogfood; preview by default), close (audit shipped specs for closure debt and dogfood proof). Skip for one-file fixes, typos, or mechanical edits where the diff IS the spec.
 compatibility: Runtime-neutral. Works on any agent runtime that can read a bundled skill directory and run shell commands (claude, codex). Resolves its templates relative to this SKILL.md — no host-specific path assumptions.
 license: MIT
 ---
@@ -76,6 +76,19 @@ bash "<this-skill-dir>"/scripts/spec-verify.sh docs/specs/NNN-<slug> --run
 
 **Pass `--run` ONLY after the user has authorized the displayed command(s)** — or the current prompt clearly asks to run that spec's verification. The command is selected from a markdown file, so a `--run` supplied unprompted could execute something unintended: preview it, show the command, get the go-ahead, then `--run`. With `--run`, each command runs from the repo root and a timestamped pass/fail block is appended to the spec's `notes.md` under `## Verification log`. Exit: `0` (preview shown, or `--run` and all passed) · `1` (`--run` and a command failed) · `2` (no `**Verify:**` declared — `notes.md` untouched). Targets outside `docs/specs/` are refused.
 
+### `dogfood <spec>`
+
+Run a spec's declared headless dogfood command(s). A spec opts in by declaring one or more `**Dogfood:** ` `` `<cmd>` `` lines in its `tasks.md` (canonical; `spec.md` is the fallback). The bundled script lives in **this skill's `scripts/` directory** and requires `bash`; invoke it by that path:
+
+```
+bash "<this-skill-dir>"/scripts/sdd-dogfood.sh docs/specs/NNN-<slug>
+bash "<this-skill-dir>"/scripts/sdd-dogfood.sh docs/specs/NNN-<slug> --run
+```
+
+**Preview by default — this runs NOTHING and writes NOTHING.** With `--run`, each command runs from the repo root and a timestamped pass/fail block is appended to `notes.md` under `## Dogfood log`. Exit: `0` (preview shown, or `--run` and all passed) · `1` (`--run` and a command failed) · `2` (no `**Dogfood:**` declared — `notes.md` untouched). Targets outside `docs/specs/` are refused.
+
+Use `Dogfood` for a representative end-to-end exercise of the delivered behavior, not as a duplicate of `Verify`. If a shipped spec cannot have meaningful headless dogfood, declare `**Dogfood-Opt-Out:** <reason>` with a non-empty reason. Human dogfood remains opt-in and informational; use `**Human dogfood:**` for routes, UI checks, or manual approval steps.
+
 ### `close [<spec>]`
 
 Audit a shipped spec's artifacts against its declared status — a **read-only** closure-hygiene check (writes nothing). Invoke the bundled script by its path in this skill's `scripts/` dir (requires `bash`; run from anywhere inside the workspace — it finds the repo root via git):
@@ -85,13 +98,16 @@ bash "<this-skill-dir>"/scripts/sdd-close.sh                        # sweep ever
 bash "<this-skill-dir>"/scripts/sdd-close.sh docs/specs/NNN-<slug>  # just one (or just NNN)
 ```
 
-For each spec whose `**Status:**` is `shipped` (or `shipped-partial`) it reports: `tasks-unchecked` (`- [ ]` left in `tasks.md`), `acceptance-unchecked` (`- [ ]` left in `spec.md` § Acceptance criteria), `placeholders` (surviving `{{...}}` in `spec.md`/`tasks.md`), `missing-closure` (no `**Closure:**` line in `spec.md`). Non-shipped specs are skipped. Exit `0` clean · `1` findings. `--json` emits a machine-readable report. A clean close = the boxes are checked, the placeholders are gone, and a `**Closure:**` line records what shipped.
+For each spec whose `**Status:**` is `shipped` (or `shipped-partial`) it reports: `tasks-unchecked` (`- [ ]` left in `tasks.md`), `acceptance-unchecked` (`- [ ]` left in `spec.md` § Acceptance criteria), `placeholders` (surviving `{{...}}` in `spec.md`/`tasks.md`), `missing-closure` (no `**Closure:**` line in `spec.md`), `dogfood-missing` (no headless dogfood declaration and no valid opt-out), `dogfood-unrun` (dogfood declared but no passing `## Dogfood log` entry), and `dogfood-opt-out-empty` (opt-out without a reason). A valid `**Dogfood-Opt-Out:** <reason>` does not fail close, but it is printed as a warning and emitted in JSON. Non-shipped specs are skipped. Exit `0` clean or warnings-only · `1` findings. `--json` emits a machine-readable report. A clean close = the boxes are checked, the placeholders are gone, a `**Closure:**` line records what shipped, and dogfood proof or a justified opt-out exists.
 
 ## Verification & closure contract
 
-These two subcommands read three opt-in markdown conventions on a spec — nothing else gates:
+These subcommands read markdown conventions on a spec — nothing else gates:
 
 - **`**Verify:** ` `` `<cmd>` ``** in `tasks.md` (or `spec.md`) — declares the command(s) `verify` re-runs.
+- **`**Dogfood:** ` `` `<cmd>` ``** in `tasks.md` (or `spec.md`) — declares the command(s) `dogfood` previews/runs and logs under `## Dogfood log`.
+- **`**Dogfood-Opt-Out:** <reason>`** in `tasks.md` (or `spec.md`) — explicitly exempts a shipped spec from headless dogfood; the reason must be non-empty and `close` surfaces it as a warning.
+- **`**Human dogfood:**`** in `tasks.md` — optional manual route/checklist for maintainer approval; `close` does not fail if it is absent or incomplete.
 - **`**Status:** shipped` (or `shipped-partial`)** — makes a spec eligible for the `close` audit.
 - **`**Closure:**`** in `spec.md` — the line that records what shipped; its absence is `close`'s `missing-closure` finding.
 
@@ -117,4 +133,4 @@ If every box can be ticked, the spec is delivered. Each criterion should be veri
 - **Read before asking.** If the repo could answer a question (configs, existing specs, schemas, modules, recent `git log`), read it first. Asking is the fallback, not the default — and when you do ask, name the file you read so the grounding is visible.
 - **Ask in plain prose.** When you need the human to decide between genuine forks, ask directly in the conversation. (Do not assume a structured-question UI exists — degrade to prose.)
 - **One spec, one concern.** If a spec is sprawling, it's probably two specs.
-- **Status is a bare enum** on the `**Status:**` line: `draft | in-progress | shipped | superseded | abandoned | deferred`.
+- **Status is a bare enum** on the `**Status:**` line: `draft | in-progress | shipped | shipped-partial | superseded | abandoned | deferred`.

@@ -23,6 +23,14 @@ _Acceptance checks tied to `spec.md`. Each should map to a checklist item there.
      `/sdd verify` reads the FIRST backtick span per **Verify:** line, previews by
      default, and runs only with --run. Multiple **Verify:** lines run in order. -->
 
-**Human approval:** optional
+## Dogfood
+
+**Dogfood:** `{{representative headless dogfood command}}`
+<!-- A representative command that exercises the shipped behavior end-to-end.
+     `/sdd dogfood` previews by default and runs only with --run, then logs under
+     notes.md `## Dogfood log`. If no meaningful headless dogfood exists, replace
+     the Dogfood line with: **Dogfood-Opt-Out:** <non-empty reason>. -->
+
+**Human dogfood:** optional
 <!-- Opt-in: a short walkthrough a human follows to approve the spec (demo steps,
-     things to eyeball). Name the steps here when human sign-off matters. -->
+     UI routes, things to eyeball). Name the steps here when human sign-off matters. -->

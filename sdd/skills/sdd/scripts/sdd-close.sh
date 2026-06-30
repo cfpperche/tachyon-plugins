@@ -7,9 +7,13 @@
 #   acceptance-unchecked — spec.md `## Acceptance criteria` still has `- [ ]` boxes
 #   placeholders         — surviving `{{...}}` template placeholders in spec/tasks
 #   missing-closure      — no uncommented `**Closure:**` line
+#   dogfood-missing      — no `**Dogfood:**` declaration and no valid opt-out
+#   dogfood-unrun        — `**Dogfood:**` declared but no passing Dogfood log
+#   dogfood-opt-out-empty — `**Dogfood-Opt-Out:**` exists but has no reason
 #
-# Writes nothing, ever. Complements `spec-verify.sh`: verify proves the spec's
-# COMMAND still passes; close proves the spec's ARTIFACTS agree with its status.
+# Writes nothing, ever. Complements `spec-verify.sh` and `sdd-dogfood.sh`:
+# verify proves the spec's COMMAND still passes; dogfood proves the shipped
+# behavior was exercised; close proves the spec's ARTIFACTS agree with its status.
 #
 # Usage:
 #   sdd-close.sh [<spec-dir>] [--json] [-h]
@@ -120,12 +124,40 @@ has_placeholders() {
 
 has_closure() { grep -qE '^\*\*Closure:\*\*' "$1" 2>/dev/null; }
 
+has_dogfood_declared() {
+  grep -qE '^\*\*Dogfood:\*\*[[:space:]]*`[^`]+`' "$TASKS_MD" "$SPEC_MD" 2>/dev/null
+}
+
+dogfood_opt_out_line() {
+  grep -hE '^\*\*Dogfood-Opt-Out:\*\*' "$TASKS_MD" "$SPEC_MD" 2>/dev/null | head -n1
+}
+
+dogfood_opt_out_reason() {
+  dogfood_opt_out_line | sed -E 's/^\*\*Dogfood-Opt-Out:\*\*[[:space:]]*//; s/[[:space:]]+$//'
+}
+
+has_passing_dogfood_log() {
+  local notes="$1"
+  [ -f "$notes" ] || return 1
+  awk '
+    /^##[[:space:]]+Dogfood log/ { inlog=1; next }
+    /^##[[:space:]]/ { if (inlog) inlog=0 }
+    inlog && /^###[[:space:]].*[[:space:]]—[[:space:]]pass([[:space:]]|\()/ { found=1 }
+    inlog && /^[[:space:]]*-[[:space:]].*[[:space:]]—[[:space:]]pass[[:space:]]*$/ { found=1 }
+    END { exit found ? 0 : 1 }
+  ' "$notes"
+}
+
 # --- scan -------------------------------------------------------------------
 
 TOTAL_FINDINGS=0
 SPECS_WITH_FINDINGS=0
+TOTAL_WARNINGS=0
+SPECS_WITH_WARNINGS=0
 JSON_SPECS=""
+JSON_WARNING_SPECS=""
 HUMAN=""
+WARNINGS_HUMAN=""
 
 OLDIFS="$IFS"; IFS='
 '
@@ -133,6 +165,7 @@ for SDIR in $TARGETS; do
   IFS="$OLDIFS"
   SPEC_MD="$SDIR/spec.md"
   TASKS_MD="$SDIR/tasks.md"
+  NOTES_MD="$SDIR/notes.md"
   [ -f "$SPEC_MD" ] || { IFS='
 '; continue; }
   if ! is_shipped "$SPEC_MD"; then IFS='
@@ -143,6 +176,8 @@ for SDIR in $TARGETS; do
 
   findings=""
   json_findings=""
+  warnings=""
+  json_warnings=""
 
   t_un="$(count_unchecked "$TASKS_MD")"
   if [ "${t_un:-0}" -gt 0 ]; then
@@ -170,6 +205,29 @@ for SDIR in $TARGETS; do
     json_findings="${json_findings}${json_findings:+,}{\"type\":\"missing-closure\"}"
   fi
 
+  opt_out_line="$(dogfood_opt_out_line)"
+  opt_out_reason=""
+  if [ -n "$opt_out_line" ]; then
+    opt_out_reason="$(dogfood_opt_out_reason)"
+    if [ -z "$opt_out_reason" ]; then
+      findings="${findings}dogfood-opt-out-empty
+"
+      json_findings="${json_findings}${json_findings:+,}{\"type\":\"dogfood-opt-out-empty\"}"
+    else
+      warnings="${warnings}dogfood-opt-out: $opt_out_reason
+"
+      json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"dogfood-opt-out\",\"reason\":\"$(json_escape "$opt_out_reason")\"}"
+    fi
+  elif ! has_dogfood_declared; then
+    findings="${findings}dogfood-missing
+"
+    json_findings="${json_findings}${json_findings:+,}{\"type\":\"dogfood-missing\"}"
+  elif ! has_passing_dogfood_log "$NOTES_MD"; then
+    findings="${findings}dogfood-unrun
+"
+    json_findings="${json_findings}${json_findings:+,}{\"type\":\"dogfood-unrun\"}"
+  fi
+
   if [ -n "$findings" ]; then
     nf="$(printf '%s' "$findings" | grep -c .)"
     TOTAL_FINDINGS=$((TOTAL_FINDINGS + nf))
@@ -177,7 +235,19 @@ for SDIR in $TARGETS; do
     HUMAN="${HUMAN}  [${status_line}] $REL
 $(printf '%s' "$findings" | sed 's/^/    - /')
 "
-    JSON_SPECS="${JSON_SPECS}${JSON_SPECS:+,}{\"spec\":\"$(json_escape "$REL")\",\"status\":\"$(json_escape "$status_line")\",\"findings\":[$json_findings]}"
+    JSON_SPECS="${JSON_SPECS}${JSON_SPECS:+,}{\"spec\":\"$(json_escape "$REL")\",\"status\":\"$(json_escape "$status_line")\",\"findings\":[$json_findings],\"warnings\":[$json_warnings]}"
+  fi
+
+  if [ -n "$warnings" ]; then
+    nw="$(printf '%s' "$warnings" | grep -c .)"
+    TOTAL_WARNINGS=$((TOTAL_WARNINGS + nw))
+    SPECS_WITH_WARNINGS=$((SPECS_WITH_WARNINGS + 1))
+    WARNINGS_HUMAN="${WARNINGS_HUMAN}  [${status_line}] $REL
+$(printf '%s' "$warnings" | sed 's/^/    - /')
+"
+    if [ -z "$findings" ]; then
+      JSON_WARNING_SPECS="${JSON_WARNING_SPECS}${JSON_WARNING_SPECS:+,}{\"spec\":\"$(json_escape "$REL")\",\"status\":\"$(json_escape "$status_line")\",\"findings\":[],\"warnings\":[$json_warnings]}"
+    fi
   fi
   IFS='
 '
@@ -187,14 +257,20 @@ IFS="$OLDIFS"
 # --- output -----------------------------------------------------------------
 
 if [ "$OUT_JSON" -eq 1 ]; then
-  printf '{"specs":[%s],"total_findings":%d,"specs_with_findings":%d}\n' \
-    "$JSON_SPECS" "$TOTAL_FINDINGS" "$SPECS_WITH_FINDINGS"
+  _all_specs="$JSON_SPECS"
+  [ -n "$JSON_WARNING_SPECS" ] && _all_specs="${_all_specs}${_all_specs:+,}$JSON_WARNING_SPECS"
+  printf '{"specs":[%s],"total_findings":%d,"specs_with_findings":%d,"total_warnings":%d,"specs_with_warnings":%d}\n' \
+    "$_all_specs" "$TOTAL_FINDINGS" "$SPECS_WITH_FINDINGS" "$TOTAL_WARNINGS" "$SPECS_WITH_WARNINGS"
 else
   if [ "$SPECS_WITH_FINDINGS" -eq 0 ]; then
     printf '%s: clean — no closure inconsistencies in the targeted shipped spec(s)\n' "$SELF"
   else
     printf '%s: %d finding(s) across %d shipped spec(s):\n' "$SELF" "$TOTAL_FINDINGS" "$SPECS_WITH_FINDINGS"
     printf '%s' "$HUMAN"
+  fi
+  if [ "$SPECS_WITH_WARNINGS" -gt 0 ]; then
+    printf '%s: %d warning(s) across %d shipped spec(s):\n' "$SELF" "$TOTAL_WARNINGS" "$SPECS_WITH_WARNINGS"
+    printf '%s' "$WARNINGS_HUMAN"
   fi
 fi
 
