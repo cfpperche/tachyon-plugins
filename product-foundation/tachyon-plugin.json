@@ -1,6 +1,6 @@
 {
   "name": "product-foundation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Turn a one-line product idea into a complete docs-first foundation. A 15-step pipeline produces the planning artifacts (concept brief, functional spec with an assumption register, UX audit, PRD, OST, sitemap/IA, system design, legal posture, roadmap/cost/GTM as labeled pre-validation projections, brand book, design system) plus a visual contract (lo-fi mood, screen atlas, hi-fi killer-flow mood, fixture spec), then scaffolds the SDD umbrella + foundation spec the engineering build runs as. Docs-first — it produces planning artifacts and a visual contract, NOT a runnable app. Product-form aware (screen-app, headless-service, cli, bot, embedded). The best-effort visual check reuses the agent-browser plugin (an optional dependency). Claude only in v1.",
   "runtimes": [
     "claude"

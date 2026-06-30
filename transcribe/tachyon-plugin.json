@@ -1,6 +1,6 @@
 {
   "name": "transcribe",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local speech-to-text: turn an audio or video file into a transcript, fully on-device via whisper.cpp. Tachyon provisions the pinned, checksummed ggml model (read-only) and detects + assist-installs the whisper-cli and ffmpeg system tools it needs. The audio content never leaves the machine; only the model weights are fetched once, pinned. Outputs txt (default) or srt/vtt/json. Not text-to-speech, not remote/paid transcription.",
   "runtimes": [
     "claude",

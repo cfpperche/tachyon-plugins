@@ -1,6 +1,6 @@
 {
   "name": "audio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local-first text-to-speech: turn text into spoken wav/mp3, fully on-device. Two engines — piper (default, self-contained, a pinned checksummed voice model) and kokoro (opt-in, higher quality + multilingual incl pt-BR, needs espeak-ng). Both run via uv's tool runner (uvx, acquired at pinned versions); only model weights/voices are fetched. Degrades to a clear unavailable hint when a dependency is missing. Not music/SFX, not voice cloning, not remote/paid TTS.",
   "runtimes": [
     "claude",

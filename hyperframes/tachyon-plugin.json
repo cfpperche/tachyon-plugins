@@ -1,6 +1,6 @@
 {
   "name": "hyperframes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Deterministic, LOCAL, FREE video from code — render an HTML/CSS/JS composition to MP4 via the HyperFrames CLI (npx, pinned, Apache-2.0) in a bundled headless Chromium + system ffmpeg. Zero inference cost; the composition source is git-tracked and the MP4 is regenerable. Best for structured motion graphics (product demos, changelog clips, explainers). Needs Node 22+. NOT generative/paid AI video (that is the separate video plugin); NOT a still image (diagram/image).",
   "runtimes": [
     "claude",
