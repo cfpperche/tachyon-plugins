@@ -36,7 +36,15 @@ Scaffold a fresh spec. **From the workspace root**, run the bundled script (it l
 sh scripts/new.sh <slug>
 ```
 
-The script is the executable contract — it sanitizes the slug, picks the next free `NNN` (strictly `NNN-*` dirs, default `001`), allocates the directory **atomically** (two agents racing the same number won't collide), copies the four templates, and substitutes the known values (`NNN`, slug, date) while leaving content placeholders intact. It prints the four paths. Doing it by hand instead of via the script is error-prone (literal `NNN`/`{{slug}}` leak into the spec) — prefer the script.
+The script is the executable contract — it sanitizes the slug, picks the next free `NNN` (strictly `NNN-*` dirs, default `001`), allocates the directory **atomically** (two agents racing the same number won't collide), copies the four templates, and substitutes the known values (`NNN`, slug, date) while leaving content placeholders intact. In a Git repository, it also coordinates sibling worktrees from the same clone through a portable `mkdir` lock + local ledger under Git's common dir, so two local worktrees do not reuse an in-flight number. Doing it by hand instead of via the script is error-prone (literal `NNN`/`{{slug}}` leak into the spec) — prefer the script.
+
+This is a local same-clone guarantee, not global distributed coordination. Separate clones, separate machines, or a branch merge can still introduce duplicate `NNN` prefixes. For that boundary, run the bundled duplicate checker:
+
+```
+sh scripts/check-ids.sh
+```
+
+It exits nonzero and lists the colliding `docs/specs/NNN-*` directories when duplicates exist.
 
 After scaffolding: **do NOT auto-fill `spec.md`** — intent is the human's. Offer to draft it from a conversational description, but only after they describe the change. `notes.md` stays empty at scaffold time — its job is in-flight design memory during implementation.
 

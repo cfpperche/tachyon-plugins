@@ -1,6 +1,6 @@
 {
   "name": "sdd",
-  "version": "1.2.0",
-  "description": "Spec-driven development scaffolding — intent before code. Scaffolds and progresses docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md, then re-verifies (verify, preview-by-default) and audits closure debt (close). Runtime-neutral (claude + codex).",
+  "version": "1.3.0",
+  "description": "Spec-driven development scaffolding — intent before code. Scaffolds docs/specs/NNN-<slug> with same-clone worktree-safe numbering, then re-verifies (verify, preview-by-default) and audits closure debt (close). Runtime-neutral (claude + codex).",
   "runtimes": ["claude", "codex"]
 }

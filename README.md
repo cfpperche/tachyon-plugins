@@ -16,7 +16,7 @@ github:<owner>/tachyon-plugins@<ref>#path=<plugin-dir>
 
 | Plugin | What it does | Runtimes |
 |---|---|---|
-| [`sdd`](./sdd) | Spec-driven development — scaffolds + progresses `docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md` (`new`/`plan`/`tasks`/`list`), then closes the loop: `verify` re-runs a spec's declared check (preview-by-default, `--run` to execute) and `close` audits shipped specs for closure debt. | claude · codex |
+| [`sdd`](./sdd) | Spec-driven development — scaffolds + progresses `docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md` (`new`/`plan`/`tasks`/`list`) with same-clone worktree-safe numbering, then closes the loop: `verify` re-runs a spec's declared check (preview-by-default, `--run` to execute) and `close` audits shipped specs for closure debt. | claude · codex |
 | [`hello-marker`](./hello-marker) | Benign round-trip proof: wires a harmless no-op `PreToolUse` marker hook. Exercises the full install→wire→update→remove lifecycle without touching security or project state. | claude · codex |
 | [`secrets-guard`](./secrets-guard) | A **two-layer git secrets gate** powered by gitleaks. Layer 1: a `pre-commit` git-hook scans staged changes (Tachyon fetches the pinned, checksum-verified gitleaks binary). Layer 2: a per-runtime `PreToolUse` shape-gate stops an agent from silently bypassing layer 1 via `--no-verify`/compound/`-a`. Combines **hooks + git-hooks + tools**. | claude · codex (+ git hook) |
 | [`transcribe`](./transcribe) | **Local-first speech-to-text** — an audio or video file → transcript via whisper.cpp (content never leaves the machine). The model ships as a checksummed data artifact; whisper-cli + ffmpeg as external tools. | claude · codex |
