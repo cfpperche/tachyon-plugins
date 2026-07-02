@@ -10,6 +10,7 @@
 #   dogfood-missing      — no `**Dogfood:**` declaration and no valid opt-out
 #   dogfood-unrun        — `**Dogfood:**` declared but no passing Dogfood log
 #   dogfood-opt-out-empty — `**Dogfood-Opt-Out:**` exists but has no reason
+#   visual-qa-missing    — warning-only: likely UI/interface spec without visual proof or opt-out
 #
 # Writes nothing, ever. Complements `spec-verify.sh` and `sdd-dogfood.sh`:
 # verify proves the spec's COMMAND still passes; dogfood proves the shipped
@@ -148,6 +149,27 @@ has_passing_dogfood_log() {
   ' "$notes"
 }
 
+looks_visual() {
+  # Intentionally conservative: inspect spec.md only, not plan/tasks templates, so optional Visual QA
+  # boilerplate does not make every shipped spec warn.
+  [ -f "$SPEC_MD" ] || return 1
+  sed 's/`[^`]*`//g' "$SPEC_MD" 2>/dev/null |
+    grep -qiE '\b(UI|UX|visual|layout|menu|dropdown|button|icon|webview|sidebar|studio|activity panel|screen|screenshot|hover|focus|click|visible text|render|rendering|toolbar|modal|quickpick)\b'
+}
+
+visual_qa_opt_out_line() {
+  grep -hE '^\*\*Visual QA Opt-Out:\*\*' "$TASKS_MD" "$SPEC_MD" "$NOTES_MD" 2>/dev/null | head -n1
+}
+
+visual_qa_opt_out_reason() {
+  visual_qa_opt_out_line | sed -E 's/^\*\*Visual QA Opt-Out:\*\*[[:space:]]*//; s/[[:space:]]+$//'
+}
+
+has_visual_qa_evidence() {
+  # Evidence is prose-based. A bare "## Visual QA" template heading is not enough.
+  grep -hiqE '^(Evidence|Verdict):[[:space:]]*[^[:space:]]|^[[:space:]]*-[[:space:]]\[x\].*(Visual QA|visual proof|screenshot|preview|verdict|evidence)' "$TASKS_MD" "$SPEC_MD" "$NOTES_MD" 2>/dev/null
+}
+
 # --- scan -------------------------------------------------------------------
 
 TOTAL_FINDINGS=0
@@ -226,6 +248,27 @@ for SDIR in $TARGETS; do
     findings="${findings}dogfood-unrun
 "
     json_findings="${json_findings}${json_findings:+,}{\"type\":\"dogfood-unrun\"}"
+  fi
+
+  visual_opt_out_line="$(visual_qa_opt_out_line)"
+  visual_opt_out_reason=""
+  if looks_visual; then
+    if [ -n "$visual_opt_out_line" ]; then
+      visual_opt_out_reason="$(visual_qa_opt_out_reason)"
+      if [ -z "$visual_opt_out_reason" ]; then
+        warnings="${warnings}visual-qa-opt-out-empty
+"
+        json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"visual-qa-opt-out-empty\"}"
+      else
+        warnings="${warnings}visual-qa-opt-out: $visual_opt_out_reason
+"
+        json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"visual-qa-opt-out\",\"reason\":\"$(json_escape "$visual_opt_out_reason")\"}"
+      fi
+    elif ! has_visual_qa_evidence; then
+      warnings="${warnings}visual-qa-missing
+"
+      json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"visual-qa-missing\"}"
+    fi
   fi
 
   if [ -n "$findings" ]; then
