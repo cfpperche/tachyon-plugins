@@ -76,8 +76,24 @@ is_wsl() {
   grep -qi microsoft /proc/version 2>/dev/null
 }
 
-json_escape() {
-  sed 's/\\/\\\\/g; s/"/\\"/g'
+json_string() {
+  if command -v perl >/dev/null 2>&1; then
+    perl -MJSON::PP -0ne 'print JSON::PP->new->ascii->encode($_)'
+    return 0
+  fi
+  printf '"'
+  sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g; s/\r/\\r/g; s/$/\\n/' | tr -d '\n' | sed 's/\\n$//'
+  printf '"'
+}
+
+run_with_timeout() {
+  local seconds="$1"
+  shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$seconds" "$@"
+  else
+    "$@"
+  fi
 }
 
 windows_host_ps1() {
@@ -131,9 +147,13 @@ public class AgentScreenNative {
   [DllImport("user32.dll")]
   public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")]
+  public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+  [DllImport("user32.dll")]
   public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
   [DllImport("user32.dll")]
   public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+  [DllImport("dwmapi.dll")]
+  public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
   public struct RECT {
     public int Left;
     public int Top;
@@ -142,6 +162,31 @@ public class AgentScreenNative {
   }
 }
 "@
+
+function Bounds-From-Rect([AgentScreenNative+RECT]$rect) {
+  $width = $rect.Right - $rect.Left
+  $height = $rect.Bottom - $rect.Top
+  if ($width -le 0 -or $height -le 0) { return $null }
+  return New-Object System.Drawing.Rectangle $rect.Left, $rect.Top, $width, $height
+}
+
+function Bounds-For-Hwnd([IntPtr]$hwnd) {
+  if ($hwnd -eq [IntPtr]::Zero) { return $null }
+  $rect = New-Object AgentScreenNative+RECT
+  $dwmResult = [AgentScreenNative]::DwmGetWindowAttribute(
+    $hwnd,
+    9,
+    [ref]$rect,
+    [System.Runtime.InteropServices.Marshal]::SizeOf([type][AgentScreenNative+RECT])
+  )
+  if ($dwmResult -eq 0) {
+    $bounds = Bounds-From-Rect $rect
+    if ($null -ne $bounds) { return $bounds }
+  }
+  $rect = New-Object AgentScreenNative+RECT
+  if (-not [AgentScreenNative]::GetWindowRect($hwnd, [ref]$rect)) { return $null }
+  return Bounds-From-Rect $rect
+}
 
 function Get-WindowTitle([IntPtr]$hwnd) {
   $len = [AgentScreenNative]::GetWindowTextLength($hwnd)
@@ -158,18 +203,17 @@ function Short-Title([string]$title) {
 
 function Get-Windows {
   $foreground = [AgentScreenNative]::GetForegroundWindow()
+  $foregroundRoot = [AgentScreenNative]::GetAncestor($foreground, 2)
+  if ($foregroundRoot -eq [IntPtr]::Zero) { $foregroundRoot = $foreground }
+  $foregroundRootId = $foregroundRoot.ToInt64()
   $items = New-Object System.Collections.Generic.List[object]
   $callback = [AgentScreenNative+EnumWindowsProc]{
     param([IntPtr]$hwnd, [IntPtr]$lparam)
     if (-not [AgentScreenNative]::IsWindowVisible($hwnd)) { return $true }
     $title = Get-WindowTitle $hwnd
     if ([string]::IsNullOrWhiteSpace($title)) { return $true }
-    $rect = New-Object AgentScreenNative+RECT
-    if (-not [AgentScreenNative]::GetWindowRect($hwnd, [ref]$rect)) { return $true }
-    $width = $rect.Right - $rect.Left
-    $height = $rect.Bottom - $rect.Top
-    if ($width -le 0 -or $height -le 0) { return $true }
-    $bounds = New-Object System.Drawing.Rectangle $rect.Left, $rect.Top, $width, $height
+    $bounds = Bounds-For-Hwnd $hwnd
+    if ($null -eq $bounds) { return $true }
     $monitor = ""
     foreach ($screen in [System.Windows.Forms.Screen]::AllScreens) {
       if ([System.Drawing.Rectangle]::Intersect($screen.Bounds, $bounds).Width -gt 0 -and [System.Drawing.Rectangle]::Intersect($screen.Bounds, $bounds).Height -gt 0) {
@@ -187,13 +231,13 @@ function Get-Windows {
       fullTitle = $title
       process = $processName
       pid = [int64]$pidValue
-      x = $rect.Left
-      y = $rect.Top
-      width = $width
-      height = $height
+      x = $bounds.X
+      y = $bounds.Y
+      width = $bounds.Width
+      height = $bounds.Height
       monitor = $monitor
       minimized = [AgentScreenNative]::IsIconic($hwnd)
-      foreground = ($hwnd -eq $foreground)
+      foreground = ($hwnd.ToInt64() -eq $foregroundRootId)
     })
     return $true
   }
@@ -202,7 +246,25 @@ function Get-Windows {
 }
 
 function Write-Json($obj) {
-  $obj | ConvertTo-Json -Compress -Depth 4
+  ConvertTo-Json -InputObject $obj -Compress -Depth 4
+}
+
+function Test-BitmapBlank([System.Drawing.Bitmap]$bmp) {
+  $sampleCols = [Math]::Min(40, [Math]::Max(1, $bmp.Width))
+  $sampleRows = [Math]::Min(40, [Math]::Max(1, $bmp.Height))
+  $min = 765
+  $max = 0
+  for ($yi = 0; $yi -lt $sampleRows; $yi++) {
+    $y = [Math]::Min($bmp.Height - 1, [Math]::Floor($yi * $bmp.Height / $sampleRows))
+    for ($xi = 0; $xi -lt $sampleCols; $xi++) {
+      $x = [Math]::Min($bmp.Width - 1, [Math]::Floor($xi * $bmp.Width / $sampleCols))
+      $c = $bmp.GetPixel($x, $y)
+      $v = [int]$c.R + [int]$c.G + [int]$c.B
+      if ($v -lt $min) { $min = $v }
+      if ($v -gt $max) { $max = $v }
+    }
+  }
+  return (($max - $min) -le 6)
 }
 
 function Capture-Rect([System.Drawing.Rectangle]$bounds, [string]$out) {
@@ -213,9 +275,11 @@ function Capture-Rect([System.Drawing.Rectangle]$bounds, [string]$out) {
   $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
   $g = [System.Drawing.Graphics]::FromImage($bmp)
   $g.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+  $blank = Test-BitmapBlank $bmp
   $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
   $g.Dispose()
   $bmp.Dispose()
+  if ($blank) { Write-Output "warning=blank-frame-suspected" }
 }
 
 function Capture-Window([IntPtr]$hwnd, [System.Drawing.Rectangle]$bounds, [string]$out) {
@@ -238,18 +302,10 @@ function Capture-Window([IntPtr]$hwnd, [System.Drawing.Rectangle]$bounds, [strin
     [Console]::Error.WriteLine("agent-screen: failed: PrintWindow could not capture the requested window")
     exit 1
   }
+  $blank = Test-BitmapBlank $bmp
   $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
   $bmp.Dispose()
-}
-
-function Bounds-For-Hwnd([IntPtr]$hwnd) {
-  if ($hwnd -eq [IntPtr]::Zero) { return $null }
-  $rect = New-Object AgentScreenNative+RECT
-  if (-not [AgentScreenNative]::GetWindowRect($hwnd, [ref]$rect)) { return $null }
-  $width = $rect.Right - $rect.Left
-  $height = $rect.Bottom - $rect.Top
-  if ($width -le 0 -or $height -le 0) { return $null }
-  return New-Object System.Drawing.Rectangle $rect.Left, $rect.Top, $width, $height
+  if ($blank) { Write-Output "warning=blank-frame-suspected" }
 }
 
 function Emit-Capture([string]$mode, [System.Drawing.Rectangle]$bounds, [string]$out) {
@@ -266,6 +322,37 @@ function Emit-WindowCapture([string]$mode, [IntPtr]$hwnd, [System.Drawing.Rectan
   Capture-Window $hwnd $bounds $out
   Write-Output ("out=" + $out)
   Write-Output ("mode=" + $mode)
+  Write-Output ("x=" + $bounds.X)
+  Write-Output ("y=" + $bounds.Y)
+  Write-Output ("width=" + $bounds.Width)
+  Write-Output ("height=" + $bounds.Height)
+}
+
+function Emit-ActiveCapture([IntPtr]$hwnd, [System.Drawing.Rectangle]$bounds, [string]$out) {
+  $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $hdc = $g.GetHdc()
+  $ok = [AgentScreenNative]::PrintWindow($hwnd, $hdc, 2)
+  $g.ReleaseHdc($hdc)
+  $g.Dispose()
+  $blank = $true
+  if ($ok) { $blank = Test-BitmapBlank $bmp }
+  if ($ok -and -not $blank) {
+    $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
+    $bmp.Dispose()
+    Write-Output ("out=" + $out)
+    Write-Output "mode=active-window"
+    Write-Output ("x=" + $bounds.X)
+    Write-Output ("y=" + $bounds.Y)
+    Write-Output ("width=" + $bounds.Width)
+    Write-Output ("height=" + $bounds.Height)
+    return
+  }
+  $bmp.Dispose()
+  Capture-Rect $bounds $out
+  Write-Output "warning=printwindow-blank-screen-fallback"
+  Write-Output ("out=" + $out)
+  Write-Output "mode=active-window-screen-fallback"
   Write-Output ("x=" + $bounds.X)
   Write-Output ("y=" + $bounds.Y)
   Write-Output ("width=" + $bounds.Width)
@@ -303,8 +390,9 @@ if ($Command -eq "active") {
   if ([string]::IsNullOrWhiteSpace($Out)) { [Console]::Error.WriteLine("agent-screen: failed: missing output path"); exit 1 }
   $hwnd = [AgentScreenNative]::GetForegroundWindow()
   $bounds = Bounds-For-Hwnd $hwnd
-  if ($null -eq $bounds) { $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen; Emit-Capture "screen" $bounds $Out; exit 0 }
-  Emit-Capture "foreground-window" $bounds $Out
+  if ($null -eq $bounds) { $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen; Emit-Capture "screen-fallback" $bounds $Out; exit 0 }
+  if ([AgentScreenNative]::IsIconic($hwnd)) { [Console]::Error.WriteLine("agent-screen: failed: foreground window is minimized; use --screen or restore it before capture"); exit 1 }
+  Emit-ActiveCapture $hwnd $bounds $Out
   exit 0
 }
 
@@ -332,7 +420,9 @@ if ($Command -eq "window-query") {
   if ($matches.Count -gt 1) {
     [Console]::Error.WriteLine("agent-screen: failed: query '$Query' matched multiple Windows-host windows; use --window-id")
     $candidates = $matches | Select-Object -First 8 | ForEach-Object {
-      [pscustomobject]@{ id=$_.id; title=$_.title; process=$_.process; x=$_.x; y=$_.y; width=$_.width; height=$_.height }
+      $row = [ordered]@{ id=$_.id; process=$_.process; pid=$_.pid; minimized=$_.minimized; x=$_.x; y=$_.y; width=$_.width; height=$_.height }
+      if ($VerboseTitles) { $row["title"] = $_.title }
+      [pscustomobject]$row
     }
     [Console]::Error.WriteLine((Write-Json @($candidates)))
     exit 1
@@ -447,7 +537,7 @@ capture_windows_host_png() {
   ps1_win="$(wslpath -w "$ps1")" || { rm -f -- "$ps1"; return 1; }
   tmp_abs="$(realpath -m "$TMP_OUT")" || { rm -f -- "$ps1"; return 1; }
   tmp_win="$(wslpath -w "$tmp_abs")" || { rm -f -- "$ps1"; return 1; }
-  local raw output mode x y width height ps_args err rc
+  local raw output mode x y width height warning ps_args err rc
   err="$(mktemp)"
   raw="$(mktemp)"
   ps_args=(-NoProfile -ExecutionPolicy Bypass -File "$ps1_win" -Command "$command")
@@ -459,13 +549,16 @@ capture_windows_host_png() {
   esac
   ps_args+=(-Out "$tmp_win")
   set +e
-  "$ps" "${ps_args[@]}" >"$raw" 2>"$err"
+  run_with_timeout 20s "$ps" "${ps_args[@]}" >"$raw" 2>"$err"
   rc=$?
   set -e
   rm -f -- "$ps1"
   output="$(tr -d '\r' < "$raw")"
   rm -f -- "$raw"
   if [ "$rc" -ne 0 ]; then
+    if [ "$rc" -eq 124 ]; then
+      echo "agent-screen: failed: Windows-host capture timed out after 20s" >&2
+    fi
     cat "$err" >&2
     rm -f -- "$err" "$TMP_OUT"
     return "$rc"
@@ -477,6 +570,7 @@ capture_windows_host_png() {
   y="$(printf '%s\n' "$output" | awk -F= '$1=="y" {print $2; exit}')"
   width="$(printf '%s\n' "$output" | awk -F= '$1=="width" {print $2; exit}')"
   height="$(printf '%s\n' "$output" | awk -F= '$1=="height" {print $2; exit}')"
+  warning="$(printf '%s\n' "$output" | awk -F= '$1=="warning" {print $2; exit}')"
   if ! validate_png_file "$TMP_OUT"; then
     rm -f -- "$TMP_OUT"
     echo "agent-screen: failed: Windows-host capture produced no valid PNG" >&2
@@ -485,33 +579,43 @@ capture_windows_host_png() {
   mv -f -- "$TMP_OUT" "$OUT"
   chmod 0644 "$OUT" 2>/dev/null || true
   echo "agent-screen: status=ok backend=windows-host mode=$mode x=$x y=$y width=$width height=$height wrote=$OUT"
+  [ -z "$warning" ] || echo "  warning=$warning"
   printf '%s\n' "$output" | awk -F= '$1=="window_id" || $1=="process" {print "  " $0}'
   return 0
 }
 
 cmd_windows_list() {
-  local verbose="$1" ps ps1 err rc
+  local verbose="$1" ps ps1 ps1_arg err raw rc
   is_wsl || return 1
   ps="$(resolve_powershell)" || return 1
   ps1="$(mktemp --suffix=.ps1)"
   err="$(mktemp)"
+  raw="$(mktemp)"
   windows_host_ps1 "$ps1"
+  ps1_arg="$ps1"
+  if command -v wslpath >/dev/null 2>&1; then
+    ps1_arg="$(wslpath -w "$ps1" 2>/dev/null || printf '%s' "$ps1")"
+  fi
   set +e
   if [ "$verbose" = "yes" ]; then
-    "$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1" -Command list -VerboseTitles 2>"$err" | tr -d '\r'
-    rc=${PIPESTATUS[0]}
+    run_with_timeout 20s "$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1_arg" -Command list -VerboseTitles >"$raw" 2>"$err"
+    rc=$?
   else
-    "$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1" -Command list 2>"$err" | tr -d '\r'
-    rc=${PIPESTATUS[0]}
+    run_with_timeout 20s "$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1_arg" -Command list >"$raw" 2>"$err"
+    rc=$?
   fi
   set -e
   rm -f -- "$ps1"
   if [ "$rc" -ne 0 ]; then
+    if [ "$rc" -eq 124 ]; then
+      echo "agent-screen: failed: Windows-host list-windows timed out after 20s" >&2
+    fi
     cat "$err" >&2
-    rm -f -- "$err"
+    rm -f -- "$err" "$raw"
     return "$rc"
   fi
-  rm -f -- "$err"
+  tr -d '\r' < "$raw"
+  rm -f -- "$err" "$raw"
 }
 
 cmd_doctor() {
@@ -564,16 +668,26 @@ cmd_list_windows() {
   require_window_tools
   mapfile -t ids < <("$XDO" search --onlyvisible --name '.' 2>/dev/null || true)
   if [ "${#ids[@]}" -eq 0 ]; then
-    echo "agent-screen: no visible X11 windows found"
+    echo "[]"
     return 0
   fi
-  local id geom name escaped
+  local id geom name active first="yes"
+  active="$("$XDO" getactivewindow 2>/dev/null || true)"
+  printf '['
   for id in "${ids[@]}"; do
     geom="$(window_geometry "$id" || true)"
     name="$(window_name "$id")"
-    escaped="$(printf '%s' "$name" | json_escape)"
-    printf '{"id":"%s","name":"%s","geometry":"%s"}\n' "$id" "$escaped" "$geom"
+    [ "$first" = "yes" ] || printf ','
+    first="no"
+    local x="" y="" w="" h=""
+    if [ -n "$geom" ]; then read -r x y w h <<< "$geom"; fi
+    printf '{"id":%s,"title":%s,"process":"","pid":0,"x":%s,"y":%s,"width":%s,"height":%s,"monitor":"","minimized":false,"foreground":%s}' \
+      "$(printf '%s' "$id" | json_string)" \
+      "$(printf '%s' "$name" | json_string)" \
+      "${x:-0}" "${y:-0}" "${w:-0}" "${h:-0}" \
+      "$([ "$id" = "$active" ] && printf true || printf false)"
   done
+  printf ']\n'
 }
 
 cmd_screenshot() {

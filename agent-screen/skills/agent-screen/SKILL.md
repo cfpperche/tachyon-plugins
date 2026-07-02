@@ -41,7 +41,12 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
 - Use `--screen` when the user has arranged multiple windows side by side.
 - If the display/backend is unavailable, report the error; do not fabricate visual evidence.
 - Keep screenshots in a worktree evidence path when possible, such as `.tachyon/evidence/<name>.png`.
-- `--active` may report `mode=screen-fallback` when the X server has no active window; this is still a real screenshot,
+- On Windows-host, `--active` resolves the foreground window. If `PrintWindow` returns a blank frame, it may report
+  `mode=active-window-screen-fallback`; this is a visible-rectangle capture of the active window, not covered-window
+  evidence.
+- `--active` may report `mode=screen-fallback` when no active window can be resolved; this is still a real screenshot,
   but it is full-display evidence rather than window-targeted evidence.
 - If `mode=screen-fallback` produces an empty/black screenshot, report that as backend proof only, not visual validation
   of the target app.
+- If stdout includes `warning=blank-frame-suspected`, treat the PNG as suspicious and prefer `--screen` or a visible
+  active-window fallback for validation.
