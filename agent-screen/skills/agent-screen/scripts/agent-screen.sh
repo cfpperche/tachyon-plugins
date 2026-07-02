@@ -116,6 +116,8 @@ public class AgentScreenNative {
   [DllImport("user32.dll")]
   public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")]
+  public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
+  [DllImport("user32.dll")]
   public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
   public struct RECT {
     public int Left;
@@ -201,6 +203,30 @@ function Capture-Rect([System.Drawing.Rectangle]$bounds, [string]$out) {
   $bmp.Dispose()
 }
 
+function Capture-Window([IntPtr]$hwnd, [System.Drawing.Rectangle]$bounds, [string]$out) {
+  if ($hwnd -eq [IntPtr]::Zero) {
+    [Console]::Error.WriteLine("agent-screen: failed: invalid window handle")
+    exit 1
+  }
+  if ($bounds.Width -le 0 -or $bounds.Height -le 0) {
+    [Console]::Error.WriteLine("agent-screen: failed: invalid window bounds")
+    exit 1
+  }
+  $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $hdc = $g.GetHdc()
+  $ok = [AgentScreenNative]::PrintWindow($hwnd, $hdc, 2)
+  $g.ReleaseHdc($hdc)
+  $g.Dispose()
+  if (-not $ok) {
+    $bmp.Dispose()
+    [Console]::Error.WriteLine("agent-screen: failed: PrintWindow could not capture the requested window")
+    exit 1
+  }
+  $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
+  $bmp.Dispose()
+}
+
 function Bounds-For-Hwnd([IntPtr]$hwnd) {
   if ($hwnd -eq [IntPtr]::Zero) { return $null }
   $rect = New-Object AgentScreenNative+RECT
@@ -213,6 +239,16 @@ function Bounds-For-Hwnd([IntPtr]$hwnd) {
 
 function Emit-Capture([string]$mode, [System.Drawing.Rectangle]$bounds, [string]$out) {
   Capture-Rect $bounds $out
+  Write-Output ("out=" + $out)
+  Write-Output ("mode=" + $mode)
+  Write-Output ("x=" + $bounds.X)
+  Write-Output ("y=" + $bounds.Y)
+  Write-Output ("width=" + $bounds.Width)
+  Write-Output ("height=" + $bounds.Height)
+}
+
+function Emit-WindowCapture([string]$mode, [IntPtr]$hwnd, [System.Drawing.Rectangle]$bounds, [string]$out) {
+  Capture-Window $hwnd $bounds $out
   Write-Output ("out=" + $out)
   Write-Output ("mode=" + $mode)
   Write-Output ("x=" + $bounds.X)
@@ -264,7 +300,7 @@ if ($Command -eq "window-id") {
   if ([AgentScreenNative]::IsIconic($hwnd)) { [Console]::Error.WriteLine("agent-screen: failed: window id '$WindowId' is minimized; restore it before capture"); exit 1 }
   $bounds = Bounds-For-Hwnd $hwnd
   if ($null -eq $bounds) { [Console]::Error.WriteLine("agent-screen: failed: no capturable window for id '$WindowId'"); exit 1 }
-  Emit-Capture "window-id" $bounds $Out
+  Emit-WindowCapture "window-id" $hwnd $bounds $Out
   exit 0
 }
 
@@ -290,7 +326,7 @@ if ($Command -eq "window-query") {
   $hwnd = [IntPtr]([int64]$matches[0].id)
   $bounds = Bounds-For-Hwnd $hwnd
   if ($null -eq $bounds) { [Console]::Error.WriteLine("agent-screen: failed: matched window but could not read bounds"); exit 1 }
-  Emit-Capture "window" $bounds $Out
+  Emit-WindowCapture "window" $hwnd $bounds $Out
   Write-Output ("window_id=" + $matches[0].id)
   Write-Output ("process=" + $matches[0].process)
   exit 0

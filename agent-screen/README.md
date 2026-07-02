@@ -34,8 +34,8 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
   it captures the full display and reports `mode=screen-fallback`.
 - `mode=screen-fallback` proves the backend captured the X11 display, not that the target app was visible. If the image
   is empty/black, bring the target window onto that display or use a future host-side backend.
-- Windows-host window captures use visible screen bounds. If a target window is covered, minimized, or off-screen, restore
-  and arrange it before capture, or use `--screen` after arranging multiple windows side by side.
+- Windows-host `--window-id` and `--window <query>` use `PrintWindow` so covered windows can still be captured. Minimized
+  windows still fail closed; restore them before capture.
 
 ## Backends
 
