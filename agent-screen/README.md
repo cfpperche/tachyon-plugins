@@ -43,6 +43,8 @@ The v1 backends are:
 
 - Windows host capture from WSL via PowerShell/.NET `CopyFromScreen` for `screenshot --active`
 - Windows host window inventory and targeting via `EnumWindows`, process metadata, and window bounds
+- The Windows host helper declares DPI awareness before capture so screenshots use physical pixels instead of scaled
+  logical coordinates.
 - Linux/WSLg X11 capture via `ffmpeg` with `x11grab`
 
 - `ffmpeg` with `x11grab`

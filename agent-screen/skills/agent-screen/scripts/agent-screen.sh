@@ -93,6 +93,21 @@ param(
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class AgentScreenDpi {
+  [DllImport("user32.dll")]
+  public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")]
+  public static extern bool SetProcessDpiAwarenessContext(IntPtr dpiContext);
+}
+"@
+try {
+  [void][AgentScreenDpi]::SetProcessDpiAwarenessContext([IntPtr](-4))
+} catch {
+  try { [void][AgentScreenDpi]::SetProcessDPIAware() } catch {}
+}
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
@@ -398,44 +413,58 @@ prepare_out() {
   rm -f -- "$TMP_OUT"
 }
 
+validate_png_file() {
+  local path="$1"
+  [ -s "$path" ] || return 1
+  if command -v file >/dev/null 2>&1 && ! file "$path" | grep -q 'PNG image data'; then
+    return 1
+  fi
+  return 0
+}
+
 capture_png() {
   local input="$1" size="$2"
   if ! "$FFMPEG" -hide_banner -loglevel error -nostdin -y -f x11grab -video_size "$size" -i "$input" -frames:v 1 "$TMP_OUT"; then
     rm -f -- "$TMP_OUT"
     die_failed "ffmpeg x11grab capture failed for input '$input' size '$size'"
   fi
-  [ -s "$TMP_OUT" ] || { rm -f -- "$TMP_OUT"; die_failed "capture produced an empty file"; }
-  if command -v file >/dev/null 2>&1 && ! file "$TMP_OUT" | grep -q 'PNG image data'; then
+  if ! validate_png_file "$TMP_OUT"; then
     rm -f -- "$TMP_OUT"
-    die_failed "capture did not produce a PNG"
+    die_failed "capture produced no valid PNG"
   fi
   mv -f -- "$TMP_OUT" "$OUT"
   chmod 0644 "$OUT" 2>/dev/null || true
 }
 
 capture_windows_host_png() {
-  local command="${1:-active}" selector="${2:-}" ps ps1 win_out unix_out
+  local command="${1:-active}" selector="${2:-}" ps ps1 ps1_win tmp_abs tmp_win
   is_wsl || return 1
   ps="$(resolve_powershell)" || return 1
   command -v wslpath >/dev/null 2>&1 || return 1
 
   ps1="$(mktemp --suffix=.ps1)"
   windows_host_ps1 "$ps1"
-  local output mode x y width height ps_args err rc
+  ps1_win="$(wslpath -w "$ps1")" || { rm -f -- "$ps1"; return 1; }
+  tmp_abs="$(realpath -m "$TMP_OUT")" || { rm -f -- "$ps1"; return 1; }
+  tmp_win="$(wslpath -w "$tmp_abs")" || { rm -f -- "$ps1"; return 1; }
+  local raw output mode x y width height ps_args err rc
   err="$(mktemp)"
-  ps_args=(-NoProfile -ExecutionPolicy Bypass -File "$ps1" -Command "$command")
+  raw="$(mktemp)"
+  ps_args=(-NoProfile -ExecutionPolicy Bypass -File "$ps1_win" -Command "$command")
   case "$command" in
     active|screen) ;;
     window-id) ps_args+=(-WindowId "$selector") ;;
     window-query) ps_args+=(-Query "$selector") ;;
     *) rm -f -- "$ps1" "$err"; return 1 ;;
   esac
-  ps_args+=(-Out "$TMP_OUT")
+  ps_args+=(-Out "$tmp_win")
   set +e
-  output="$("$ps" "${ps_args[@]}" 2>"$err" | tr -d '\r')"
+  "$ps" "${ps_args[@]}" >"$raw" 2>"$err"
   rc=$?
   set -e
   rm -f -- "$ps1"
+  output="$(tr -d '\r' < "$raw")"
+  rm -f -- "$raw"
   if [ "$rc" -ne 0 ]; then
     cat "$err" >&2
     rm -f -- "$err" "$TMP_OUT"
@@ -448,7 +477,11 @@ capture_windows_host_png() {
   y="$(printf '%s\n' "$output" | awk -F= '$1=="y" {print $2; exit}')"
   width="$(printf '%s\n' "$output" | awk -F= '$1=="width" {print $2; exit}')"
   height="$(printf '%s\n' "$output" | awk -F= '$1=="height" {print $2; exit}')"
-  [ -s "$TMP_OUT" ] || { rm -f -- "$TMP_OUT"; return 1; }
+  if ! validate_png_file "$TMP_OUT"; then
+    rm -f -- "$TMP_OUT"
+    echo "agent-screen: failed: Windows-host capture produced no valid PNG" >&2
+    return 1
+  fi
   mv -f -- "$TMP_OUT" "$OUT"
   chmod 0644 "$OUT" 2>/dev/null || true
   echo "agent-screen: status=ok backend=windows-host mode=$mode x=$x y=$y width=$width height=$height wrote=$OUT"
