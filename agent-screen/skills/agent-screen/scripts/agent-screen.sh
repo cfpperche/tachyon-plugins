@@ -152,6 +152,14 @@ function Get-Windows {
     $width = $rect.Right - $rect.Left
     $height = $rect.Bottom - $rect.Top
     if ($width -le 0 -or $height -le 0) { return $true }
+    $bounds = New-Object System.Drawing.Rectangle $rect.Left, $rect.Top, $width, $height
+    $monitor = ""
+    foreach ($screen in [System.Windows.Forms.Screen]::AllScreens) {
+      if ([System.Drawing.Rectangle]::Intersect($screen.Bounds, $bounds).Width -gt 0 -and [System.Drawing.Rectangle]::Intersect($screen.Bounds, $bounds).Height -gt 0) {
+        $monitor = $screen.DeviceName
+        break
+      }
+    }
     [uint32]$pidValue = 0
     [void][AgentScreenNative]::GetWindowThreadProcessId($hwnd, [ref]$pidValue)
     $processName = ""
@@ -166,6 +174,7 @@ function Get-Windows {
       y = $rect.Top
       width = $width
       height = $height
+      monitor = $monitor
       minimized = [AgentScreenNative]::IsIconic($hwnd)
       foreground = ($hwnd -eq $foreground)
     })
@@ -223,6 +232,7 @@ if ($Command -eq "list") {
       y = $_.y
       width = $_.width
       height = $_.height
+      monitor = $_.monitor
       minimized = $_.minimized
       foreground = $_.foreground
     }
