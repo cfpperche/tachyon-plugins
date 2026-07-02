@@ -17,6 +17,7 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --active --out <png>
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --screen --out <png>
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id <id> --out <png>
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id <id> --restore-minimized --out <png>
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window "<title-query>" --out <png>
 ```
 
@@ -38,6 +39,8 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
 - Treat `list-windows --json` and `--screen` as consented desktop inspection. The user must have asked for/accepted the
   screen-inspection risk before you run them.
 - Prefer `list-windows --json` followed by `--window-id` when a specific target can be isolated.
+- Use `--restore-minimized` only when the user explicitly wants the target window restored for capture. It changes the
+  desktop state and may bring that window to the foreground.
 - Use `--screen` when the user has arranged multiple windows side by side.
 - If the display/backend is unavailable, report the error; do not fabricate visual evidence.
 - Keep screenshots in a worktree evidence path when possible, such as `.tachyon/evidence/<name>.png`.

@@ -13,8 +13,8 @@ usage:
   agent-screen list-windows [--json] [--verbose]
   agent-screen screenshot --active --out <png>
   agent-screen screenshot --screen --out <png>
-  agent-screen screenshot --window-id <id> --out <png>
-  agent-screen screenshot --window <query> --out <png>
+  agent-screen screenshot --window-id <id> [--restore-minimized] --out <png>
+  agent-screen screenshot --window <query> [--restore-minimized] --out <png>
 EOF
 }
 
@@ -104,6 +104,7 @@ param(
   [string]$Out = "",
   [string]$WindowId = "",
   [string]$Query = "",
+  [switch]$RestoreMinimized,
   [switch]$VerboseTitles
 )
 
@@ -148,6 +149,10 @@ public class AgentScreenNative {
   public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")]
   public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+  [DllImport("user32.dll")]
+  public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")]
+  public static extern bool SetForegroundWindow(IntPtr hWnd);
   [DllImport("user32.dll")]
   public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
   [DllImport("user32.dll")]
@@ -199,6 +204,22 @@ function Get-WindowTitle([IntPtr]$hwnd) {
 function Short-Title([string]$title) {
   if ($VerboseTitles -or $title.Length -le 80) { return $title }
   return $title.Substring(0, 77) + "..."
+}
+
+function Restore-Window([IntPtr]$hwnd, [string]$label) {
+  if (-not [AgentScreenNative]::IsIconic($hwnd)) { return $false }
+  if (-not $RestoreMinimized) {
+    [Console]::Error.WriteLine("agent-screen: failed: $label is minimized; pass --restore-minimized to restore it before capture")
+    exit 1
+  }
+  [void][AgentScreenNative]::ShowWindow($hwnd, 9)
+  [void][AgentScreenNative]::SetForegroundWindow($hwnd)
+  Start-Sleep -Milliseconds 350
+  if ([AgentScreenNative]::IsIconic($hwnd)) {
+    [Console]::Error.WriteLine("agent-screen: failed: $label is still minimized after restore request")
+    exit 1
+  }
+  return $true
 }
 
 function Get-Windows {
@@ -400,10 +421,11 @@ if ($Command -eq "window-id") {
   if ([string]::IsNullOrWhiteSpace($Out)) { [Console]::Error.WriteLine("agent-screen: failed: missing output path"); exit 1 }
   if ([string]::IsNullOrWhiteSpace($WindowId)) { [Console]::Error.WriteLine("agent-screen: failed: missing --window-id"); exit 1 }
   try { $hwnd = [IntPtr]([int64]$WindowId) } catch { [Console]::Error.WriteLine("agent-screen: failed: invalid --window-id '$WindowId'"); exit 1 }
-  if ([AgentScreenNative]::IsIconic($hwnd)) { [Console]::Error.WriteLine("agent-screen: failed: window id '$WindowId' is minimized; restore it before capture"); exit 1 }
+  $restored = Restore-Window $hwnd "window id '$WindowId'"
   $bounds = Bounds-For-Hwnd $hwnd
   if ($null -eq $bounds) { [Console]::Error.WriteLine("agent-screen: failed: no capturable window for id '$WindowId'"); exit 1 }
   Emit-WindowCapture "window-id" $hwnd $bounds $Out
+  if ($restored) { Write-Output "restored=true" }
   exit 0
 }
 
@@ -427,13 +449,14 @@ if ($Command -eq "window-query") {
     [Console]::Error.WriteLine((Write-Json @($candidates)))
     exit 1
   }
-  if ($matches[0].minimized) { [Console]::Error.WriteLine("agent-screen: failed: matched window is minimized; restore it before capture"); exit 1 }
   $hwnd = [IntPtr]([int64]$matches[0].id)
+  $restored = Restore-Window $hwnd "matched window"
   $bounds = Bounds-For-Hwnd $hwnd
   if ($null -eq $bounds) { [Console]::Error.WriteLine("agent-screen: failed: matched window but could not read bounds"); exit 1 }
   Emit-WindowCapture "window" $hwnd $bounds $Out
   Write-Output ("window_id=" + $matches[0].id)
   Write-Output ("process=" + $matches[0].process)
+  if ($restored) { Write-Output "restored=true" }
   exit 0
 }
 
@@ -527,7 +550,7 @@ capture_png() {
 }
 
 capture_windows_host_png() {
-  local command="${1:-active}" selector="${2:-}" ps ps1 ps1_win tmp_abs tmp_win
+  local command="${1:-active}" selector="${2:-}" restore_minimized="${3:-no}" ps ps1 ps1_win tmp_abs tmp_win
   is_wsl || return 1
   ps="$(resolve_powershell)" || return 1
   command -v wslpath >/dev/null 2>&1 || return 1
@@ -547,6 +570,7 @@ capture_windows_host_png() {
     window-query) ps_args+=(-Query "$selector") ;;
     *) rm -f -- "$ps1" "$err"; return 1 ;;
   esac
+  [ "$restore_minimized" != "yes" ] || ps_args+=(-RestoreMinimized)
   ps_args+=(-Out "$tmp_win")
   set +e
   run_with_timeout 20s "$ps" "${ps_args[@]}" >"$raw" 2>"$err"
@@ -580,7 +604,7 @@ capture_windows_host_png() {
   chmod 0644 "$OUT" 2>/dev/null || true
   echo "agent-screen: status=ok backend=windows-host mode=$mode x=$x y=$y width=$width height=$height wrote=$OUT"
   [ -z "$warning" ] || echo "  warning=$warning"
-  printf '%s\n' "$output" | awk -F= '$1=="window_id" || $1=="process" {print "  " $0}'
+  printf '%s\n' "$output" | awk -F= '$1=="window_id" || $1=="process" || $1=="restored" {print "  " $0}'
   return 0
 }
 
@@ -691,7 +715,7 @@ cmd_list_windows() {
 }
 
 cmd_screenshot() {
-  local mode="" query="" window_id="" out="" wid="" x="" y="" w="" h="" geom_record
+  local mode="" query="" window_id="" out="" restore_minimized="no" wid="" x="" y="" w="" h="" geom_record
   while [ $# -gt 0 ]; do
     case "$1" in
       --active) mode="active"; shift ;;
@@ -700,6 +724,7 @@ cmd_screenshot() {
       --window=*) mode="window"; query="${1#*=}"; shift ;;
       --window-id) [ $# -ge 2 ] || die_usage "--window-id requires a value"; mode="window-id"; window_id="$2"; shift 2 ;;
       --window-id=*) mode="window-id"; window_id="${1#*=}"; shift ;;
+      --restore-minimized) restore_minimized="yes"; shift ;;
       --out) [ $# -ge 2 ] || die_usage "--out requires a value"; out="$2"; shift 2 ;;
       --out=*) out="${1#*=}"; shift ;;
       -h|--help) usage; exit 0 ;;
@@ -710,6 +735,7 @@ cmd_screenshot() {
   [ -n "$mode" ] || die_usage "screenshot requires --active, --screen, --window-id <id>, or --window <query>"
   [ "$mode" != "window" ] || [ -n "$query" ] || die_usage "--window requires a non-empty query"
   [ "$mode" != "window-id" ] || [ -n "$window_id" ] || die_usage "--window-id requires a non-empty id"
+  [ "$restore_minimized" = "no" ] || [ "$mode" = "window" ] || [ "$mode" = "window-id" ] || die_usage "--restore-minimized is only valid with --window or --window-id"
 
   prepare_out "$out"
 
@@ -719,18 +745,19 @@ cmd_screenshot() {
       return 0
       ;;
     window-id)
-      capture_windows_host_png window-id "$window_id" || exit 1
+      capture_windows_host_png window-id "$window_id" "$restore_minimized" || exit 1
       return 0
       ;;
     window)
       if is_wsl && resolve_powershell >/dev/null 2>&1; then
-        capture_windows_host_png window-query "$query" || exit 1
+        capture_windows_host_png window-query "$query" "$restore_minimized" || exit 1
         return 0
       fi
       ;;
   esac
 
   if [ "$mode" = "window" ]; then
+    [ "$restore_minimized" = "no" ] || die_failed "--restore-minimized requires the Windows-host backend"
     require_base_backend
     read -r wid x y w h < <(resolve_window_query "$query")
     capture_png "${DISPLAY}+${x},${y}" "${w}x${h}"

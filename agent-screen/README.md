@@ -17,6 +17,7 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --active --out .tachyon/evidence/sidebar.png
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --screen --out .tachyon/evidence/desktop.png
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id 123456 --out .tachyon/evidence/window.png
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id 123456 --restore-minimized --out .tachyon/evidence/window.png
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window "Visual Studio Code" --out .tachyon/evidence/vscode.png
 ```
 
@@ -31,6 +32,8 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
 - `--window <query>` matches title or process name and fails closed on zero or ambiguous matches. Ambiguous errors report
   ids/processes/bounds by default, not window titles.
 - `--window-id <id>` captures a specific id selected from `list-windows`.
+- `--restore-minimized` is opt-in and only valid with `--window-id` or `--window`. It restores a minimized target before
+  capture, may bring it to the foreground, and reports `restored=true`.
 - `--active` resolves the foreground window and uses `PrintWindow` first. If that returns a blank frame, it falls back to
   visible rectangle capture and reports `mode=active-window-screen-fallback`.
 - X11 fallback captures the active/selected X11 window when available; on WSLg/X11 sessions that expose no active window,
@@ -38,7 +41,7 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
 - `mode=screen-fallback` proves the backend captured the X11 display, not that the target app was visible. If the image
   is empty/black, bring the target window onto that display or use a future host-side backend.
 - Windows-host `--window-id` and `--window <query>` use `PrintWindow` so covered windows can still be captured. Minimized
-  windows still fail closed; restore them before capture.
+  windows fail closed unless `--restore-minimized` is passed explicitly.
 - `warning=blank-frame-suspected` means the PNG is valid but visually suspicious, usually because a GPU-backed app
   returned an empty frame to `PrintWindow`.
 
