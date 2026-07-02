@@ -10,8 +10,10 @@ usage() {
   cat >&2 <<'EOF'
 usage:
   agent-screen doctor
-  agent-screen list-windows
+  agent-screen list-windows [--json] [--verbose]
   agent-screen screenshot --active --out <png>
+  agent-screen screenshot --screen --out <png>
+  agent-screen screenshot --window-id <id> --out <png>
   agent-screen screenshot --window <query> --out <png>
 EOF
 }
@@ -76,6 +78,217 @@ is_wsl() {
 
 json_escape() {
   sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+windows_host_ps1() {
+  local ps1="$1"
+  cat > "$ps1" <<'PS1'
+param(
+  [Parameter(Mandatory=$true)][string]$Command,
+  [string]$Out = "",
+  [string]$WindowId = "",
+  [string]$Query = "",
+  [switch]$VerboseTitles
+)
+
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+Add-Type @"
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public class AgentScreenNative {
+  public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+  [DllImport("user32.dll")]
+  public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+  [DllImport("user32.dll")]
+  public static extern bool IsWindowVisible(IntPtr hWnd);
+  [DllImport("user32.dll")]
+  public static extern bool IsIconic(IntPtr hWnd);
+  [DllImport("user32.dll")]
+  public static extern int GetWindowTextLength(IntPtr hWnd);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)]
+  public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+  [DllImport("user32.dll")]
+  public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+  [DllImport("user32.dll")]
+  public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")]
+  public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+  public struct RECT {
+    public int Left;
+    public int Top;
+    public int Right;
+    public int Bottom;
+  }
+}
+"@
+
+function Get-WindowTitle([IntPtr]$hwnd) {
+  $len = [AgentScreenNative]::GetWindowTextLength($hwnd)
+  if ($len -le 0) { return "" }
+  $sb = New-Object System.Text.StringBuilder ($len + 1)
+  [void][AgentScreenNative]::GetWindowText($hwnd, $sb, $sb.Capacity)
+  return $sb.ToString()
+}
+
+function Short-Title([string]$title) {
+  if ($VerboseTitles -or $title.Length -le 80) { return $title }
+  return $title.Substring(0, 77) + "..."
+}
+
+function Get-Windows {
+  $foreground = [AgentScreenNative]::GetForegroundWindow()
+  $items = New-Object System.Collections.Generic.List[object]
+  $callback = [AgentScreenNative+EnumWindowsProc]{
+    param([IntPtr]$hwnd, [IntPtr]$lparam)
+    if (-not [AgentScreenNative]::IsWindowVisible($hwnd)) { return $true }
+    $title = Get-WindowTitle $hwnd
+    if ([string]::IsNullOrWhiteSpace($title)) { return $true }
+    $rect = New-Object AgentScreenNative+RECT
+    if (-not [AgentScreenNative]::GetWindowRect($hwnd, [ref]$rect)) { return $true }
+    $width = $rect.Right - $rect.Left
+    $height = $rect.Bottom - $rect.Top
+    if ($width -le 0 -or $height -le 0) { return $true }
+    [uint32]$pidValue = 0
+    [void][AgentScreenNative]::GetWindowThreadProcessId($hwnd, [ref]$pidValue)
+    $processName = ""
+    try { $processName = (Get-Process -Id ([int]$pidValue) -ErrorAction Stop).ProcessName } catch {}
+    $items.Add([pscustomobject]@{
+      id = $hwnd.ToInt64().ToString()
+      title = (Short-Title $title)
+      fullTitle = $title
+      process = $processName
+      pid = [int64]$pidValue
+      x = $rect.Left
+      y = $rect.Top
+      width = $width
+      height = $height
+      minimized = [AgentScreenNative]::IsIconic($hwnd)
+      foreground = ($hwnd -eq $foreground)
+    })
+    return $true
+  }
+  [void][AgentScreenNative]::EnumWindows($callback, [IntPtr]::Zero)
+  return @($items | Sort-Object -Property foreground -Descending)
+}
+
+function Write-Json($obj) {
+  $obj | ConvertTo-Json -Compress -Depth 4
+}
+
+function Capture-Rect([System.Drawing.Rectangle]$bounds, [string]$out) {
+  if ($bounds.Width -le 0 -or $bounds.Height -le 0) {
+    [Console]::Error.WriteLine("agent-screen: failed: invalid capture bounds")
+    exit 1
+  }
+  $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $g.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+  $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
+  $g.Dispose()
+  $bmp.Dispose()
+}
+
+function Bounds-For-Hwnd([IntPtr]$hwnd) {
+  if ($hwnd -eq [IntPtr]::Zero) { return $null }
+  $rect = New-Object AgentScreenNative+RECT
+  if (-not [AgentScreenNative]::GetWindowRect($hwnd, [ref]$rect)) { return $null }
+  $width = $rect.Right - $rect.Left
+  $height = $rect.Bottom - $rect.Top
+  if ($width -le 0 -or $height -le 0) { return $null }
+  return New-Object System.Drawing.Rectangle $rect.Left, $rect.Top, $width, $height
+}
+
+function Emit-Capture([string]$mode, [System.Drawing.Rectangle]$bounds, [string]$out) {
+  Capture-Rect $bounds $out
+  Write-Output ("out=" + $out)
+  Write-Output ("mode=" + $mode)
+  Write-Output ("x=" + $bounds.X)
+  Write-Output ("y=" + $bounds.Y)
+  Write-Output ("width=" + $bounds.Width)
+  Write-Output ("height=" + $bounds.Height)
+}
+
+if ($Command -eq "list") {
+  $windows = Get-Windows | ForEach-Object {
+    [pscustomobject]@{
+      id = $_.id
+      title = $_.title
+      process = $_.process
+      pid = $_.pid
+      x = $_.x
+      y = $_.y
+      width = $_.width
+      height = $_.height
+      minimized = $_.minimized
+      foreground = $_.foreground
+    }
+  }
+  Write-Json @($windows)
+  exit 0
+}
+
+if ($Command -eq "screen") {
+  if ([string]::IsNullOrWhiteSpace($Out)) { [Console]::Error.WriteLine("agent-screen: failed: missing output path"); exit 1 }
+  $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+  Emit-Capture "screen" $bounds $Out
+  exit 0
+}
+
+if ($Command -eq "active") {
+  if ([string]::IsNullOrWhiteSpace($Out)) { [Console]::Error.WriteLine("agent-screen: failed: missing output path"); exit 1 }
+  $hwnd = [AgentScreenNative]::GetForegroundWindow()
+  $bounds = Bounds-For-Hwnd $hwnd
+  if ($null -eq $bounds) { $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen; Emit-Capture "screen" $bounds $Out; exit 0 }
+  Emit-Capture "foreground-window" $bounds $Out
+  exit 0
+}
+
+if ($Command -eq "window-id") {
+  if ([string]::IsNullOrWhiteSpace($Out)) { [Console]::Error.WriteLine("agent-screen: failed: missing output path"); exit 1 }
+  if ([string]::IsNullOrWhiteSpace($WindowId)) { [Console]::Error.WriteLine("agent-screen: failed: missing --window-id"); exit 1 }
+  try { $hwnd = [IntPtr]([int64]$WindowId) } catch { [Console]::Error.WriteLine("agent-screen: failed: invalid --window-id '$WindowId'"); exit 1 }
+  if ([AgentScreenNative]::IsIconic($hwnd)) { [Console]::Error.WriteLine("agent-screen: failed: window id '$WindowId' is minimized; restore it before capture"); exit 1 }
+  $bounds = Bounds-For-Hwnd $hwnd
+  if ($null -eq $bounds) { [Console]::Error.WriteLine("agent-screen: failed: no capturable window for id '$WindowId'"); exit 1 }
+  Emit-Capture "window-id" $bounds $Out
+  exit 0
+}
+
+if ($Command -eq "window-query") {
+  if ([string]::IsNullOrWhiteSpace($Out)) { [Console]::Error.WriteLine("agent-screen: failed: missing output path"); exit 1 }
+  if ([string]::IsNullOrWhiteSpace($Query)) { [Console]::Error.WriteLine("agent-screen: failed: missing --window query"); exit 1 }
+  $matches = @(Get-Windows | Where-Object {
+    ($_.fullTitle -like ("*" + $Query + "*")) -or ($_.process -like ("*" + $Query + "*"))
+  })
+  if ($matches.Count -eq 0) {
+    [Console]::Error.WriteLine("agent-screen: failed: no visible Windows-host window matched query '$Query'")
+    exit 1
+  }
+  if ($matches.Count -gt 1) {
+    [Console]::Error.WriteLine("agent-screen: failed: query '$Query' matched multiple Windows-host windows; use --window-id")
+    $candidates = $matches | Select-Object -First 8 | ForEach-Object {
+      [pscustomobject]@{ id=$_.id; title=$_.title; process=$_.process; x=$_.x; y=$_.y; width=$_.width; height=$_.height }
+    }
+    [Console]::Error.WriteLine((Write-Json @($candidates)))
+    exit 1
+  }
+  if ($matches[0].minimized) { [Console]::Error.WriteLine("agent-screen: failed: matched window is minimized; restore it before capture"); exit 1 }
+  $hwnd = [IntPtr]([int64]$matches[0].id)
+  $bounds = Bounds-For-Hwnd $hwnd
+  if ($null -eq $bounds) { [Console]::Error.WriteLine("agent-screen: failed: matched window but could not read bounds"); exit 1 }
+  Emit-Capture "window" $bounds $Out
+  Write-Output ("window_id=" + $matches[0].id)
+  Write-Output ("process=" + $matches[0].process)
+  exit 0
+}
+
+[Console]::Error.WriteLine("agent-screen: failed: unknown Windows-host command '$Command'")
+exit 1
+PS1
 }
 
 window_name() {
@@ -155,78 +368,71 @@ capture_png() {
 }
 
 capture_windows_host_png() {
-  local ps ps1 win_out unix_out
+  local command="${1:-active}" selector="${2:-}" ps ps1 win_out unix_out
   is_wsl || return 1
   ps="$(resolve_powershell)" || return 1
   command -v wslpath >/dev/null 2>&1 || return 1
 
   ps1="$(mktemp --suffix=.ps1)"
-  cat > "$ps1" <<'PS1'
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class AgentScreenNative {
-  [DllImport("user32.dll")]
-  public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")]
-  public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
-  public struct RECT {
-    public int Left;
-    public int Top;
-    public int Right;
-    public int Bottom;
-  }
-}
-"@
-$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$mode = "screen"
-$hwnd = [AgentScreenNative]::GetForegroundWindow()
-if ($hwnd -ne [IntPtr]::Zero) {
-  $rect = New-Object AgentScreenNative+RECT
-  if ([AgentScreenNative]::GetWindowRect($hwnd, [ref]$rect)) {
-    $width = $rect.Right - $rect.Left
-    $height = $rect.Bottom - $rect.Top
-    if ($width -gt 0 -and $height -gt 0) {
-      $bounds = New-Object System.Drawing.Rectangle $rect.Left, $rect.Top, $width, $height
-      $mode = "foreground-window"
-    }
-  }
-}
-$bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-$out = Join-Path $env:TEMP ("agent-screen-" + [guid]::NewGuid().ToString() + ".png")
-$bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
-$g.Dispose()
-$bmp.Dispose()
-Write-Output ("out=" + $out)
-Write-Output ("mode=" + $mode)
-Write-Output ("x=" + $bounds.X)
-Write-Output ("y=" + $bounds.Y)
-Write-Output ("width=" + $bounds.Width)
-Write-Output ("height=" + $bounds.Height)
-PS1
-  local output mode x y width height
-  output="$("$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1" 2>/dev/null | tr -d '\r')" || { rm -f -- "$ps1"; return 1; }
+  windows_host_ps1 "$ps1"
+  local output mode x y width height ps_args err rc
+  err="$(mktemp)"
+  ps_args=(-NoProfile -ExecutionPolicy Bypass -File "$ps1" -Command "$command")
+  case "$command" in
+    active|screen) ;;
+    window-id) ps_args+=(-WindowId "$selector") ;;
+    window-query) ps_args+=(-Query "$selector") ;;
+    *) rm -f -- "$ps1" "$err"; return 1 ;;
+  esac
+  ps_args+=(-Out "$TMP_OUT")
+  set +e
+  output="$("$ps" "${ps_args[@]}" 2>"$err" | tr -d '\r')"
+  rc=$?
+  set -e
   rm -f -- "$ps1"
+  if [ "$rc" -ne 0 ]; then
+    cat "$err" >&2
+    rm -f -- "$err" "$TMP_OUT"
+    return "$rc"
+  fi
+  rm -f -- "$err"
   win_out="$(printf '%s\n' "$output" | awk -F= '$1=="out" {print $2; exit}')"
   mode="$(printf '%s\n' "$output" | awk -F= '$1=="mode" {print $2; exit}')"
   x="$(printf '%s\n' "$output" | awk -F= '$1=="x" {print $2; exit}')"
   y="$(printf '%s\n' "$output" | awk -F= '$1=="y" {print $2; exit}')"
   width="$(printf '%s\n' "$output" | awk -F= '$1=="width" {print $2; exit}')"
   height="$(printf '%s\n' "$output" | awk -F= '$1=="height" {print $2; exit}')"
-  [ -n "$win_out" ] || return 1
-  unix_out="$(wslpath -u "$win_out" 2>/dev/null || true)"
-  [ -n "$unix_out" ] && [ -s "$unix_out" ] || return 1
-  cp -- "$unix_out" "$TMP_OUT" || return 1
-  rm -f -- "$unix_out" 2>/dev/null || true
   [ -s "$TMP_OUT" ] || { rm -f -- "$TMP_OUT"; return 1; }
   mv -f -- "$TMP_OUT" "$OUT"
   chmod 0644 "$OUT" 2>/dev/null || true
   echo "agent-screen: status=ok backend=windows-host mode=$mode x=$x y=$y width=$width height=$height wrote=$OUT"
+  printf '%s\n' "$output" | awk -F= '$1=="window_id" || $1=="process" {print "  " $0}'
   return 0
+}
+
+cmd_windows_list() {
+  local verbose="$1" ps ps1 err rc
+  is_wsl || return 1
+  ps="$(resolve_powershell)" || return 1
+  ps1="$(mktemp --suffix=.ps1)"
+  err="$(mktemp)"
+  windows_host_ps1 "$ps1"
+  set +e
+  if [ "$verbose" = "yes" ]; then
+    "$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1" -Command list -VerboseTitles 2>"$err" | tr -d '\r'
+    rc=${PIPESTATUS[0]}
+  else
+    "$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1" -Command list 2>"$err" | tr -d '\r'
+    rc=${PIPESTATUS[0]}
+  fi
+  set -e
+  rm -f -- "$ps1"
+  if [ "$rc" -ne 0 ]; then
+    cat "$err" >&2
+    rm -f -- "$err"
+    return "$rc"
+  fi
+  rm -f -- "$err"
 }
 
 cmd_doctor() {
@@ -262,6 +468,19 @@ cmd_doctor() {
 }
 
 cmd_list_windows() {
+  local json="no" verbose="no"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --json) json="yes"; shift ;;
+      --verbose) verbose="yes"; shift ;;
+      -h|--help) usage; exit 0 ;;
+      -*) die_usage "unknown list-windows flag '$1'" ;;
+      *) die_usage "unexpected list-windows argument '$1'" ;;
+    esac
+  done
+  if cmd_windows_list "$verbose"; then
+    return 0
+  fi
   require_base_backend
   require_window_tools
   mapfile -t ids < <("$XDO" search --onlyvisible --name '.' 2>/dev/null || true)
@@ -279,12 +498,15 @@ cmd_list_windows() {
 }
 
 cmd_screenshot() {
-  local mode="" query="" out="" wid="" x="" y="" w="" h="" geom_record
+  local mode="" query="" window_id="" out="" wid="" x="" y="" w="" h="" geom_record
   while [ $# -gt 0 ]; do
     case "$1" in
       --active) mode="active"; shift ;;
+      --screen) mode="screen"; shift ;;
       --window) [ $# -ge 2 ] || die_usage "--window requires a value"; mode="window"; query="$2"; shift 2 ;;
       --window=*) mode="window"; query="${1#*=}"; shift ;;
+      --window-id) [ $# -ge 2 ] || die_usage "--window-id requires a value"; mode="window-id"; window_id="$2"; shift 2 ;;
+      --window-id=*) mode="window-id"; window_id="${1#*=}"; shift ;;
       --out) [ $# -ge 2 ] || die_usage "--out requires a value"; out="$2"; shift 2 ;;
       --out=*) out="${1#*=}"; shift ;;
       -h|--help) usage; exit 0 ;;
@@ -292,10 +514,28 @@ cmd_screenshot() {
       *) die_usage "unexpected argument '$1'" ;;
     esac
   done
-  [ -n "$mode" ] || die_usage "screenshot requires --active or --window <query>"
+  [ -n "$mode" ] || die_usage "screenshot requires --active, --screen, --window-id <id>, or --window <query>"
   [ "$mode" != "window" ] || [ -n "$query" ] || die_usage "--window requires a non-empty query"
+  [ "$mode" != "window-id" ] || [ -n "$window_id" ] || die_usage "--window-id requires a non-empty id"
 
   prepare_out "$out"
+
+  case "$mode" in
+    screen)
+      capture_windows_host_png screen || exit 1
+      return 0
+      ;;
+    window-id)
+      capture_windows_host_png window-id "$window_id" || exit 1
+      return 0
+      ;;
+    window)
+      if is_wsl && resolve_powershell >/dev/null 2>&1; then
+        capture_windows_host_png window-query "$query" || exit 1
+        return 0
+      fi
+      ;;
+  esac
 
   if [ "$mode" = "window" ]; then
     require_base_backend
@@ -306,7 +546,7 @@ cmd_screenshot() {
     return 0
   fi
 
-  if capture_windows_host_png; then
+  if capture_windows_host_png active; then
     return 0
   fi
 
@@ -328,7 +568,7 @@ cmd_screenshot() {
 cmd="$1"; shift
 case "$cmd" in
   doctor) [ $# -eq 0 ] || die_usage "doctor takes no arguments"; cmd_doctor ;;
-  list-windows) [ $# -eq 0 ] || die_usage "list-windows takes no arguments"; cmd_list_windows ;;
+  list-windows) cmd_list_windows "$@" ;;
   screenshot) cmd_screenshot "$@" ;;
   -h|--help|help) usage ;;
   *) die_usage "unknown command '$cmd'" ;;

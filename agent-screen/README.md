@@ -13,8 +13,10 @@ From a Tachyon workspace with the plugin installed:
 
 ```bash
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" doctor
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" list-windows
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" list-windows --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --active --out .tachyon/evidence/sidebar.png
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --screen --out .tachyon/evidence/desktop.png
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id 123456 --out .tachyon/evidence/window.png
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window "Visual Studio Code" --out .tachyon/evidence/vscode.png
 ```
 
@@ -23,17 +25,24 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
 - Capture is explicit. The plugin never records or screenshots in the background.
 - `doctor` explains the selected backend or the missing display/tool.
 - `screenshot` writes a real PNG or fails before leaving a misleading artifact.
-- `--active` captures the active X11 window when available; on WSLg/X11 sessions that expose no active window, it
-  captures the full display and reports `mode=screen-fallback`.
-- `--window <query>` requires a unique visible X11 window match; ambiguous or missing matches fail closed.
+- On WSL, `--active`, `--screen`, `--window-id`, and `--window <query>` prefer the Windows host backend.
+- `list-windows --json` reports visible Windows-host windows with bounded titles by default. Use `--verbose` only when
+  the user explicitly accepts that full window titles may contain private data.
+- `--window <query>` matches title or process name and fails closed on zero or ambiguous matches.
+- `--window-id <id>` captures a specific id selected from `list-windows`.
+- X11 fallback captures the active/selected X11 window when available; on WSLg/X11 sessions that expose no active window,
+  it captures the full display and reports `mode=screen-fallback`.
 - `mode=screen-fallback` proves the backend captured the X11 display, not that the target app was visible. If the image
   is empty/black, bring the target window onto that display or use a future host-side backend.
+- Windows-host window captures use visible screen bounds. If a target window is covered, minimized, or off-screen, restore
+  and arrange it before capture, or use `--screen` after arranging multiple windows side by side.
 
 ## Backends
 
 The v1 backends are:
 
 - Windows host capture from WSL via PowerShell/.NET `CopyFromScreen` for `screenshot --active`
+- Windows host window inventory and targeting via `EnumWindows`, process metadata, and window bounds
 - Linux/WSLg X11 capture via `ffmpeg` with `x11grab`
 
 - `ffmpeg` with `x11grab`
@@ -41,5 +50,4 @@ The v1 backends are:
 - `xdpyinfo` for display dimensions
 - `xdotool` + `xwininfo` for optional window targeting
 
-`--window <query>` is currently X11-only. Other platforms should fail closed until a platform-specific backend is
-implemented.
+Other platforms should fail closed until a platform-specific backend is implemented.

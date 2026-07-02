@@ -13,8 +13,10 @@ windows.
 
 ```bash
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" doctor
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" list-windows
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" list-windows --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --active --out <png>
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --screen --out <png>
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id <id> --out <png>
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window "<title-query>" --out <png>
 ```
 
@@ -33,6 +35,10 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
 ## Safety and failure behavior
 
 - Capture is always explicit. Do not run it speculatively on unrelated tasks.
+- Treat `list-windows --json` and `--screen` as consented desktop inspection. The user must have asked for/accepted the
+  screen-inspection risk before you run them.
+- Prefer `list-windows --json` followed by `--window-id` when a specific target can be isolated.
+- Use `--screen` when the user has arranged multiple windows side by side.
 - If the display/backend is unavailable, report the error; do not fabricate visual evidence.
 - Keep screenshots in a worktree evidence path when possible, such as `.tachyon/evidence/<name>.png`.
 - `--active` may report `mode=screen-fallback` when the X server has no active window; this is still a real screenshot,
