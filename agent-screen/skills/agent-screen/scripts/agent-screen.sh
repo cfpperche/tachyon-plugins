@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # agent-screen (spec 283) — explicit OS-level screenshots for non-web Visual QA.
-# V1 is Linux/WSLg X11 only: ffmpeg x11grab for pixels, xdotool/xwininfo for optional window targeting.
+# V1 prefers a Windows host screenshot when running under WSL, then falls back to Linux/WSLg X11:
+# PowerShell/.NET for the foreground Windows window; ffmpeg x11grab for X11 pixels; xdotool/xwininfo for X11 window targeting.
 set -euo pipefail
 
 PLUGIN="agent-screen"
@@ -56,6 +57,21 @@ require_base_backend() {
 require_window_tools() {
   XDO="$(resolve_external xdotool)" || die_unavailable "xdotool is not installed or not trusted by Tachyon"
   command -v xwininfo >/dev/null 2>&1 || die_unavailable "xwininfo is missing; install x11-utils"
+}
+
+resolve_powershell() {
+  local ps
+  ps="$(command -v powershell.exe 2>/dev/null || true)"
+  if [ -n "$ps" ] && [ -x "$ps" ]; then printf '%s\n' "$ps"; return 0; fi
+  ps="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+  if [ -x "$ps" ]; then printf '%s\n' "$ps"; return 0; fi
+  ps="$(command -v pwsh.exe 2>/dev/null || true)"
+  if [ -n "$ps" ] && [ -x "$ps" ]; then printf '%s\n' "$ps"; return 0; fi
+  return 1
+}
+
+is_wsl() {
+  grep -qi microsoft /proc/version 2>/dev/null
 }
 
 json_escape() {
@@ -135,29 +151,114 @@ capture_png() {
     die_failed "capture did not produce a PNG"
   fi
   mv -f -- "$TMP_OUT" "$OUT"
+  chmod 0644 "$OUT" 2>/dev/null || true
+}
+
+capture_windows_host_png() {
+  local ps ps1 win_out unix_out
+  is_wsl || return 1
+  ps="$(resolve_powershell)" || return 1
+  command -v wslpath >/dev/null 2>&1 || return 1
+
+  ps1="$(mktemp --suffix=.ps1)"
+  cat > "$ps1" <<'PS1'
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class AgentScreenNative {
+  [DllImport("user32.dll")]
+  public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")]
+  public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+  public struct RECT {
+    public int Left;
+    public int Top;
+    public int Right;
+    public int Bottom;
+  }
+}
+"@
+$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$mode = "screen"
+$hwnd = [AgentScreenNative]::GetForegroundWindow()
+if ($hwnd -ne [IntPtr]::Zero) {
+  $rect = New-Object AgentScreenNative+RECT
+  if ([AgentScreenNative]::GetWindowRect($hwnd, [ref]$rect)) {
+    $width = $rect.Right - $rect.Left
+    $height = $rect.Bottom - $rect.Top
+    if ($width -gt 0 -and $height -gt 0) {
+      $bounds = New-Object System.Drawing.Rectangle $rect.Left, $rect.Top, $width, $height
+      $mode = "foreground-window"
+    }
+  }
+}
+$bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+$g = [System.Drawing.Graphics]::FromImage($bmp)
+$g.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+$out = Join-Path $env:TEMP ("agent-screen-" + [guid]::NewGuid().ToString() + ".png")
+$bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
+$g.Dispose()
+$bmp.Dispose()
+Write-Output ("out=" + $out)
+Write-Output ("mode=" + $mode)
+Write-Output ("x=" + $bounds.X)
+Write-Output ("y=" + $bounds.Y)
+Write-Output ("width=" + $bounds.Width)
+Write-Output ("height=" + $bounds.Height)
+PS1
+  local output mode x y width height
+  output="$("$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1" 2>/dev/null | tr -d '\r')" || { rm -f -- "$ps1"; return 1; }
+  rm -f -- "$ps1"
+  win_out="$(printf '%s\n' "$output" | awk -F= '$1=="out" {print $2; exit}')"
+  mode="$(printf '%s\n' "$output" | awk -F= '$1=="mode" {print $2; exit}')"
+  x="$(printf '%s\n' "$output" | awk -F= '$1=="x" {print $2; exit}')"
+  y="$(printf '%s\n' "$output" | awk -F= '$1=="y" {print $2; exit}')"
+  width="$(printf '%s\n' "$output" | awk -F= '$1=="width" {print $2; exit}')"
+  height="$(printf '%s\n' "$output" | awk -F= '$1=="height" {print $2; exit}')"
+  [ -n "$win_out" ] || return 1
+  unix_out="$(wslpath -u "$win_out" 2>/dev/null || true)"
+  [ -n "$unix_out" ] && [ -s "$unix_out" ] || return 1
+  cp -- "$unix_out" "$TMP_OUT" || return 1
+  rm -f -- "$unix_out" 2>/dev/null || true
+  [ -s "$TMP_OUT" ] || { rm -f -- "$TMP_OUT"; return 1; }
+  mv -f -- "$TMP_OUT" "$OUT"
+  chmod 0644 "$OUT" 2>/dev/null || true
+  echo "agent-screen: status=ok backend=windows-host mode=$mode x=$x y=$y width=$width height=$height wrote=$OUT"
+  return 0
 }
 
 cmd_doctor() {
   resolve_root
-  local status="ok"
+  local windows_ok="no" x11_ok="yes"
   echo "agent-screen: doctor"
-  echo "  backend=x11grab"
+  echo "  backends=windows-host,x11grab"
+  if is_wsl && PS="$(resolve_powershell)"; then
+    echo "  windows_host=available powershell=$PS"
+    windows_ok="yes"
+  else
+    echo "  windows_host=unavailable"
+  fi
   echo "  display=${DISPLAY:-}"
   if [ -z "${DISPLAY:-}" ]; then
-    echo "  status=unavailable reason=no-display"
+    echo "  x11grab=unavailable reason=no-display"
+    x11_ok="no"
+    [ "$windows_ok" = "yes" ] && return 0
+    echo "  status=unavailable reason=no-backend"
     exit 1
   fi
-  if FFMPEG="$(resolve_external ffmpeg)"; then echo "  ffmpeg=$FFMPEG"; else echo "  ffmpeg=missing"; status="unavailable"; fi
+  if FFMPEG="$(resolve_external ffmpeg)"; then echo "  ffmpeg=$FFMPEG"; else echo "  ffmpeg=missing"; x11_ok="no"; fi
   if XDO="$(resolve_external xdotool)"; then echo "  xdotool=$XDO"; else echo "  xdotool=missing"; fi
   if command -v xdpyinfo >/dev/null 2>&1; then
     SCREEN_SIZE="$(xdpyinfo 2>/dev/null | awk '/dimensions:/ {value=$2} END {print value}' || true)"
     echo "  screen_size=${SCREEN_SIZE:-unknown}"
   else
     echo "  xdpyinfo=missing"
-    status="unavailable"
+    x11_ok="no"
   fi
   if command -v xwininfo >/dev/null 2>&1; then echo "  xwininfo=$(command -v xwininfo)"; else echo "  xwininfo=missing"; fi
-  [ "$status" = "ok" ] || exit 1
+  [ "$windows_ok" = "yes" ] || [ "$x11_ok" = "yes" ] || exit 1
 }
 
 cmd_list_windows() {
@@ -194,16 +295,22 @@ cmd_screenshot() {
   [ -n "$mode" ] || die_usage "screenshot requires --active or --window <query>"
   [ "$mode" != "window" ] || [ -n "$query" ] || die_usage "--window requires a non-empty query"
 
-  require_base_backend
   prepare_out "$out"
 
   if [ "$mode" = "window" ]; then
+    require_base_backend
     read -r wid x y w h < <(resolve_window_query "$query")
     capture_png "${DISPLAY}+${x},${y}" "${w}x${h}"
     geom_record="window_id=$wid x=$x y=$y width=$w height=$h"
     echo "agent-screen: status=ok mode=window $geom_record wrote=$OUT"
     return 0
   fi
+
+  if capture_windows_host_png; then
+    return 0
+  fi
+
+  require_base_backend
 
   if active_record="$(resolve_active_geometry 2>/dev/null || true)" && [ -n "$active_record" ]; then
     read -r wid x y w h <<< "$active_record"

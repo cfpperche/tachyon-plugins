@@ -3,8 +3,9 @@
 `agent-screen` gives agents explicit, bounded eyes on non-web surfaces: installed VS Code/Tachyon dogfood, native
 windows, terminal windows, and UI states that do not have a browser route.
 
-V1 is screenshot-only. Screen recording is intentionally deferred until screenshot capture has proven useful and the
-recording backend, cancel-safe output format, and frame-sampling story are designed.
+V1 is screenshot-only. On WSL it prefers a Windows host screenshot for the active desktop window, because X11/WSLg
+capture can miss Windows-native apps such as VS Code. Screen recording is intentionally deferred until screenshot
+capture has proven useful and the recording backend, cancel-safe output format, and frame-sampling story are designed.
 
 ## Usage
 
@@ -28,13 +29,17 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agen
 - `mode=screen-fallback` proves the backend captured the X11 display, not that the target app was visible. If the image
   is empty/black, bring the target window onto that display or use a future host-side backend.
 
-## Backend
+## Backends
 
-The v1 backend is Linux/WSLg X11 capture:
+The v1 backends are:
+
+- Windows host capture from WSL via PowerShell/.NET `CopyFromScreen` for `screenshot --active`
+- Linux/WSLg X11 capture via `ffmpeg` with `x11grab`
 
 - `ffmpeg` with `x11grab`
 - `$DISPLAY`
 - `xdpyinfo` for display dimensions
 - `xdotool` + `xwininfo` for optional window targeting
 
-Other platforms should fail closed until a platform-specific backend is implemented.
+`--window <query>` is currently X11-only. Other platforms should fail closed until a platform-specific backend is
+implemented.

@@ -5,7 +5,9 @@ description: OS-level screenshot primitive for non-web Visual QA and installed-a
 
 # agent-screen
 
-Capture a real desktop screenshot for non-web Visual QA and installed-app dogfood.
+Capture a real desktop screenshot for non-web Visual QA and installed-app dogfood. On WSL, prefer the Windows host
+backend for VS Code/desktop validation; X11 fallback can capture only the WSLg/X display and may miss Windows-native
+windows.
 
 ## Invocation
 

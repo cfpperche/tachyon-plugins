@@ -1,7 +1,7 @@
 {
   "name": "agent-screen",
   "version": "0.1.0",
-  "description": "OS-level screenshot primitive for non-web Visual QA and installed-app dogfood. Captures a real desktop PNG explicitly on demand via ffmpeg x11grab plus X11 window helpers when available; fails closed when no display/backend is present. V1 is screenshot-only; bounded screen recording is deliberately deferred.",
+  "description": "OS-level screenshot primitive for non-web Visual QA and installed-app dogfood. Captures a real desktop PNG explicitly on demand, preferring Windows host capture from WSL for native desktop apps and falling back to ffmpeg x11grab plus X11 window helpers; fails closed when no display/backend is present. V1 is screenshot-only; bounded screen recording is deliberately deferred.",
   "runtimes": [
     "claude",
     "codex"
