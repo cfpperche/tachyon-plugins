@@ -16,7 +16,9 @@ From a Tachyon workspace with the plugin installed:
 ```bash
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" doctor
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" list-windows --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" launch --app chrome --json
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" apps find notepad --json
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" launch --app notepad --dry-run --json
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" launch --app notepad --wait-window --session dogfood-1 --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" open-url --browser chrome --new-window --session dogfood-1 https://github.com --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" wait-window --process chrome --title GitHub --timeout 10 --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" focus --window-id 123456 --json
@@ -37,6 +39,18 @@ All commands write compact JSON to stdout. `--json` is accepted for readability 
   full window titles are acceptable.
 - Commands that require a single target accept `--window-id`, or `--process <name>` plus optional `--title <substring>`.
 - Ambiguous process/title matches fail closed and return bounded candidate metadata.
+- `apps find <query>` explains how an app name/path resolves across literal paths, built-in aliases, Windows App Paths,
+  `%PATH%`, Start Menu shortcuts, and conservative common install directories.
+- `launch --app <query> --dry-run` reports the selected candidate without starting it.
+- `launch --app <query> --wait-window --session <id>` starts the resolved app, snapshots windows before launch, and only
+  records `owned=true` when a new top-level window can be tied to the launched process tree. If no new owned window is
+  identified, the app may still be launched but cleanup will not claim it.
+- Native apps may restore recent files/projects according to their own settings. User consent for `launch` covers that
+  visible desktop mutation.
+- Packaged Windows apps are owned only when they expose a direct process/window identity that passes the same checks.
+  Indirect frame/host handoffs are launched-not-owned.
+- Generic browser app launches are refused; use `open-url --browser chrome` so the plugin can create a dedicated owned
+  session profile.
 - `open-url` is restricted to `http://` and `https://` URLs and supports Chrome only in v1. It opens a new Chrome window
   in a dedicated session profile and records `owned=true` in the workspace ledger.
 - `focus` restores the target, then tries direct foregrounding, ALT foreground unlock, and an attach-thread fallback.
@@ -45,7 +59,8 @@ All commands write compact JSON to stdout. `--json` is accepted for readability 
 - `sessions list` and `sessions show --session <id>` inspect the workspace ledger and live identity verification state.
 - `cleanup --session <id> --dry-run` reports which owned windows would be closed without closing anything.
 - `cleanup --session <id>` sends `WM_CLOSE` only to windows owned by that session after revalidating HWND, pid, process
-  start time, process name, window class, and Chrome profile path. It does not kill processes by default.
+  start time, process name, executable path, window class, and Chrome profile path. It does not kill processes by default.
+  For non-owned touched windows, cleanup restores the recorded minimized state instead of closing the window.
 - `close --window-id <id>` refuses unknown or non-owned windows.
 - Window bounds use physical pixels and DWM extended frame bounds where available, matching `agent-screen`.
 - Pair with `agent-screen screenshot --window-id <id>` for visual evidence. `agent-desktop` never captures pixels.

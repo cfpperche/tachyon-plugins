@@ -10,7 +10,9 @@ usage() {
 usage:
   agent-desktop doctor
   agent-desktop list-windows [--json] [--verbose]
-  agent-desktop launch --app <name-or-path> [--session <id>] [--json]
+  agent-desktop apps find <name-or-path> [--json]
+  agent-desktop apps list [--json]
+  agent-desktop launch --app <name-or-path> [--dry-run] [--wait-window] [--timeout <seconds>] [--session <id>] [--json]
   agent-desktop open-url --browser chrome [--new-window] [--session <id>] <http-or-https-url> [--json]
   agent-desktop wait-window --process <name> [--title <substring>] --timeout <seconds> [--json]
   agent-desktop focus --window-id <id> [--session <id>] [--json]
@@ -98,6 +100,7 @@ param(
   [string]$ProfileRoot = "",
   [switch]$NewWindow,
   [switch]$DryRun,
+  [switch]$WaitWindow,
   [switch]$VerboseTitles
 )
 
@@ -245,6 +248,15 @@ function Get-ProcessCommandLine([int64]$PidValue) {
   }
 }
 
+function Get-ProcessExecutablePath([int64]$PidValue) {
+  try {
+    $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$PidValue" -ErrorAction Stop
+    return ("" + $proc.ExecutablePath)
+  } catch {
+    return ""
+  }
+}
+
 function Short-Title([string]$Value) {
   if ($VerboseTitles -or $Value.Length -le 80) { return $Value }
   return $Value.Substring(0, 77) + "..."
@@ -279,6 +291,7 @@ function Window-Object([IntPtr]$hwnd) {
     process = $processValue
     pid = $pidInt
     process_start_time = (Get-ProcessStartTimeIso $pidInt)
+    executable_path = (Get-ProcessExecutablePath $pidInt)
     class = (Get-WindowClass $hwnd)
     command_line = (Get-ProcessCommandLine $pidInt)
     x = $bounds.X
@@ -298,6 +311,7 @@ function Public-Window([object]$Window) {
     process = $Window.process
     pid = $Window.pid
     process_start_time = $Window.process_start_time
+    executable_path = $Window.executable_path
     class = $Window.class
     x = $Window.x
     y = $Window.y
@@ -433,6 +447,7 @@ function Ledger-WindowRecord([object]$Window, [string]$Sid, [string]$Kind, [bool
     process = $Window.process
     pid = $Window.pid
     process_start_time = $Window.process_start_time
+    executable_path = $Window.executable_path
     class = $Window.class
     command_line = $Window.command_line
     profile_path = $ProfilePath
@@ -449,6 +464,17 @@ function Upsert-LedgerWindow([object]$Ledger, [object]$Record) {
   $updated = $false
   for ($i = 0; $i -lt $windows.Count; $i++) {
     if (("" + $windows[$i].window_id) -eq ("" + $Record.window_id)) {
+      $existing = $windows[$i]
+      if ([bool]$existing.owned -and -not [bool]$Record.owned) {
+        $updated = $true
+        break
+      }
+      foreach ($propName in @("pre_mutation_minimized", "pre_mutation_foreground")) {
+        $existingProp = $existing.PSObject.Properties[$propName]
+        if ($null -ne $existingProp) {
+          $Record | Add-Member -NotePropertyName $propName -NotePropertyValue $existingProp.Value -Force
+        }
+      }
       $windows[$i] = $Record
       $updated = $true
       break
@@ -487,6 +513,8 @@ function Verify-OwnedWindow([object]$Record) {
   if (("" + $window.pid) -ne ("" + $Record.pid)) { [void]$mismatches.Add("pid") }
   if (("" + $window.process) -ne ("" + $Record.process)) { [void]$mismatches.Add("process") }
   if (("" + $window.process_start_time) -ne ("" + $Record.process_start_time)) { [void]$mismatches.Add("process_start_time") }
+  $recordExe = "" + $Record.executable_path
+  if (-not [string]::IsNullOrWhiteSpace($recordExe) -and ("" + $window.executable_path) -ne $recordExe) { [void]$mismatches.Add("executable_path") }
   if (("" + $window.class) -ne ("" + $Record.class)) { [void]$mismatches.Add("class") }
   $profile = "" + $Record.profile_path
   if (-not [string]::IsNullOrWhiteSpace($profile)) {
@@ -543,6 +571,50 @@ function Close-OwnedRecord([object]$Record, [switch]$Preview) {
   } while ((Get-Date) -lt $deadline)
   $base.result = "still_open"
   $base.reason = "window still exists after WM_CLOSE timeout"
+  return [pscustomobject]$base
+}
+
+function Restore-TouchedRecord([object]$Record, [switch]$Preview) {
+  $base = [ordered]@{
+    window_id = "" + $Record.window_id
+    owned = [bool]$Record.owned
+    touched = [bool]$Record.touched
+    dry_run = [bool]$Preview
+    result = ""
+    reason = ""
+    window = $null
+  }
+  if ([bool]$Record.owned -or -not [bool]$Record.touched) {
+    $base.result = "not_touched"
+    $base.reason = "ledger record is not a non-owned touched window"
+    return [pscustomobject]$base
+  }
+  $verification = Verify-OwnedWindow $Record
+  $base.window = $verification.window
+  if (-not $verification.ok) {
+    $base.result = $verification.state
+    $base.reason = $verification.reason
+    return [pscustomobject]$base
+  }
+  $wasMinimized = $false
+  try { $wasMinimized = [bool]$Record.pre_mutation_minimized } catch {}
+  if (-not $wasMinimized) {
+    $base.result = "unchanged"
+    $base.reason = "window was not minimized before touch"
+    return [pscustomobject]$base
+  }
+  if ($Preview) {
+    $base.result = "would_minimize"
+    $base.reason = "window was minimized before touch"
+    return [pscustomobject]$base
+  }
+  $hwnd = [IntPtr]::new([int64]$Record.window_id)
+  [void][AgentDesktopNative]::ShowWindow($hwnd, 6)
+  Start-Sleep -Milliseconds 250
+  $fresh = Window-Object $hwnd
+  $base.window = (Public-Window $fresh)
+  $base.result = "minimized"
+  $base.reason = "restored pre-touch minimized state"
   return [pscustomobject]$base
 }
 
@@ -677,39 +749,284 @@ function Resolve-ChromePath {
   return $null
 }
 
-function Resolve-AppPath([string]$NameOrPath) {
-  if ([string]::IsNullOrWhiteSpace($NameOrPath)) {
+function Test-ExistingPath([string]$PathValue) {
+  if ([string]::IsNullOrWhiteSpace($PathValue)) { return $false }
+  try { return (Test-Path -LiteralPath $PathValue) } catch { return $false }
+}
+
+function Test-LaunchablePath([string]$PathValue) {
+  if (-not (Test-ExistingPath $PathValue)) { return $false }
+  try {
+    $ext = [System.IO.Path]::GetExtension($PathValue).ToLowerInvariant()
+    return (@(".exe", ".cmd", ".bat", ".com") -contains $ext)
+  } catch {
+    return $false
+  }
+}
+
+function New-AppCandidate(
+  [string]$Source,
+  [string]$DisplayName,
+  [string]$Target,
+  [string]$Arguments,
+  [int]$Score,
+  [string]$MatchKind,
+  [string]$LaunchStrategy = "process",
+  [string]$ProcessHint = "",
+  [string]$DeniedReason = ""
+) {
+  $confidence = "low"
+  if ($Score -ge 95) { $confidence = "high" } elseif ($Score -ge 70) { $confidence = "medium" }
+  if ([string]::IsNullOrWhiteSpace($ProcessHint) -and -not [string]::IsNullOrWhiteSpace($Target)) {
+    try { $ProcessHint = [System.IO.Path]::GetFileNameWithoutExtension($Target) } catch {}
+  }
+  return [pscustomobject]@{
+    source = $Source
+    display_name = $DisplayName
+    target = $Target
+    arguments = $Arguments
+    score = $Score
+    confidence = $confidence
+    match_kind = $MatchKind
+    launch_strategy = $LaunchStrategy
+    process_hint = $ProcessHint
+    denied_reason = $DeniedReason
+  }
+}
+
+function App-MatchScore([string]$Needle, [string]$Value) {
+  if ([string]::IsNullOrWhiteSpace($Value)) { return 0 }
+  $n = $Needle.ToLowerInvariant()
+  $v = $Value.ToLowerInvariant()
+  $stem = ""
+  try { $stem = [System.IO.Path]::GetFileNameWithoutExtension($Value).ToLowerInvariant() } catch {}
+  if ($v -eq $n -or $stem -eq $n) { return 100 }
+  if ($v.EndsWith("\" + $n + ".exe") -or $v.EndsWith("\" + $n)) { return 95 }
+  if ($v.StartsWith($n) -or $stem.StartsWith($n)) { return 80 }
+  if ($v.Contains($n) -or $stem.Contains($n)) { return 60 }
+  return 0
+}
+
+function Denied-AppReason([string]$Query, [string]$Target, [string]$DisplayName) {
+  $queryAndDisplay = (("" + $Query) + " " + ("" + $DisplayName)).ToLowerInvariant()
+  if ($queryAndDisplay -match '(^|[\s\\/_-])(uninstall|remove|setup|installer|updater|update|maintenance)([\s\\/_\.-]|$)') {
+    return "installer-or-maintenance-target"
+  }
+  $targetLeaf = ""
+  try { $targetLeaf = [System.IO.Path]::GetFileNameWithoutExtension($Target).ToLowerInvariant() } catch {}
+  if ($targetLeaf -match '^(uninstall|setup|installer|updater|maintenance)$') {
+    return "installer-or-maintenance-target"
+  }
+  $browserText = (("" + $Query) + " " + ("" + $Target) + " " + ("" + $DisplayName)).ToLowerInvariant()
+  if ($browserText -match '(^|[\s\\/_-])(chrome|browser|edge|msedge|firefox)([\s\\/_\.-]|$)') {
+    return "browser-use-open-url"
+  }
+  return ""
+}
+
+function Add-AppCandidate([System.Collections.ArrayList]$Candidates, [object]$Candidate) {
+  if ($null -eq $Candidate) { return }
+  if ([string]::IsNullOrWhiteSpace($Candidate.target)) { return }
+  $key = (("" + $Candidate.target) + "`n" + ("" + $Candidate.arguments)).ToLowerInvariant()
+  foreach ($existing in @($Candidates)) {
+    $existingKey = (("" + $existing.target) + "`n" + ("" + $existing.arguments)).ToLowerInvariant()
+    if ($existingKey -eq $key) {
+      if ($Candidate.score -gt $existing.score) {
+        $existing.source = $Candidate.source
+        $existing.display_name = $Candidate.display_name
+        $existing.score = $Candidate.score
+        $existing.confidence = $Candidate.confidence
+        $existing.match_kind = $Candidate.match_kind
+        $existing.denied_reason = $Candidate.denied_reason
+      }
+      return
+    }
+  }
+  [void]$Candidates.Add($Candidate)
+}
+
+function Add-BuiltinAppCandidates([string]$Query, [System.Collections.ArrayList]$Candidates, [System.Collections.ArrayList]$Checked) {
+  [void]$Checked.Add("builtins")
+  $q = $Query.ToLowerInvariant()
+  $builtins = @(
+    [pscustomobject]@{ names = @("notepad", "notepad.exe"); display = "Notepad"; target = "$env:WINDIR\System32\notepad.exe"; process = "notepad"; score = 90 },
+    [pscustomobject]@{ names = @("explorer", "explorer.exe"); display = "File Explorer"; target = "$env:WINDIR\explorer.exe"; process = "explorer"; score = 100 },
+    [pscustomobject]@{ names = @("code", "code.exe", "vscode", "visual-studio-code"); display = "Visual Studio Code"; target = "$env:LocalAppData\Programs\Microsoft VS Code\Code.exe"; process = "Code"; score = 100 },
+    [pscustomobject]@{ names = @("discord", "discord.exe"); display = "Discord"; target = "$env:LocalAppData\Discord\Update.exe"; process = "Discord"; score = 90 }
+  )
+  foreach ($item in $builtins) {
+    if ($item.names -contains $q) {
+      if (Test-LaunchablePath $item.target) {
+        $deny = Denied-AppReason $Query $item.target $item.display
+        Add-AppCandidate $Candidates (New-AppCandidate "builtin" $item.display $item.target "" ([int]$item.score) "alias" "process" $item.process $deny)
+      }
+    }
+  }
+  if ($q -eq "blender" -or $q -eq "blender.exe") {
+    $roots = @("$env:ProgramFiles\Blender Foundation", "${env:ProgramFiles(x86)}\Blender Foundation", "$env:LocalAppData\Programs\Blender Foundation")
+    foreach ($root in $roots) {
+      if (-not (Test-ExistingPath $root)) { continue }
+      foreach ($path in @(Get-ChildItem -LiteralPath $root -Recurse -Filter "blender.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 8)) {
+        Add-AppCandidate $Candidates (New-AppCandidate "builtin-glob" "Blender" $path.FullName "" 100 "alias" "process" "blender" "")
+      }
+    }
+  }
+}
+
+function Resolve-AppCandidates([string]$Query) {
+  if ([string]::IsNullOrWhiteSpace($Query)) {
     Finish 64 (Error-Payload "invalid-argument" "Pass --app <name-or-path>.")
   }
-  if (Test-Path -LiteralPath $NameOrPath) { return (Resolve-Path -LiteralPath $NameOrPath).Path }
-  switch -Regex ($NameOrPath.ToLowerInvariant()) {
-    "^(chrome|chrome\.exe|google-chrome|google-chrome-stable)$" {
-      $chrome = Resolve-ChromePath
-      if ($null -eq $chrome) { Finish 71 (Error-Payload "not-found" "Chrome executable was not found on the Windows host.") }
-      return $chrome
+  $candidates = New-Object System.Collections.ArrayList
+  $checked = New-Object System.Collections.ArrayList
+  [void]$checked.Add("literal-path")
+  if (Test-ExistingPath $Query) {
+    $resolved = (Resolve-Path -LiteralPath $Query).Path
+    if (-not (Test-LaunchablePath $resolved)) {
+      $payload = Error-Payload "invalid-argument" "Explicit app path is not a supported executable type."
+      $payload | Add-Member -NotePropertyName checked -NotePropertyValue @("literal-path") -Force
+      Finish 64 $payload
     }
-    "^(code|code\.exe|vscode|visual-studio-code)$" {
-      $cmd = Get-Command "Code.exe" -ErrorAction SilentlyContinue
-      if ($null -ne $cmd) { return $cmd.Source }
-      $candidates = @(
-        "$env:LocalAppData\Programs\Microsoft VS Code\Code.exe",
-        "$env:ProgramFiles\Microsoft VS Code\Code.exe"
-      )
-      foreach ($candidate in $candidates) { if (Test-Path -LiteralPath $candidate) { return $candidate } }
-      Finish 71 (Error-Payload "not-found" "VS Code executable was not found on the Windows host.")
-    }
-    "^(discord|discord\.exe)$" {
-      $cmd = Get-Command "Discord.exe" -ErrorAction SilentlyContinue
-      if ($null -ne $cmd) { return $cmd.Source }
-      $candidate = "$env:LocalAppData\Discord\Update.exe"
-      if (Test-Path -LiteralPath $candidate) { return $candidate }
-      Finish 71 (Error-Payload "not-found" "Discord executable was not found on the Windows host.")
-    }
-    "^(explorer|explorer\.exe)$" {
-      return "$env:WINDIR\explorer.exe"
+    $deny = Denied-AppReason $Query $resolved $resolved
+    Add-AppCandidate $candidates (New-AppCandidate "literal-path" ([System.IO.Path]::GetFileNameWithoutExtension($resolved)) $resolved "" 100 "path" "process" "" $deny)
+  }
+
+  Add-BuiltinAppCandidates $Query $candidates $checked
+
+  [void]$checked.Add("app-paths-registry")
+  foreach ($root in @("HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths", "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths")) {
+    foreach ($item in @(Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue)) {
+      $display = [System.IO.Path]::GetFileNameWithoutExtension($item.PSChildName)
+      $score = [Math]::Max((App-MatchScore $Query $item.PSChildName), (App-MatchScore $Query $display))
+      if ($score -le 0) { continue }
+      try { $target = "" + (Get-ItemProperty -LiteralPath $item.PSPath -ErrorAction Stop)."(default)" } catch { $target = "" }
+      if ([string]::IsNullOrWhiteSpace($target) -or -not (Test-LaunchablePath $target)) { continue }
+      $deny = Denied-AppReason $Query $target $display
+      Add-AppCandidate $candidates (New-AppCandidate "app-paths-registry" $display $target "" $score "registry" "process" "" $deny)
     }
   }
-  return $NameOrPath
+
+  [void]$checked.Add("path")
+  $cmdNames = @($Query)
+  if (-not $Query.ToLowerInvariant().EndsWith(".exe")) { $cmdNames += "$Query.exe" }
+  foreach ($cmdName in $cmdNames) {
+    $cmd = Get-Command $cmdName -ErrorAction SilentlyContinue
+    if ($null -eq $cmd -or [string]::IsNullOrWhiteSpace($cmd.Source)) { continue }
+    if (-not (Test-LaunchablePath $cmd.Source)) { continue }
+    $score = App-MatchScore $Query $cmd.Name
+    if ($score -eq 100) { $score = 95 }
+    $deny = Denied-AppReason $Query $cmd.Source $cmd.Name
+    Add-AppCandidate $candidates (New-AppCandidate "path" $cmd.Name $cmd.Source "" $score "path-command" "process" "" $deny)
+  }
+
+  [void]$checked.Add("start-menu-shortcuts")
+  $shell = $null
+  try { $shell = New-Object -ComObject WScript.Shell } catch {}
+  if ($null -ne $shell) {
+    $startRoots = @(
+      "$env:ProgramData\Microsoft\Windows\Start Menu\Programs",
+      "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
+    )
+    foreach ($root in $startRoots) {
+      if (-not (Test-ExistingPath $root)) { continue }
+      foreach ($shortcut in @(Get-ChildItem -LiteralPath $root -Recurse -Filter "*.lnk" -File -ErrorAction SilentlyContinue)) {
+        $score = App-MatchScore $Query $shortcut.BaseName
+        if ($score -le 0) { continue }
+        try {
+          $lnk = $shell.CreateShortcut($shortcut.FullName)
+          $target = "" + $lnk.TargetPath
+          if ([string]::IsNullOrWhiteSpace($target) -or -not (Test-LaunchablePath $target)) { continue }
+          $argsValue = "" + $lnk.Arguments
+          $processHint = ""
+          if ($argsValue -match '(?i)--processStart\s+"?([^"\s]+)') {
+            try { $processHint = [System.IO.Path]::GetFileNameWithoutExtension($Matches[1]) } catch { $processHint = $Matches[1] }
+          }
+          $deny = Denied-AppReason $Query $target $shortcut.BaseName
+          Add-AppCandidate $candidates (New-AppCandidate "start-menu-shortcut" $shortcut.BaseName $target $argsValue $score "shortcut" "process" $processHint $deny)
+        } catch {}
+      }
+    }
+  }
+
+  [void]$checked.Add("common-install-dirs")
+  if ($Query.Trim().Length -ge 3) {
+    $installRoots = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, (Join-Path $env:LocalAppData "Programs"))
+    foreach ($root in $installRoots) {
+      if ([string]::IsNullOrWhiteSpace($root) -or -not (Test-ExistingPath $root)) { continue }
+      $queryLower = $Query.ToLowerInvariant()
+      $dirs = @(Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue | Where-Object {
+        $_.Name.ToLowerInvariant().Contains($queryLower) -or $queryLower.Contains($_.Name.ToLowerInvariant())
+      } | Select-Object -First 12)
+      foreach ($dir in $dirs) {
+        foreach ($exe in @(Get-ChildItem -LiteralPath $dir.FullName -Recurse -Filter "*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 24)) {
+          $score = App-MatchScore $Query $exe.BaseName
+          if ($score -le 0) { continue }
+          $deny = Denied-AppReason $Query $exe.FullName $exe.BaseName
+          Add-AppCandidate $candidates (New-AppCandidate "common-install-dirs" $exe.BaseName $exe.FullName "" $score "install-dir" "process" "" $deny)
+        }
+      }
+    }
+  }
+
+  $ordered = @($candidates | Sort-Object @{ Expression = "score"; Descending = $true }, display_name, target)
+  return [pscustomobject]@{ candidates = $ordered; checked = @($checked.ToArray()) }
+}
+
+function Select-AppCandidate([string]$Query) {
+  $resolved = Resolve-AppCandidates $Query
+  $allowed = @($resolved.candidates | Where-Object { [string]::IsNullOrWhiteSpace($_.denied_reason) })
+  if ($allowed.Count -eq 0) {
+    $denied = @($resolved.candidates | Where-Object { -not [string]::IsNullOrWhiteSpace($_.denied_reason) })
+    if ($denied.Count -gt 0) {
+      $payload = Error-Payload "invalid-argument" "The best candidate is not launchable by generic launch; use the indicated command instead." @($denied | Select-Object -First 8)
+      $payload | Add-Member -NotePropertyName checked -NotePropertyValue $resolved.checked -Force
+      Finish 64 $payload
+    }
+    $payload = Error-Payload "not-found" "No launchable app candidate was found for '$Query'."
+    $payload | Add-Member -NotePropertyName checked -NotePropertyValue $resolved.checked -Force
+    Finish 71 $payload
+  }
+  $top = $allowed[0]
+  $ties = @($allowed | Where-Object { $_.score -eq $top.score -and ("" + $_.target).ToLowerInvariant() -ne ("" + $top.target).ToLowerInvariant() })
+  if ($ties.Count -gt 0 -and ("" + $top.source) -ne "literal-path") {
+    $payload = Error-Payload "ambiguous" "Multiple app candidates matched '$Query'; use a more specific name or an explicit path." @($allowed | Select-Object -First 8)
+    $payload | Add-Member -NotePropertyName checked -NotePropertyValue $resolved.checked -Force
+    Finish 72 $payload
+  }
+  return [pscustomobject]@{ candidate = $top; candidates = @($resolved.candidates | Select-Object -First 8); checked = $resolved.checked }
+}
+
+function Command-AppsFind {
+  $resolved = Resolve-AppCandidates $App
+  $allowed = @($resolved.candidates | Where-Object { [string]::IsNullOrWhiteSpace($_.denied_reason) })
+  $denied = @($resolved.candidates | Where-Object { -not [string]::IsNullOrWhiteSpace($_.denied_reason) })
+  $chosen = $null
+  $refusedReason = ""
+  if ($allowed.Count -gt 0) {
+    $chosen = $allowed[0]
+  } elseif ($denied.Count -gt 0) {
+    $refusedReason = "" + $denied[0].denied_reason
+  }
+  Finish 0 ([pscustomobject]@{
+    ok = $true
+    command = "apps-find"
+    query = $App
+    chosen = $chosen
+    refused_reason = $refusedReason
+    candidates = @($resolved.candidates | Select-Object -First 20)
+    count = @($resolved.candidates).Count
+    checked = $resolved.checked
+  })
+}
+
+function Command-AppsList {
+  $aliases = @("notepad", "explorer", "code", "vscode", "discord", "blender")
+  Finish 0 ([pscustomobject]@{
+    ok = $true
+    command = "apps-list"
+    aliases = $aliases
+    sources = @("literal-path", "builtins", "app-paths-registry", "path", "start-menu-shortcuts", "common-install-dirs")
+  })
 }
 
 function Command-Doctor {
@@ -739,20 +1056,235 @@ function Command-ListWindows {
   Finish 0 ([pscustomobject]@{ ok = $true; command = "list-windows"; windows = $windows; count = $windows.Count })
 }
 
-function Command-Launch {
-  $path = Resolve-AppPath $App
+function Process-CreatedAfter([object]$Proc, [datetime]$SinceUtc) {
+  if ($null -eq $Proc) { return $false }
   try {
-    $proc = Start-Process -FilePath $path -PassThru
+    if ($Proc.CreationDate -is [datetime]) {
+      $created = ([datetime]$Proc.CreationDate).ToUniversalTime()
+    } else {
+      $created = ([System.Management.ManagementDateTimeConverter]::ToDateTime("" + $Proc.CreationDate)).ToUniversalTime()
+    }
+    return ($created -ge $SinceUtc.AddSeconds(-1))
+  } catch {
+    return $false
+  }
+}
+
+function Get-ProcessTreeIds([int]$RootPid, [datetime]$SinceUtc) {
+  $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Select-Object ProcessId, ParentProcessId, ExecutablePath, CreationDate)
+  $ids = New-Object System.Collections.ArrayList
+  $root = @($all | Where-Object { [int]$_.ProcessId -eq [int]$RootPid } | Select-Object -First 1)
+  if ($root.Count -eq 1 -and (Process-CreatedAfter $root[0] $SinceUtc)) {
+    [void]$ids.Add([int]$RootPid)
+  }
+  $changed = $true
+  while ($changed) {
+    $changed = $false
+    foreach ($proc in $all) {
+      if ($ids.Contains([int]$proc.ProcessId)) { continue }
+      if (-not (Process-CreatedAfter $proc $SinceUtc)) { continue }
+      if ($ids.Contains([int]$proc.ParentProcessId)) {
+        [void]$ids.Add([int]$proc.ProcessId)
+        $changed = $true
+      }
+    }
+  }
+  return @($ids.ToArray())
+}
+
+function Window-HasOwnableIdentity([object]$Window) {
+  if ($null -eq $Window) { return $false }
+  if ([int64]$Window.pid -le 0) { return $false }
+  if ([string]::IsNullOrWhiteSpace("" + $Window.process)) { return $false }
+  if ([string]::IsNullOrWhiteSpace("" + $Window.process_start_time)) { return $false }
+  if ([string]::IsNullOrWhiteSpace("" + $Window.executable_path)) { return $false }
+  if ([string]::IsNullOrWhiteSpace("" + $Window.class)) { return $false }
+  return $true
+}
+
+function Window-StartedAfter([object]$Window, [datetime]$SinceUtc) {
+  try {
+    $started = ([datetime]("" + $Window.process_start_time)).ToUniversalTime()
+    return ($started -ge $SinceUtc.AddSeconds(-1))
+  } catch {
+    return $false
+  }
+}
+
+function Candidate-ProcessMatchesWindow([object]$Candidate, [object]$Window) {
+  $hint = ("" + $Candidate.process_hint).ToLowerInvariant()
+  if (-not [string]::IsNullOrWhiteSpace($hint) -and ("" + $Window.process).ToLowerInvariant() -eq $hint) { return $true }
+  $target = "" + $Candidate.target
+  if (-not [string]::IsNullOrWhiteSpace($target) -and ("" + $Window.executable_path).Equals($target, [StringComparison]::OrdinalIgnoreCase)) { return $true }
+  return $false
+}
+
+function Candidate-DirectExeMatchesWindow([object]$Candidate, [object]$Window) {
+  $target = "" + $Candidate.target
+  return (-not [string]::IsNullOrWhiteSpace($target) -and ("" + $Window.executable_path).Equals($target, [StringComparison]::OrdinalIgnoreCase))
+}
+
+function Candidate-HintMatchesWindow([object]$Candidate, [object]$Window) {
+  $hint = ("" + $Candidate.process_hint).ToLowerInvariant()
+  return (-not [string]::IsNullOrWhiteSpace($hint) -and ("" + $Window.process).ToLowerInvariant() -eq $hint)
+}
+
+function Command-Launch {
+  if ($TimeoutSeconds -lt 1) {
+    Finish 64 (Error-Payload "invalid-argument" "--timeout must be at least 1 second.")
+  }
+  $selection = Select-AppCandidate $App
+  $candidate = $selection.candidate
+  if ($DryRun) {
+    Finish 0 ([pscustomobject]@{
+      ok = $true
+      command = "launch"
+      dry_run = $true
+      app = $App
+      candidate = $candidate
+      candidates = $selection.candidates
+      checked = $selection.checked
+      would_launch = $true
+    })
+  }
+  $sid = Normalize-SessionId $SessionId
+  $beforeWindows = @(Get-Windows)
+  $beforeIds = @{}
+  foreach ($window in $beforeWindows) { $beforeIds[$window.id] = $true }
+  $arguments = "" + $candidate.arguments
+  $launchStartedAt = (Get-Date).ToUniversalTime()
+  try {
+    if ([string]::IsNullOrWhiteSpace($arguments)) {
+      $proc = Start-Process -FilePath $candidate.target -PassThru
+    } else {
+      $proc = Start-Process -FilePath $candidate.target -ArgumentList $arguments -PassThru
+    }
   } catch {
     Finish 1 (Error-Payload "failed" "Could not launch '$App': $($_.Exception.Message)")
   }
+  if (-not $WaitWindow) {
+    Finish 0 ([pscustomobject]@{
+      ok = $true
+      command = "launch"
+      app = $App
+      candidate = $candidate
+      session_id = $sid
+      launched = $true
+      owned = $false
+      ownership_reason = "wait-window-not-requested"
+      pid = $proc.Id
+    })
+  }
+
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  $newWindows = @()
+  do {
+    $treeIds = @(Get-ProcessTreeIds ([int]$proc.Id) $launchStartedAt)
+    $windows = @(Get-Windows | Where-Object {
+      (-not $beforeIds.ContainsKey($_.id)) -and
+      (($treeIds -contains ([int]$_.pid)) -or (Candidate-DirectExeMatchesWindow $candidate $_) -or (Candidate-HintMatchesWindow $candidate $_)) -and
+      (Window-StartedAfter $_ $launchStartedAt) -and
+      (Window-HasOwnableIdentity $_) -and
+      (Candidate-ProcessMatchesWindow $candidate $_)
+    })
+    if ($windows.Count -gt 0) {
+      $newWindows = @($windows)
+      break
+    }
+    Start-Sleep -Milliseconds 250
+  } while ((Get-Date) -lt $deadline)
+
+  if ($newWindows.Count -eq 0) {
+    $existingMatches = @($beforeWindows | Where-Object { Candidate-ProcessMatchesWindow $candidate $_ })
+    if ($existingMatches.Count -eq 1) {
+      $preTouch = $existingMatches[0]
+      $ledger = Read-Ledger $sid -AllowMissing
+      $touch = Ledger-WindowRecord $preTouch $sid "launch-existing" $false "" ""
+      $touch | Add-Member -NotePropertyName pre_mutation_minimized -NotePropertyValue ([bool]$preTouch.minimized) -Force
+      $touch | Add-Member -NotePropertyName pre_mutation_foreground -NotePropertyValue ([bool]$preTouch.foreground) -Force
+      Upsert-LedgerWindow $ledger $touch
+      Add-LedgerEvent $ledger "launch-existing" ([pscustomobject]@{ window_id = $touch.window_id; app = $App; target = $candidate.target; pid = $proc.Id; owned = $false })
+      Write-Ledger $ledger
+      $focusResult = Focus-TargetWindow $preTouch
+      Finish 0 ([pscustomobject]@{
+        ok = $true
+        command = "launch"
+        app = $App
+        candidate = $candidate
+        session_id = $sid
+        launched = $true
+        owned = $false
+        touched = $true
+        ownership_reason = "existing-window-reused"
+        pid = $proc.Id
+        window_id = $focusResult.window.id
+        window = $focusResult.window
+        focused = $focusResult.focused
+        restored = $focusResult.restored
+        attempts = $focusResult.attempts
+      })
+    }
+    if ($existingMatches.Count -gt 1) {
+      $candidates = @($existingMatches | Select-Object -First 8 | ForEach-Object { Public-Window $_ })
+      Finish 72 (Error-Payload "ambiguous" "The app launched but matched multiple pre-existing windows; ownership was not claimed." $candidates)
+    }
+    Finish 73 ([pscustomobject]@{
+      ok = $false
+      error = "timeout"
+      message = "The app launched, but no new or reusable top-level window could be identified before timeout."
+      command = "launch"
+      app = $App
+      candidate = $candidate
+      session_id = $sid
+      launched = $true
+      owned = $false
+      wait_window = "timeout"
+      pid = $proc.Id
+    })
+  }
+  if ($newWindows.Count -gt 1) {
+    $foregroundNew = @($newWindows | Where-Object { $_.foreground })
+    if ($foregroundNew.Count -eq 1) {
+      $newWindows = @($foregroundNew[0])
+    } else {
+      $candidates = @($newWindows | Select-Object -First 8 | ForEach-Object { Public-Window $_ })
+      Finish 72 (Error-Payload "ambiguous" "The app created more than one matching new top-level window." $candidates)
+    }
+  }
+
+  $ledger = Read-Ledger $sid -AllowMissing
+  $record = Ledger-WindowRecord $newWindows[0] $sid "launch" $true "" ""
+  Upsert-LedgerWindow $ledger $record
+  Add-LedgerEvent $ledger "launch" ([pscustomobject]@{ window_id = $record.window_id; app = $App; target = $candidate.target; pid = $proc.Id })
+  Write-Ledger $ledger
+
+  $focusResult = Focus-TargetWindow $newWindows[0]
+  $newWindows = @(Get-Windows | Where-Object { $_.id -eq $focusResult.window.id })
+  if ($newWindows.Count -ne 1) {
+    Finish 71 (Error-Payload "not-found" "The launched window disappeared after focus.")
+  }
+  $record = Ledger-WindowRecord $newWindows[0] $sid "launch" $true "" ""
+  Upsert-LedgerWindow $ledger $record
+  Add-LedgerEvent $ledger "launch-focused" ([pscustomobject]@{ window_id = $record.window_id; focused = $focusResult.focused; restored = $focusResult.restored })
+  Write-Ledger $ledger
+  $window = Public-Window $newWindows[0]
   Finish 0 ([pscustomobject]@{
     ok = $true
     command = "launch"
     app = $App
-    path = $path
+    candidate = $candidate
+    session_id = $sid
     launched = $true
+    owned = $true
     pid = $proc.Id
+    window_id = $window.id
+    process_start_time = $record.process_start_time
+    executable_path = $record.executable_path
+    class = $record.class
+    window = $window
+    focused = $focusResult.focused
+    restored = $focusResult.restored
+    attempts = $focusResult.attempts
   })
 }
 
@@ -947,7 +1479,16 @@ function Command-CleanupSession {
   }
   $results = @()
   foreach ($record in @($ledger.windows)) {
-    if (-not [bool]$record.owned) { continue }
+    if (-not [bool]$record.owned) {
+      if ([bool]$record.touched) {
+        $touchResult = Restore-TouchedRecord $record -Preview:$DryRun
+        $results += $touchResult
+        if (-not $DryRun -and ($touchResult.result -eq "minimized" -or $touchResult.result -eq "unchanged")) {
+          Update-RecordStatus $ledger $record.window_id "restored" $touchResult.reason
+        }
+      }
+      continue
+    }
     if (("" + $record.status) -eq "closed" -and -not $DryRun) {
       $results += [pscustomobject]@{ window_id = $record.window_id; result = "already_closed"; owned = $true; dry_run = $false; reason = "ledger already marked closed" }
       continue
@@ -968,6 +1509,7 @@ function Command-CleanupSession {
   if (-not $DryRun) { Write-Ledger $ledger }
   $closed = @($results | Where-Object { $_.result -eq "closed" })
   $wouldClose = @($results | Where-Object { $_.result -eq "would_close" })
+  $restored = @($results | Where-Object { $_.result -eq "minimized" -or $_.result -eq "unchanged" })
   Finish 0 ([pscustomobject]@{
     ok = $true
     command = "cleanup"
@@ -976,6 +1518,7 @@ function Command-CleanupSession {
     results = $results
     closed = $closed
     would_close = $wouldClose
+    restored = $restored
   })
 }
 
@@ -986,8 +1529,32 @@ function Command-CleanupMine {
     $sid = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
     $SessionId = $sid
     $ledger = Read-Ledger $sid
+    if (("" + $ledger.host_boot) -ne (Host-BootMarker)) {
+      foreach ($record in @($ledger.windows)) {
+        $allResults += [pscustomobject]@{
+          session_id = $sid
+          window_id = "" + $record.window_id
+          owned = [bool]$record.owned
+          touched = [bool]$record.touched
+          dry_run = [bool]$DryRun
+          result = "stale"
+          reason = "session ledger was created before the current Windows boot"
+        }
+      }
+      continue
+    }
     foreach ($record in @($ledger.windows)) {
-      if (-not [bool]$record.owned) { continue }
+      if (-not [bool]$record.owned) {
+        if ([bool]$record.touched) {
+          $touchResult = Restore-TouchedRecord $record -Preview:$DryRun
+          $touchResult | Add-Member -NotePropertyName session_id -NotePropertyValue $sid -Force
+          $allResults += $touchResult
+          if (-not $DryRun -and ($touchResult.result -eq "minimized" -or $touchResult.result -eq "unchanged")) {
+            Update-RecordStatus $ledger $record.window_id "restored" $touchResult.reason
+          }
+        }
+        continue
+      }
       $closeResult = Close-OwnedRecord $record -Preview:$DryRun
       $closeResult | Add-Member -NotePropertyName session_id -NotePropertyValue $sid -Force
       $allResults += $closeResult
@@ -1033,6 +1600,8 @@ try {
   switch ($Command) {
     "doctor" { Command-Doctor }
     "list-windows" { Command-ListWindows }
+    "apps-find" { Command-AppsFind }
+    "apps-list" { Command-AppsList }
     "launch" { Command-Launch }
     "open-url" { Command-OpenUrl }
     "wait-window" { Command-WaitWindow }
@@ -1048,6 +1617,8 @@ try {
         $sid = Normalize-SessionId $SessionId
         $ledger = Read-Ledger $sid -AllowMissing
         $touch = Ledger-WindowRecord $target $sid "focus" $false "" ""
+        $touch | Add-Member -NotePropertyName pre_mutation_minimized -NotePropertyValue ([bool]$target.minimized) -Force
+        $touch | Add-Member -NotePropertyName pre_mutation_foreground -NotePropertyValue ([bool]$target.foreground) -Force
         Upsert-LedgerWindow $ledger $touch
         Add-LedgerEvent $ledger "focus" ([pscustomobject]@{ window_id = $touch.window_id; owned = $false })
         Write-Ledger $ledger
@@ -1070,6 +1641,8 @@ try {
         $sid = Normalize-SessionId $SessionId
         $ledger = Read-Ledger $sid -AllowMissing
         $touch = Ledger-WindowRecord $target $sid "restore" $false "" ""
+        $touch | Add-Member -NotePropertyName pre_mutation_minimized -NotePropertyValue ([bool]$target.minimized) -Force
+        $touch | Add-Member -NotePropertyName pre_mutation_foreground -NotePropertyValue ([bool]$target.foreground) -Force
         Upsert-LedgerWindow $ledger $touch
         Add-LedgerEvent $ledger "restore" ([pscustomobject]@{ window_id = $touch.window_id; owned = $false })
         Write-Ledger $ledger
@@ -1141,19 +1714,55 @@ case "$command_name" in
     done
     invoke_windows_host list-windows 15 "${verbose_args[@]}"
     ;;
+  apps)
+    sub="${1:-}"
+    [ -n "$sub" ] || die_usage "apps requires find or list"
+    shift || true
+    case "$sub" in
+      find)
+        query=""
+        while [ "$#" -gt 0 ]; do
+          case "$1" in
+            --json) shift ;;
+            --*) die_usage "unknown apps find argument: $1" ;;
+            *) [ -z "$query" ] || die_usage "apps find accepts exactly one query"; query="$1"; shift ;;
+          esac
+        done
+        [ -n "$query" ] || die_usage "apps find requires <name-or-path>"
+        invoke_windows_host apps-find 25 -App "$query"
+        ;;
+      list)
+        while [ "$#" -gt 0 ]; do
+          case "$1" in
+            --json) shift ;;
+            *) die_usage "unknown apps list argument: $1" ;;
+          esac
+        done
+        invoke_windows_host apps-list 15
+        ;;
+      *) die_usage "unknown apps subcommand: $sub" ;;
+    esac
+    ;;
   launch)
     app=""
     session_id=""
+    dry_run=()
+    wait_window=()
+    timeout_seconds="10"
     while [ "$#" -gt 0 ]; do
       case "$1" in
         --json) shift ;;
         --app) [ "$#" -ge 2 ] || die_usage "--app requires a value"; app="$2"; shift 2 ;;
         --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
+        --dry-run) dry_run=("-DryRun"); shift ;;
+        --wait-window) wait_window=("-WaitWindow"); shift ;;
+        --timeout) [ "$#" -ge 2 ] || die_usage "--timeout requires a value"; timeout_seconds="$2"; shift 2 ;;
         *) die_usage "unknown launch argument: $1" ;;
       esac
     done
+    [[ "$timeout_seconds" =~ ^[0-9]+$ ]] || die_usage "--timeout must be an integer number of seconds"
     [ -n "$app" ] || die_usage "launch requires --app <name-or-path>"
-    invoke_windows_host launch 20 -App "$app" -SessionId "$session_id"
+    invoke_windows_host launch "$((timeout_seconds + 20))" -App "$app" -SessionId "$session_id" -TimeoutSeconds "$timeout_seconds" "${dry_run[@]}" "${wait_window[@]}"
     ;;
   open-url)
     browser=""
