@@ -1,0 +1,10 @@
+{
+  "name": "agent-desktop",
+  "version": "0.1.0",
+  "description": "Explicit desktop control primitives for agents: launch apps, open URLs, wait for windows, restore and focus target windows from WSL against the Windows host. Pairs with agent-screen for visual evidence; v1 deliberately excludes screenshots, arbitrary keyboard, and mouse automation.",
+  "runtimes": [
+    "claude",
+    "codex"
+  ],
+  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/agent-desktop"
+}
