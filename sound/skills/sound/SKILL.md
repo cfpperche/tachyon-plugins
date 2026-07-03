@@ -1,13 +1,14 @@
 ---
 name: sound
-description: PAID creative-audio generation (music + sound effects) via the fal.ai REST API (needs a FAL_KEY env var). Use when the user wants generated music or SFX from a text prompt — UI sounds, a soundtrack, a sting, an ambient bed. Music (--kind music) at standard ~$0.02/min or premium ~$0.80/min, or SFX (--kind sfx) ~$0.002/sec. Cost = price x duration; prints the estimate before it fires and HARD-refuses above $0.25 without --confirm-cost-usd. PAID — only run when the user authorized the spend. NOT speech or voiceover (the audio plugin), NOT free or local.
+description: PAID creative-audio generation (music + sound effects) via the fal.ai REST API (needs FAL_KEY in env or .tachyon/secrets.env). Use when the user wants generated music or SFX from a text prompt — UI sounds, a soundtrack, a sting, an ambient bed. Music (--kind music) at standard ~$0.02/min or premium ~$0.80/min, or SFX (--kind sfx) ~$0.002/sec. Cost = price x duration; prints the estimate before it fires and HARD-refuses above $0.25 without --confirm-cost-usd. PAID — only run when the user authorized the spend. NOT speech or voiceover (the audio plugin), NOT free or local.
 ---
 
 # sound — paid music + SFX generation (fal.ai)
 
 Generate music or sound effects from a prompt via the fal.ai REST API. **PAID** — cost = price × duration, **printed
 before the call**, with a **hard `--confirm-cost-usd` gate above $0.25**. Model/body/price come from a bundled tier
-oracle; curl + jq are resolved through Tachyon's shims; `FAL_KEY` is read from the env and never stored.
+oracle; curl + jq are resolved through Tachyon's shims; `FAL_KEY` is read from the env or `.tachyon/secrets.env` and
+never stored or echoed.
 
 ## Invocation
 
@@ -25,9 +26,21 @@ Each call **spends money**. The skill prints `estimated: $X …`; above $0.25 it
 and makes NO network call**. Pass `--confirm-cost-usd <amount>` **only when the user explicitly authorized that
 spend** — never auto-supply it.
 
+## FAL_KEY
+
+Preferred persistent setup:
+
+```
+mkdir -p .tachyon
+printf 'FAL_KEY=your_fal_key_here\n' > .tachyon/secrets.env
+chmod 600 .tachyon/secrets.env
+```
+
+An exported `FAL_KEY` wins over the file. The file is parsed as data and is never sourced.
+
 ## Fail-closed
 
-- `FAL_KEY` unset → `unavailable`. curl/jq missing → `unavailable` (card offers an assisted install).
+- `FAL_KEY` missing from env and `.tachyon/secrets.env` → `unavailable`. curl/jq missing → `unavailable` (card offers an assisted install).
 - Over-threshold without confirm → refused before any call. Non-200 fal / no audio URL → `error`.
 
 ## When NOT to use

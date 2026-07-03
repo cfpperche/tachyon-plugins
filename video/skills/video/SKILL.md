@@ -1,13 +1,14 @@
 ---
 name: video
-description: PAID generative AI video via the fal.ai queue REST API (needs a FAL_KEY env var). Use when the user wants organic/photoreal motion (Wan/Kling/Veo class) generated from a prompt — plus a source image for the image-to-video tiers (draft/standard). ASYNC and fire-and-forget — submit queues a ~5-min paid job, poll reaps it. A clip costs $0.50 to $3, so a HARD --confirm-cost-usd gate is required on every submit. PAID — only run when the user authorized the spend. NOT deterministic free code video (the hyperframes plugin), NOT music or SFX (the sound plugin) or still images (the image plugin).
+description: PAID generative AI video via the fal.ai queue REST API (needs FAL_KEY in env or .tachyon/secrets.env). Use when the user wants organic/photoreal motion (Wan/Kling/Veo class) generated from a prompt — plus a source image for the image-to-video tiers (draft/standard). ASYNC and fire-and-forget — submit queues a ~5-min paid job, poll reaps it. A clip costs $0.50 to $3, so a HARD --confirm-cost-usd gate is required on every submit. PAID — only run when the user authorized the spend. NOT deterministic free code video (the hyperframes plugin), NOT music or SFX (the sound plugin) or still images (the image plugin).
 ---
 
 # video — paid generative AI video (fal.ai, async)
 
 Generate organic/photoreal motion via fal.ai video models through the **queue** REST API. **PAID + ASYNC** — a clip
 costs **$0.50–$3** and takes ~5 min, so it is **fire-and-forget**: `submit` queues the job and returns a `request_id`;
-`poll` reaps it later. curl + jq are resolved trusted through the shims; `FAL_KEY` is read from env and never stored.
+`poll` reaps it later. curl + jq are resolved trusted through the shims; `FAL_KEY` is read from env or
+`.tachyon/secrets.env` and never stored or echoed.
 
 ## Invocation
 
@@ -31,6 +32,18 @@ estimate`**, before any network call. Pass `--confirm-cost-usd <amount>` **only 
 that spend** — never auto-supply it. An ambiguous submit failure is **never auto-retried** (it could double-bill) —
 run `poll --all` to check before re-submitting.
 
+## FAL_KEY
+
+Preferred persistent setup:
+
+```
+mkdir -p .tachyon
+printf 'FAL_KEY=your_fal_key_here\n' > .tachyon/secrets.env
+chmod 600 .tachyon/secrets.env
+```
+
+An exported `FAL_KEY` wins over the file. The file is parsed as data and is never sourced.
+
 ## Async / the ledger
 
 `submit` records the job to a gitignored ledger (`.tachyon/video-jobs/ledger.jsonl`) and returns immediately — it
@@ -39,8 +52,9 @@ does NOT block. Run `poll` (a separate call) to reap: a completed job downloads 
 
 ## Fail-closed
 
-- `FAL_KEY` unset → `unavailable`. curl/jq missing → `unavailable`. Below the cost ceiling / over the duration max →
-  refused before any call. A missing/non-https `--image-url` on an image→video tier → refused.
+- `FAL_KEY` missing from env and `.tachyon/secrets.env` → `unavailable`. curl/jq missing → `unavailable`. Below
+  the cost ceiling / over the duration max → refused before any call. A missing/non-https `--image-url` on an
+  image→video tier → refused.
 
 ## When NOT to use
 

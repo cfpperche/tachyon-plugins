@@ -2,8 +2,9 @@
 # video (spec 293) — PAID generative AI video via the fal.ai QUEUE REST API. ASYNC + fire-and-forget: `submit` queues
 # a job (a ~5-min, $0.50–$3 paid render), persists the request_id to a gitignored ledger, and returns immediately;
 # `poll` (a separate invocation) reaps terminal jobs (status → result → download). curl + jq resolved TRUSTED via the
-# shim (never bare). FAL_KEY = env (never stored/echoed; passed via a 0600 curl --config). HARD --confirm-cost-usd gate
-# on EVERY submit. NO auto-retry on an ambiguous submit (it could double-bill). Model/body/price from a bundled oracle.
+# shim (never bare). FAL_KEY = env or .tachyon/secrets.env (never stored/echoed; passed via a 0600 curl --config).
+# HARD --confirm-cost-usd gate on EVERY submit. NO auto-retry on an ambiguous submit (it could double-bill).
+# Model/body/price from a bundled oracle.
 set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"   # sanitize before any ambient tool runs
 
@@ -27,7 +28,26 @@ resolve_tools() {
   [ -n "$CURL" ] && [ -x "$CURL" ] || { echo "video: unavailable: curl not installed/trusted — the card offers an assisted install" >&2; exit 1; }
   [ -n "$JQ" ] && [ -x "$JQ" ] || { echo "video: unavailable: jq not installed/trusted — the card offers an assisted install" >&2; exit 1; }
 }
-need_key() { [ -n "${FAL_KEY:-}" ] || { echo "video: unavailable: FAL_KEY is not set — this is a PAID capability. Set FAL_KEY (https://fal.ai) and re-run. Tachyon never stores the key." >&2; exit 1; }; _FAL="$FAL_KEY"; unset FAL_KEY; }
+load_fal_key_from_secrets() {
+  [ -n "${FAL_KEY:-}" ] && return 0
+  secrets="$ROOT/.tachyon/secrets.env"
+  [ -f "$secrets" ] || return 0
+  line="$(awk '
+    /^[[:space:]]*(#|$)/ { next }
+    /^[[:space:]]*(export[[:space:]]+)?FAL_KEY[[:space:]]*=/ { found=$0 }
+    END { if (found) print found }
+  ' "$secrets" 2>/dev/null || true)"
+  [ -n "$line" ] || return 0
+  value="${line#*=}"
+  value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  case "$value" in
+    \"*\") value="${value#\"}"; value="${value%\"}" ;;
+    \'*\') value="${value#\'}"; value="${value%\'}" ;;
+  esac
+  [ -n "$value" ] || return 0
+  FAL_KEY="$value"
+}
+need_key() { load_fal_key_from_secrets; [ -n "${FAL_KEY:-}" ] || { echo "video: unavailable: FAL_KEY is not set — this is a PAID capability. Set FAL_KEY in your env or $ROOT/.tachyon/secrets.env (https://fal.ai) and re-run. Tachyon never stores the key." >&2; exit 1; }; _FAL="$FAL_KEY"; unset FAL_KEY; }
 auth_cfg() { ( umask 077; printf 'header = "Authorization: Key %s"\n' "$_FAL" > "$1" ); }   # 0600 curl --config (not argv/env)
 b64d() { base64 -d 2>/dev/null || base64 -D; }   # portable base64 decode (GNU -d / BSD -D)
 

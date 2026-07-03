@@ -1,13 +1,13 @@
 ---
 name: image
-description: PAID AI image generation via the fal.ai REST API (needs a FAL_KEY env var). Use when the user wants a generated image — a mockup, brand asset, hero, or illustration from a prompt. Three tiers — draft (FLUX schnell, ~$0.003, throwaway), brand-text (gpt-image-2, ~$0.04+, crisp typography), brand-photo (Imagen 4 Ultra, ~$0.06, photo-real). Every call PRINTS the estimated cost before it fires. PAID — only run when the user wants to spend on image generation. NOT free or local, NOT music or SFX (the sound plugin), NOT technical diagrams (the diagram plugin).
+description: PAID AI image generation via the fal.ai REST API (needs FAL_KEY in env or .tachyon/secrets.env). Use when the user wants a generated image — a mockup, brand asset, hero, or illustration from a prompt. Three tiers — draft (FLUX schnell, ~$0.003, throwaway), brand-text (gpt-image-2, ~$0.04+, crisp typography), brand-photo (Imagen 4 Ultra, ~$0.06, photo-real). Every call PRINTS the estimated cost before it fires. PAID — only run when the user wants to spend on image generation. NOT free or local, NOT music or SFX (the sound plugin), NOT technical diagrams (the diagram plugin).
 ---
 
 # image — paid AI image generation (fal.ai)
 
 Generate an image from a prompt via the fal.ai REST API. **PAID** — each call costs money and **prints the estimated
 cost before it fires**. curl + jq are resolved through Tachyon's shims (trusted paths); `FAL_KEY` is read from the
-env and never stored.
+env or `.tachyon/secrets.env` and never stored or echoed.
 
 ## Invocation
 
@@ -26,9 +26,21 @@ This capability **spends money**. The skill prints `estimated: $X.XXX for <model
 **Only run it when the user has asked for image generation / authorized the spend** — do not generate speculatively.
 The output path is mechanical: `draft` → gitignored `assets/generated/mockups/`, `brand-*` → tracked `assets/brand/`.
 
+## FAL_KEY
+
+Preferred persistent setup:
+
+```
+mkdir -p .tachyon
+printf 'FAL_KEY=your_fal_key_here\n' > .tachyon/secrets.env
+chmod 600 .tachyon/secrets.env
+```
+
+An exported `FAL_KEY` wins over the file. The file is parsed as data and is never sourced.
+
 ## Fail-closed
 
-- `FAL_KEY` unset → `unavailable` (set it; Tachyon never stores it).
+- `FAL_KEY` missing from env and `.tachyon/secrets.env` → `unavailable` (set it; Tachyon never stores it).
 - curl/jq missing → `unavailable` (the card offers an assisted install).
 - `--tier` omitted → the 3-option error. A non-200 fal response / no image URL → `error`.
 

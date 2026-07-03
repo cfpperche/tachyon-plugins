@@ -6,8 +6,8 @@ binary/data).
 
 ## Requirements
 
-- **`FAL_KEY`** env var (from https://fal.ai) — a SECRET, read from the env; Tachyon never stores/echoes it. Unset →
-  `unavailable`.
+- **`FAL_KEY`** (from https://fal.ai) — a SECRET, read first from the process env and then from
+  `.tachyon/secrets.env`; Tachyon never stores/echoes it. Missing → `unavailable`.
 - **curl** + **jq** — declared external tools (detected + assist-installed via the card); the fal client uses the
   TRUSTED resolved paths, never bare names.
 
@@ -27,6 +27,16 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/image/skills/image/scrip
 ```
 
 `--aspect square|landscape|portrait`; `--name <slug>`.
+
+To avoid exporting the key in every shell, create a local workspace file:
+
+```
+mkdir -p .tachyon
+printf 'FAL_KEY=your_fal_key_here\n' > .tachyon/secrets.env
+chmod 600 .tachyon/secrets.env
+```
+
+An already-exported `FAL_KEY` wins over the file. The file is parsed as data; it is never sourced.
 
 ## Cost / paid posture
 

@@ -6,7 +6,8 @@ half of the split video capability; its deterministic/free sibling is the `hyper
 
 ## Requirements
 
-- **`FAL_KEY`** env (https://fal.ai) — a SECRET; read from env, never stored/echoed (passed via a 0600 `curl --config`).
+- **`FAL_KEY`** (https://fal.ai) — a SECRET; read first from env and then from `.tachyon/secrets.env`, never
+  stored/echoed (passed via a 0600 `curl --config`).
 - **curl** + **jq** — declared external tools (resolved trusted via `_tachyon-external`, never bare).
 - A source **image** (https URL) for the image→video tiers (`draft`/`standard`) — e.g. an `image`-plugin output you
   host publicly. `premium` (Veo) can be text-only.
@@ -26,6 +27,16 @@ V="$(git rev-parse --show-toplevel)/.tachyon/plugins/video/skills/video/scripts/
 bash "$V" submit "a slow drone shot over a misty forest at dawn" --tier draft --image-url https://example.com/still.jpg --duration 4 --confirm-cost-usd 0.40
 bash "$V" poll --all
 ```
+
+To avoid exporting the key in every shell, create a local workspace file:
+
+```
+mkdir -p .tachyon
+printf 'FAL_KEY=your_fal_key_here\n' > .tachyon/secrets.env
+chmod 600 .tachyon/secrets.env
+```
+
+An already-exported `FAL_KEY` wins over the file. The file is parsed as data; it is never sourced.
 
 ## Cost / paid posture
 

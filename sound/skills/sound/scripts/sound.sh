@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # sound (spec 291) — PAID creative audio (music + SFX) via the fal.ai REST API. Model/body/price come from a bundled
 # tier ORACLE (references/sound-tiers.json — D5). curl + jq (+ optional ffmpeg) resolved via _tachyon-external (TRUSTED
-# paths, never bare — D1). Needs FAL_KEY (env; never stored/echoed — D4). Cost = price x duration, PRINTED before the
-# call; a HARD --confirm-cost-usd gate is REQUIRED above the oracle threshold (D3) — checked BEFORE any network call.
+# paths, never bare — D1). Needs FAL_KEY (env or .tachyon/secrets.env; never stored/echoed — D4). Cost = price x
+# duration, PRINTED before the call; a HARD --confirm-cost-usd gate is REQUIRED above the oracle threshold (D3) —
+# checked BEFORE any network call.
 set -euo pipefail
 # sanitize PATH to trusted system dirs before any ambient tool (git/awk/jq-helpers…) runs (codex MEDIUM).
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
@@ -83,8 +84,29 @@ if [ "$OVER" = "1" ]; then
   fi
 fi
 
-# ── FAL_KEY (env; never echoed — D4). Copy to a NON-exported var + unset so no spawned tool inherits it (codex MEDIUM). ──
-[ -n "${FAL_KEY:-}" ] || { echo "sound: unavailable: FAL_KEY is not set — this is a PAID capability. Set FAL_KEY (https://fal.ai) and re-run. Tachyon never stores the key." >&2; exit 1; }
+load_fal_key_from_secrets() {
+  [ -n "${FAL_KEY:-}" ] && return 0
+  secrets="$ROOT/.tachyon/secrets.env"
+  [ -f "$secrets" ] || return 0
+  line="$(awk '
+    /^[[:space:]]*(#|$)/ { next }
+    /^[[:space:]]*(export[[:space:]]+)?FAL_KEY[[:space:]]*=/ { found=$0 }
+    END { if (found) print found }
+  ' "$secrets" 2>/dev/null || true)"
+  [ -n "$line" ] || return 0
+  value="${line#*=}"
+  value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  case "$value" in
+    \"*\") value="${value#\"}"; value="${value%\"}" ;;
+    \'*\') value="${value#\'}"; value="${value%\'}" ;;
+  esac
+  [ -n "$value" ] || return 0
+  FAL_KEY="$value"
+}
+
+# ── FAL_KEY (env or .tachyon/secrets.env; never echoed — D4). Copy to a NON-exported var + unset so no spawned tool inherits it (codex MEDIUM). ──
+load_fal_key_from_secrets
+[ -n "${FAL_KEY:-}" ] || { echo "sound: unavailable: FAL_KEY is not set — this is a PAID capability. Set FAL_KEY in your env or $ROOT/.tachyon/secrets.env (https://fal.ai) and re-run. Tachyon never stores the key." >&2; exit 1; }
 _FAL="$FAL_KEY"; unset FAL_KEY
 
 # ── output dir (contained) — D6 ──

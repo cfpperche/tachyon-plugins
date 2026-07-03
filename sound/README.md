@@ -6,7 +6,8 @@ price × duration, **printed before the call**, with a **hard `--confirm-cost-us
 
 ## Requirements
 
-- **`FAL_KEY`** env var (https://fal.ai) — a SECRET; read from the env, never stored/echoed. Unset → `unavailable`.
+- **`FAL_KEY`** (https://fal.ai) — a SECRET; read first from the env and then from `.tachyon/secrets.env`, never
+  stored/echoed. Missing → `unavailable`.
 - **curl** + **jq** — declared external tools (the fal client uses the TRUSTED resolved paths). **ffmpeg** optional
   (mp3; wav works without).
 
@@ -25,6 +26,16 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/sound/skills/sound/scrip
   "warm lo-fi loop, mellow" --kind music --duration 20 --out assets/sound
 # above $0.25 → re-run with --confirm-cost-usd <amount> (only if the spend was authorized)
 ```
+
+To avoid exporting the key in every shell, create a local workspace file:
+
+```
+mkdir -p .tachyon
+printf 'FAL_KEY=your_fal_key_here\n' > .tachyon/secrets.env
+chmod 600 .tachyon/secrets.env
+```
+
+An already-exported `FAL_KEY` wins over the file. The file is parsed as data; it is never sourced.
 
 ## Cost / paid posture
 
