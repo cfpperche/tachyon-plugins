@@ -1,13 +1,14 @@
 # agent-desktop
 
 `agent-desktop` gives agents explicit, bounded "hands" on the user's desktop: open an app or URL, wait for a window,
-restore it, bring it to the foreground, and clean up windows the plugin opened before another tool such as
-`agent-screen` captures visual evidence.
+restore it, bring it to the foreground, send one scoped input action, and clean up windows the plugin opened before
+another tool such as `agent-screen` captures visual evidence.
 
 V1 targets the current dogfood environment: WSL controlling the Windows host desktop through PowerShell and Win32 APIs.
-It does not take screenshots, run background loops, type arbitrary text, click the mouse, or perform privacy redaction.
-The user consent model is explicit: if you run this plugin, you accept that it can launch, restore, focus, and close
-plugin-owned desktop windows and that visible titles/URLs may expose private context.
+It does not take screenshots, run background loops, perform OCR, run a planner, or perform privacy redaction. The user
+consent model is explicit: if you run this plugin, you accept that it can launch, restore, focus, type, press safe keys,
+left-click inside a target window, and close plugin-owned desktop windows and that visible titles/URLs may expose private
+context.
 
 ## Usage
 
@@ -23,6 +24,9 @@ bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/age
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" wait-window --process chrome --title GitHub --timeout 10 --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" focus --window-id 123456 --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" restore --window-id 123456 --json
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" type --window-id 123456 --text "hello" --session dogfood-1 --json
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" key --window-id 123456 --key ctrl+a --session dogfood-1 --json
+bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" click --window-id 123456 --x 40 --y 80 --session dogfood-1 --dry-run --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" sessions show --session dogfood-1 --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" cleanup --session dogfood-1 --dry-run --json
 bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" cleanup --session dogfood-1 --json
@@ -56,6 +60,17 @@ All commands write compact JSON to stdout. `--json` is accepted for readability 
 - `focus` restores the target, then tries direct foregrounding, ALT foreground unlock, and an attach-thread fallback.
   It only reports success after verifying that the foreground root window matches the target.
 - `restore` calls Windows restore on the selected target and reports whether it had to change minimized state.
+- Input commands (`type`, `key`, `click`) require both `--window-id` and `--session`. They never target by process/title.
+- `type` transports text as base64 UTF-8 into PowerShell and injects it with Win32 `SendInput`: printable ASCII uses
+  `VkKeyScanW` virtual-key events for reliability in modern Windows controls, with Unicode events as fallback. Text is
+  limited to one line, no control characters, and 1024 characters. Use `key --key enter` for Enter.
+- `key` only accepts: `enter`, `escape`, `tab`, `backspace`, `delete`, `up`, `down`, `left`, `right`, `ctrl+a`,
+  `ctrl+f`, `ctrl+s`, `ctrl+z`. `ctrl+s` can persist user data in non-owned apps; this is covered by user consent.
+- `click` sends one left button down/up pair. Coordinates are relative to the `agent-screen screenshot --window-id`
+  image/DWM extended frame bounds, not Win32 client coordinates. The command refuses out-of-bounds points, nonclient
+  title-bar/border points, and points where another root window is topmost immediately before the click.
+- Input commands append session ledger events. If a non-owned window is touched by input, cleanup restores its prior
+  minimized state and never closes it.
 - `sessions list` and `sessions show --session <id>` inspect the workspace ledger and live identity verification state.
 - `cleanup --session <id> --dry-run` reports which owned windows would be closed without closing anything.
 - `cleanup --session <id>` sends `WM_CLOSE` only to windows owned by that session after revalidating HWND, pid, process
@@ -63,7 +78,9 @@ All commands write compact JSON to stdout. `--json` is accepted for readability 
   For non-owned touched windows, cleanup restores the recorded minimized state instead of closing the window.
 - `close --window-id <id>` refuses unknown or non-owned windows.
 - Window bounds use physical pixels and DWM extended frame bounds where available, matching `agent-screen`.
-- Pair with `agent-screen screenshot --window-id <id>` for visual evidence. `agent-desktop` never captures pixels.
+- Pair with `agent-screen screenshot --window-id <id>` for visual evidence. The intended loop is:
+  focus/open with `agent-desktop`, inspect with `agent-screen`, send one `agent-desktop` input action, inspect again, then
+  cleanup. `agent-desktop` never captures pixels.
 
 ## Runtime Requirements
 

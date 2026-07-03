@@ -19,6 +19,9 @@ usage:
   agent-desktop focus --process <name> [--title <substring>] [--session <id>] [--json]
   agent-desktop restore --window-id <id> [--session <id>] [--json]
   agent-desktop close --window-id <id> [--session <id>] [--json]
+  agent-desktop type --window-id <id> --text <text> --session <id> [--dry-run] [--json]
+  agent-desktop key --window-id <id> --key <key-or-chord> --session <id> [--dry-run] [--json]
+  agent-desktop click --window-id <id> --x <px> --y <px> --session <id> [--expected-bounds <json>] [--dry-run] [--json]
   agent-desktop cleanup --session <id> [--dry-run] [--json]
   agent-desktop cleanup --mine [--dry-run] [--json]
   agent-desktop sessions list [--json]
@@ -96,6 +99,11 @@ param(
   [string]$Browser = "",
   [string]$Url = "",
   [string]$SessionId = "",
+  [string]$TextB64 = "",
+  [string]$Key = "",
+  [int]$X = -1,
+  [int]$Y = -1,
+  [string]$ExpectedBounds = "",
   [string]$LedgerRoot = "",
   [string]$ProfileRoot = "",
   [switch]$NewWindow,
@@ -107,10 +115,13 @@ param(
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+$script:PendingInputFailureLedger = $null
+$script:PendingInputFailureData = $null
 
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 public class AgentDesktopDpi {
   [DllImport("user32.dll")]
   public static extern bool SetProcessDPIAware();
@@ -179,7 +190,193 @@ public class AgentDesktopNative {
 }
 "@
 
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class AgentDesktopInput {
+  public const uint INPUT_MOUSE = 0;
+  public const uint INPUT_KEYBOARD = 1;
+  public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
+  public const uint KEYEVENTF_KEYUP = 0x0002;
+  public const uint KEYEVENTF_UNICODE = 0x0004;
+  public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+  public const uint MOUSEEVENTF_LEFTUP = 0x0004;
+  public const ushort VK_SHIFT = 0x10;
+
+  [StructLayout(LayoutKind.Sequential)]
+  public struct POINT {
+    public int X;
+    public int Y;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  public struct RECT {
+    public int Left;
+    public int Top;
+    public int Right;
+    public int Bottom;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  public struct INPUT {
+    public uint type;
+    public InputUnion U;
+  }
+
+  [StructLayout(LayoutKind.Explicit)]
+  public struct InputUnion {
+    [FieldOffset(0)] public MOUSEINPUT mi;
+    [FieldOffset(0)] public KEYBDINPUT ki;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  public struct MOUSEINPUT {
+    public int dx;
+    public int dy;
+    public uint mouseData;
+    public uint dwFlags;
+    public uint time;
+    public UIntPtr dwExtraInfo;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  public struct KEYBDINPUT {
+    public ushort wVk;
+    public ushort wScan;
+    public uint dwFlags;
+    public uint time;
+    public UIntPtr dwExtraInfo;
+  }
+
+  [DllImport("user32.dll", SetLastError=true)]
+  public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+  [DllImport("user32.dll")]
+  public static extern bool SetCursorPos(int X, int Y);
+  [DllImport("user32.dll")]
+  public static extern IntPtr WindowFromPoint(POINT Point);
+  [DllImport("user32.dll")]
+  public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+  [DllImport("user32.dll")]
+  public static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
+  [DllImport("user32.dll")]
+  public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)]
+  public static extern short VkKeyScan(char ch);
+
+  public static bool SendUnicodeText(string text) {
+    foreach (char ch in text) {
+      if (!SendCharacter(ch)) {
+        return false;
+      }
+      System.Threading.Thread.Sleep(8);
+    }
+    return true;
+  }
+
+  public static bool SendVirtualKey(ushort vk, bool ctrl, bool extendedKey) {
+    ushort ctrlVk = 0x11;
+    INPUT ctrlDown = KeyInput(ctrlVk, false, false);
+    INPUT ctrlUp = KeyInput(ctrlVk, true, false);
+    INPUT down = KeyInput(vk, false, extendedKey);
+    INPUT up = KeyInput(vk, true, extendedKey);
+    INPUT[] inputs = ctrl ? new INPUT[] { ctrlDown, down, up, ctrlUp } : new INPUT[] { down, up };
+    uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+    if (sent < inputs.Length) {
+      INPUT[] release = ctrl ? new INPUT[] { up, ctrlUp } : new INPUT[] { up };
+      SendInput((uint)release.Length, release, Marshal.SizeOf(typeof(INPUT)));
+    }
+    return sent == inputs.Length;
+  }
+
+  public static bool SendCharacter(char ch) {
+    if (ch >= 32 && ch <= 126) {
+      short mapped = VkKeyScan(ch);
+      if (mapped != -1) {
+        ushort vk = (ushort)(mapped & 0xFF);
+        byte shiftState = (byte)((mapped >> 8) & 0xFF);
+        bool needsShift = (shiftState & 1) != 0;
+        bool needsCtrl = (shiftState & 2) != 0;
+        bool needsAlt = (shiftState & 4) != 0;
+        if (!needsCtrl && !needsAlt) {
+          return SendPrintableVirtualKey(vk, needsShift);
+        }
+      }
+    }
+    return SendUnicodeCharacter(ch);
+  }
+
+  public static bool SendPrintableVirtualKey(ushort vk, bool shift) {
+    INPUT shiftDown = KeyInput(VK_SHIFT, false, false);
+    INPUT shiftUp = KeyInput(VK_SHIFT, true, false);
+    INPUT down = KeyInput(vk, false, false);
+    INPUT up = KeyInput(vk, true, false);
+    INPUT[] inputs = shift ? new INPUT[] { shiftDown, down, up, shiftUp } : new INPUT[] { down, up };
+    uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+    if (sent < inputs.Length) {
+      INPUT[] release = shift ? new INPUT[] { up, shiftUp } : new INPUT[] { up };
+      SendInput((uint)release.Length, release, Marshal.SizeOf(typeof(INPUT)));
+    }
+    return sent == inputs.Length;
+  }
+
+  public static bool SendUnicodeCharacter(char ch) {
+    INPUT down = new INPUT();
+    down.type = INPUT_KEYBOARD;
+    down.U.ki.wVk = 0;
+    down.U.ki.wScan = ch;
+    down.U.ki.dwFlags = KEYEVENTF_UNICODE;
+    down.U.ki.dwExtraInfo = UIntPtr.Zero;
+
+    INPUT up = down;
+    up.U.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+
+    INPUT[] inputs = new INPUT[] { down, up };
+    return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))) == inputs.Length;
+  }
+
+  public static bool LeftClick(int x, int y) {
+    if (!SetCursorPos(x, y)) { return false; }
+    INPUT down = new INPUT();
+    down.type = INPUT_MOUSE;
+    down.U.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+    down.U.mi.dwExtraInfo = UIntPtr.Zero;
+    INPUT up = down;
+    up.U.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+    INPUT[] inputs = new INPUT[] { down, up };
+    return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))) == inputs.Length;
+  }
+
+  public static int HitTest(IntPtr hWnd, int x, int y) {
+    int packed = ((y & 0xFFFF) << 16) | (x & 0xFFFF);
+    return SendMessage(hWnd, 0x0084, IntPtr.Zero, new IntPtr(packed)).ToInt32();
+  }
+
+  private static INPUT KeyInput(ushort vk, bool up, bool extendedKey) {
+    INPUT input = new INPUT();
+    input.type = INPUT_KEYBOARD;
+    input.U.ki.wVk = vk;
+    input.U.ki.wScan = 0;
+    input.U.ki.dwFlags = (up ? KEYEVENTF_KEYUP : 0) | (extendedKey ? KEYEVENTF_EXTENDEDKEY : 0);
+    input.U.ki.dwExtraInfo = UIntPtr.Zero;
+    return input;
+  }
+}
+"@
+
 function Finish([int]$Code, [object]$Payload) {
+  if ($Code -ne 0 -and $null -ne $script:PendingInputFailureLedger -and $null -ne $script:PendingInputFailureData) {
+    try {
+      $failure = $script:PendingInputFailureData
+      $failure | Add-Member -NotePropertyName result -NotePropertyValue "failed" -Force
+      $failure | Add-Member -NotePropertyName error -NotePropertyValue ("" + $Payload.error) -Force
+      $failure | Add-Member -NotePropertyName message -NotePropertyValue ("" + $Payload.message) -Force
+      $failure | Add-Member -NotePropertyName exit_code -NotePropertyValue $Code -Force
+      Add-LedgerEvent $script:PendingInputFailureLedger "input" $failure
+      Write-Ledger $script:PendingInputFailureLedger
+    } catch {}
+    $script:PendingInputFailureLedger = $null
+    $script:PendingInputFailureData = $null
+  }
   $Payload | Add-Member -NotePropertyName plugin -NotePropertyValue "agent-desktop" -Force
   $Payload | Add-Member -NotePropertyName exit_code -NotePropertyValue $Code -Force
   $Payload | ConvertTo-Json -Compress -Depth 8
@@ -724,6 +921,339 @@ function Focus-TargetWindow([object]$Window) {
     window = (Public-Window $fresh)
     attempts = @($attempts.ToArray())
   }
+}
+
+function Require-InputSession {
+  if ([string]::IsNullOrWhiteSpace($SessionId)) {
+    Finish 64 (Error-Payload "invalid-argument" "$Command requires --session <id>.")
+  }
+  return (Normalize-SessionId $SessionId)
+}
+
+function Resolve-InputWindow {
+  if ([string]::IsNullOrWhiteSpace($WindowId)) {
+    Finish 64 (Error-Payload "invalid-argument" "$Command requires --window-id <id>.")
+  }
+  if ($WindowId -notmatch '^[0-9]+$') {
+    Finish 64 (Error-Payload "invalid-argument" "$Command requires a numeric --window-id.")
+  }
+  $matches = @(Get-Windows | Where-Object { ("" + $_.id) -eq ("" + $WindowId) })
+  if ($matches.Count -eq 1) { return $matches[0] }
+  Finish 71 (Error-Payload "not-found" "No visible top-level window matched window id '$WindowId'.")
+}
+
+function Ensure-InputLedgerTarget([string]$Sid, [object]$Target, [switch]$Preview) {
+  $ledger = Read-Ledger $Sid -AllowMissing
+  if (("" + $ledger.host_boot) -ne (Host-BootMarker)) {
+    Finish 71 (Error-Payload "stale-ledger" "Session ledger '$Sid' was created before the current Windows boot; refusing input.")
+  }
+  $record = Find-LedgerWindow $ledger $Target.id
+  if ($null -ne $record) {
+    $verification = Verify-OwnedWindow $record
+    if (-not $verification.ok) {
+      $payload = Error-Payload $verification.state "Ledger target '$($Target.id)' is $($verification.state): $($verification.reason)."
+      $payload | Add-Member -NotePropertyName window_id -NotePropertyValue $Target.id -Force
+      $payload | Add-Member -NotePropertyName state -NotePropertyValue $verification.state -Force
+      $payload | Add-Member -NotePropertyName reason -NotePropertyValue $verification.reason -Force
+      if ($verification.state -eq "mismatched") { Finish 72 $payload }
+      Finish 71 $payload
+    }
+    return [pscustomobject]@{ ledger = $ledger; record = $record; target = $Target; known = $true }
+  }
+
+  if ($Preview) {
+    return [pscustomobject]@{ ledger = $ledger; record = $null; target = $Target; known = $false }
+  }
+
+  $touch = Ledger-WindowRecord $Target $Sid "input-touch" $false "" ""
+  $touch | Add-Member -NotePropertyName pre_mutation_minimized -NotePropertyValue ([bool]$Target.minimized) -Force
+  $touch | Add-Member -NotePropertyName pre_mutation_foreground -NotePropertyValue ([bool]$Target.foreground) -Force
+  Upsert-LedgerWindow $ledger $touch
+  Write-Ledger $ledger
+  return [pscustomobject]@{ ledger = $ledger; record = $touch; target = $Target; known = $false }
+}
+
+function Input-EventData([string]$Action, [object]$Target, [bool]$Preview, [object]$Extra) {
+  $data = [ordered]@{
+    action = $Action
+    window_id = $Target.id
+    pid = $Target.pid
+    process = $Target.process
+    process_start_time = $Target.process_start_time
+    class = $Target.class
+    dry_run = $Preview
+  }
+  if ($null -ne $Extra) {
+    foreach ($prop in $Extra.PSObject.Properties) {
+      $data[$prop.Name] = $prop.Value
+    }
+  }
+  return [pscustomobject]$data
+}
+
+function Set-PendingInputFailure([object]$Ledger, [string]$Action, [object]$Target, [object]$Extra) {
+  $script:PendingInputFailureLedger = $Ledger
+  $script:PendingInputFailureData = (Input-EventData $Action $Target $false $Extra)
+}
+
+function Clear-PendingInputFailure {
+  $script:PendingInputFailureLedger = $null
+  $script:PendingInputFailureData = $null
+}
+
+function Finish-InputDryRun([string]$Action, [object]$Ledger, [object]$Target, [object]$Extra) {
+  Add-LedgerEvent $Ledger "input" (Input-EventData $Action $Target $true $Extra)
+  Write-Ledger $Ledger
+  Finish 0 ([pscustomobject]@{
+    ok = $true
+    command = $Action
+    session_id = $Ledger.session_id
+    window_id = $Target.id
+    dry_run = $true
+    planned = $Extra
+    window = (Public-Window $Target)
+  })
+}
+
+function Get-FreshInputTarget([string]$WindowIdValue) {
+  $fresh = Window-Object ([IntPtr]::new([int64]$WindowIdValue))
+  if ($null -eq $fresh) {
+    Finish 71 (Error-Payload "not-found" "Target window disappeared before input.")
+  }
+  return $fresh
+}
+
+function Key-Spec([string]$KeyValue) {
+  $normalized = ("" + $KeyValue).Trim().ToLowerInvariant()
+  $map = @{
+    "enter" = [pscustomobject]@{ key = "enter"; vk = [uint16]0x0D; ctrl = $false; extended = $false }
+    "escape" = [pscustomobject]@{ key = "escape"; vk = [uint16]0x1B; ctrl = $false; extended = $false }
+    "tab" = [pscustomobject]@{ key = "tab"; vk = [uint16]0x09; ctrl = $false; extended = $false }
+    "backspace" = [pscustomobject]@{ key = "backspace"; vk = [uint16]0x08; ctrl = $false; extended = $false }
+    "delete" = [pscustomobject]@{ key = "delete"; vk = [uint16]0x2E; ctrl = $false; extended = $true }
+    "up" = [pscustomobject]@{ key = "up"; vk = [uint16]0x26; ctrl = $false; extended = $true }
+    "down" = [pscustomobject]@{ key = "down"; vk = [uint16]0x28; ctrl = $false; extended = $true }
+    "left" = [pscustomobject]@{ key = "left"; vk = [uint16]0x25; ctrl = $false; extended = $true }
+    "right" = [pscustomobject]@{ key = "right"; vk = [uint16]0x27; ctrl = $false; extended = $true }
+    "ctrl+a" = [pscustomobject]@{ key = "ctrl+a"; vk = [uint16]0x41; ctrl = $true; extended = $false }
+    "ctrl+f" = [pscustomobject]@{ key = "ctrl+f"; vk = [uint16]0x46; ctrl = $true; extended = $false }
+    "ctrl+s" = [pscustomobject]@{ key = "ctrl+s"; vk = [uint16]0x53; ctrl = $true; extended = $false }
+    "ctrl+z" = [pscustomobject]@{ key = "ctrl+z"; vk = [uint16]0x5A; ctrl = $true; extended = $false }
+  }
+  if (-not $map.ContainsKey($normalized)) {
+    Finish 64 (Error-Payload "invalid-argument" "Unsupported key/chord '$KeyValue'. Allowed: enter, escape, tab, backspace, delete, up, down, left, right, ctrl+a, ctrl+f, ctrl+s, ctrl+z.")
+  }
+  return $map[$normalized]
+}
+
+function Decode-TypeText {
+  if ([string]::IsNullOrWhiteSpace($TextB64)) {
+    Finish 64 (Error-Payload "invalid-argument" "type requires --text <text>.")
+  }
+  try {
+    $bytes = [Convert]::FromBase64String($TextB64)
+    $text = [System.Text.Encoding]::UTF8.GetString($bytes)
+  } catch {
+    Finish 64 (Error-Payload "invalid-argument" "type text transport was not valid base64 UTF-8.")
+  }
+  if ($text.Length -gt 1024) {
+    Finish 64 (Error-Payload "invalid-argument" "type text must be 1024 characters or fewer.")
+  }
+  foreach ($ch in $text.ToCharArray()) {
+    if ([char]::IsControl($ch)) {
+      Finish 64 (Error-Payload "invalid-argument" "type text cannot contain newline, carriage return, or control characters; use key enter explicitly.")
+    }
+  }
+  return $text
+}
+
+function Parse-ExpectedBounds {
+  if ([string]::IsNullOrWhiteSpace($ExpectedBounds)) { return $null }
+  try {
+    $bounds = $ExpectedBounds | ConvertFrom-Json
+    foreach ($name in @("x", "y", "width", "height")) {
+      if ($null -eq $bounds.PSObject.Properties[$name]) {
+        Finish 64 (Error-Payload "invalid-argument" "--expected-bounds must include x, y, width, and height.")
+      }
+    }
+    return $bounds
+  } catch {
+    Finish 64 (Error-Payload "invalid-argument" "--expected-bounds must be a JSON object with x, y, width, and height.")
+  }
+}
+
+function Assert-ExpectedBounds([object]$Window, [object]$Bounds) {
+  if ($null -eq $Bounds) { return }
+  foreach ($name in @("x", "y", "width", "height")) {
+    if ([int]$Window.$name -ne [int]$Bounds.$name) {
+      Finish 64 (Error-Payload "invalid-argument" "Target window bounds changed since screenshot; refusing click.")
+    }
+  }
+}
+
+function Assert-ClientPoint([IntPtr]$Hwnd, [int]$ScreenX, [int]$ScreenY) {
+  $hitTest = [AgentDesktopInput]::HitTest($Hwnd, $ScreenX, $ScreenY)
+  if ($hitTest -ne 1) {
+    Finish 64 (Error-Payload "invalid-argument" "Click point is outside the target client area/nonclient clicks are refused.")
+  }
+  $rect = New-Object AgentDesktopInput+RECT
+  if (-not [AgentDesktopInput]::GetClientRect($Hwnd, [ref]$rect)) {
+    Finish 64 (Error-Payload "invalid-argument" "Could not read target client area for click validation.")
+  }
+  $topLeft = New-Object AgentDesktopInput+POINT
+  $topLeft.X = $rect.Left
+  $topLeft.Y = $rect.Top
+  $bottomRight = New-Object AgentDesktopInput+POINT
+  $bottomRight.X = $rect.Right
+  $bottomRight.Y = $rect.Bottom
+  [void][AgentDesktopInput]::ClientToScreen($Hwnd, [ref]$topLeft)
+  [void][AgentDesktopInput]::ClientToScreen($Hwnd, [ref]$bottomRight)
+  if ($ScreenX -lt $topLeft.X -or $ScreenX -ge $bottomRight.X -or $ScreenY -lt $topLeft.Y -or $ScreenY -ge $bottomRight.Y) {
+    Finish 64 (Error-Payload "invalid-argument" "Click point is outside the target client area/nonclient clicks are refused.")
+  }
+}
+
+function Assert-PointTopmostTarget([IntPtr]$Hwnd, [int]$ScreenX, [int]$ScreenY) {
+  $point = New-Object AgentDesktopInput+POINT
+  $point.X = $ScreenX
+  $point.Y = $ScreenY
+  $hit = [AgentDesktopInput]::WindowFromPoint($point)
+  $hitRoot = Root-Hwnd $hit
+  $targetRoot = Root-Hwnd $Hwnd
+  if ($hitRoot -eq [IntPtr]::Zero -or $hitRoot.ToInt64() -ne $targetRoot.ToInt64()) {
+    $payload = Error-Payload "focus-denied" "Click point is not topmost for the target window; refusing obscured click."
+    $payload | Add-Member -NotePropertyName hit_window_id -NotePropertyValue $hitRoot.ToInt64().ToString() -Force
+    $payload | Add-Member -NotePropertyName target_window_id -NotePropertyValue $targetRoot.ToInt64().ToString() -Force
+    Finish 74 $payload
+  }
+}
+
+function Command-TypeInput {
+  $sid = Require-InputSession
+  $text = Decode-TypeText
+  $target = Resolve-InputWindow
+  $state = Ensure-InputLedgerTarget $sid $target -Preview:$DryRun
+  $extra = [pscustomobject]@{ chars = $text.Length }
+  if ($DryRun) { Finish-InputDryRun "type" $state.ledger $target $extra }
+  Set-PendingInputFailure $state.ledger "type" $target $extra
+
+  $focusResult = Focus-TargetWindow $target
+  $fresh = Get-FreshInputTarget $focusResult.window.id
+  if ((Get-ForegroundRootId) -ne (Root-Hwnd ([IntPtr]::new([int64]$fresh.id))).ToInt64().ToString()) {
+    Finish 74 (Error-Payload "focus-denied" "Foreground changed before text input.")
+  }
+  $ok = [AgentDesktopInput]::SendUnicodeText($text)
+  if (-not $ok) { Finish 1 (Error-Payload "failed" "SendInput did not accept all text input events.") }
+  $postForeground = Get-ForegroundRootId
+  Clear-PendingInputFailure
+  Add-LedgerEvent $state.ledger "input" (Input-EventData "type" $fresh $false $extra)
+  Write-Ledger $state.ledger
+  Finish 0 ([pscustomobject]@{
+    ok = $true
+    command = "type"
+    session_id = $sid
+    window_id = $fresh.id
+    dry_run = $false
+    chars = $text.Length
+    focused = $true
+    restored = $focusResult.restored
+    window = (Public-Window $fresh)
+    post_foreground_window_id = $postForeground
+  })
+}
+
+function Command-KeyInput {
+  $sid = Require-InputSession
+  if ([string]::IsNullOrWhiteSpace($Key)) {
+    Finish 64 (Error-Payload "invalid-argument" "key requires --key <key-or-chord>.")
+  }
+  $spec = Key-Spec $Key
+  $target = Resolve-InputWindow
+  $state = Ensure-InputLedgerTarget $sid $target -Preview:$DryRun
+  $extra = [pscustomobject]@{ key = $spec.key }
+  if ($DryRun) { Finish-InputDryRun "key" $state.ledger $target $extra }
+  Set-PendingInputFailure $state.ledger "key" $target $extra
+
+  $focusResult = Focus-TargetWindow $target
+  $fresh = Get-FreshInputTarget $focusResult.window.id
+  if ((Get-ForegroundRootId) -ne (Root-Hwnd ([IntPtr]::new([int64]$fresh.id))).ToInt64().ToString()) {
+    Finish 74 (Error-Payload "focus-denied" "Foreground changed before key input.")
+  }
+  $ok = [AgentDesktopInput]::SendVirtualKey([uint16]$spec.vk, [bool]$spec.ctrl, [bool]$spec.extended)
+  if (-not $ok) { Finish 1 (Error-Payload "failed" "SendInput did not accept all key input events.") }
+  $postForeground = Get-ForegroundRootId
+  Clear-PendingInputFailure
+  Add-LedgerEvent $state.ledger "input" (Input-EventData "key" $fresh $false $extra)
+  Write-Ledger $state.ledger
+  Finish 0 ([pscustomobject]@{
+    ok = $true
+    command = "key"
+    session_id = $sid
+    window_id = $fresh.id
+    dry_run = $false
+    key = $spec.key
+    focused = $true
+    restored = $focusResult.restored
+    window = (Public-Window $fresh)
+    post_foreground_window_id = $postForeground
+  })
+}
+
+function Command-ClickInput {
+  $sid = Require-InputSession
+  if ($X -lt 0 -or $Y -lt 0) {
+    Finish 64 (Error-Payload "invalid-argument" "click requires non-negative --x and --y.")
+  }
+  $target = Resolve-InputWindow
+  $expected = Parse-ExpectedBounds
+  Assert-ExpectedBounds $target $expected
+  if ($X -ge [int]$target.width -or $Y -ge [int]$target.height) {
+    Finish 64 (Error-Payload "invalid-argument" "Click coordinate is outside the target DWM bounds.")
+  }
+  $screenX = [int]$target.x + $X
+  $screenY = [int]$target.y + $Y
+  Assert-ClientPoint ([IntPtr]::new([int64]$target.id)) $screenX $screenY
+  $state = Ensure-InputLedgerTarget $sid $target -Preview:$DryRun
+  $extra = [pscustomobject]@{ x = $X; y = $Y; screen_x = $screenX; screen_y = $screenY }
+  if ($DryRun) { Finish-InputDryRun "click" $state.ledger $target $extra }
+  Set-PendingInputFailure $state.ledger "click" $target $extra
+
+  $focusResult = Focus-TargetWindow $target
+  $fresh = Get-FreshInputTarget $focusResult.window.id
+  Assert-ExpectedBounds $fresh $expected
+  if ($X -ge [int]$fresh.width -or $Y -ge [int]$fresh.height) {
+    Finish 64 (Error-Payload "invalid-argument" "Click coordinate is outside the current target DWM bounds.")
+  }
+  $screenX = [int]$fresh.x + $X
+  $screenY = [int]$fresh.y + $Y
+  $hwnd = [IntPtr]::new([int64]$fresh.id)
+  if ((Get-ForegroundRootId) -ne (Root-Hwnd $hwnd).ToInt64().ToString()) {
+    Finish 74 (Error-Payload "focus-denied" "Foreground changed before click input.")
+  }
+  Assert-ClientPoint $hwnd $screenX $screenY
+  Assert-PointTopmostTarget $hwnd $screenX $screenY
+  $ok = [AgentDesktopInput]::LeftClick($screenX, $screenY)
+  if (-not $ok) { Finish 1 (Error-Payload "failed" "SendInput did not accept the mouse click events.") }
+  $postForeground = Get-ForegroundRootId
+  $extra = [pscustomobject]@{ x = $X; y = $Y; screen_x = $screenX; screen_y = $screenY }
+  Clear-PendingInputFailure
+  Add-LedgerEvent $state.ledger "input" (Input-EventData "click" $fresh $false $extra)
+  Write-Ledger $state.ledger
+  Finish 0 ([pscustomobject]@{
+    ok = $true
+    command = "click"
+    session_id = $sid
+    window_id = $fresh.id
+    dry_run = $false
+    x = $X
+    y = $Y
+    screen_x = $screenX
+    screen_y = $screenY
+    focused = $true
+    restored = $focusResult.restored
+    window = (Public-Window $fresh)
+    post_foreground_window_id = $postForeground
+  })
 }
 
 function Resolve-ChromePath {
@@ -1610,6 +2140,9 @@ try {
     "cleanup" { Command-CleanupSession }
     "cleanup-mine" { Command-CleanupMine }
     "close" { Command-CloseWindow }
+    "type" { Command-TypeInput }
+    "key" { Command-KeyInput }
+    "click" { Command-ClickInput }
     "focus" {
       $target = Resolve-Target
       $result = Focus-TargetWindow $target
@@ -1833,6 +2366,73 @@ case "$command_name" in
     done
     [ -n "$window_id" ] || die_usage "close requires --window-id <id>"
     invoke_windows_host close 20 -WindowId "$window_id" -SessionId "$session_id"
+    ;;
+  type)
+    window_id=""
+    session_id=""
+    text=""
+    dry_run=()
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --json) shift ;;
+        --window-id) [ "$#" -ge 2 ] || die_usage "--window-id requires a value"; window_id="$2"; shift 2 ;;
+        --text) [ "$#" -ge 2 ] || die_usage "--text requires a value"; text="$2"; shift 2 ;;
+        --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
+        --dry-run) dry_run=("-DryRun"); shift ;;
+        *) die_usage "unknown type argument: $1" ;;
+      esac
+    done
+    [ -n "$window_id" ] || die_usage "type requires --window-id <id>"
+    [ -n "$session_id" ] || die_usage "type requires --session <id>"
+    [ -n "$text" ] || die_usage "type requires --text <text>"
+    text_b64="$(printf '%s' "$text" | base64 | tr -d '\n')"
+    type_timeout=$((30 + (${#text} / 30)))
+    invoke_windows_host type "$type_timeout" -WindowId "$window_id" -SessionId "$session_id" -TextB64 "$text_b64" "${dry_run[@]}"
+    ;;
+  key)
+    window_id=""
+    session_id=""
+    key_value=""
+    dry_run=()
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --json) shift ;;
+        --window-id) [ "$#" -ge 2 ] || die_usage "--window-id requires a value"; window_id="$2"; shift 2 ;;
+        --key) [ "$#" -ge 2 ] || die_usage "--key requires a value"; key_value="$2"; shift 2 ;;
+        --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
+        --dry-run) dry_run=("-DryRun"); shift ;;
+        *) die_usage "unknown key argument: $1" ;;
+      esac
+    done
+    [ -n "$window_id" ] || die_usage "key requires --window-id <id>"
+    [ -n "$session_id" ] || die_usage "key requires --session <id>"
+    [ -n "$key_value" ] || die_usage "key requires --key <key-or-chord>"
+    invoke_windows_host key 20 -WindowId "$window_id" -SessionId "$session_id" -Key "$key_value" "${dry_run[@]}"
+    ;;
+  click)
+    window_id=""
+    session_id=""
+    x_value=""
+    y_value=""
+    expected_bounds=""
+    dry_run=()
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --json) shift ;;
+        --window-id) [ "$#" -ge 2 ] || die_usage "--window-id requires a value"; window_id="$2"; shift 2 ;;
+        --x) [ "$#" -ge 2 ] || die_usage "--x requires a value"; x_value="$2"; shift 2 ;;
+        --y) [ "$#" -ge 2 ] || die_usage "--y requires a value"; y_value="$2"; shift 2 ;;
+        --expected-bounds) [ "$#" -ge 2 ] || die_usage "--expected-bounds requires a value"; expected_bounds="$2"; shift 2 ;;
+        --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
+        --dry-run) dry_run=("-DryRun"); shift ;;
+        *) die_usage "unknown click argument: $1" ;;
+      esac
+    done
+    [ -n "$window_id" ] || die_usage "click requires --window-id <id>"
+    [ -n "$session_id" ] || die_usage "click requires --session <id>"
+    [[ "$x_value" =~ ^[0-9]+$ ]] || die_usage "click requires non-negative integer --x"
+    [[ "$y_value" =~ ^[0-9]+$ ]] || die_usage "click requires non-negative integer --y"
+    invoke_windows_host click 20 -WindowId "$window_id" -SessionId "$session_id" -X "$x_value" -Y "$y_value" -ExpectedBounds "$expected_bounds" "${dry_run[@]}"
     ;;
   cleanup)
     session_id=""
