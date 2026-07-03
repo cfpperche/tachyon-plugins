@@ -10,12 +10,17 @@ usage() {
 usage:
   agent-desktop doctor
   agent-desktop list-windows [--json] [--verbose]
-  agent-desktop launch --app <name-or-path> [--json]
-  agent-desktop open-url --browser chrome [--new-window] <http-or-https-url> [--json]
+  agent-desktop launch --app <name-or-path> [--session <id>] [--json]
+  agent-desktop open-url --browser chrome [--new-window] [--session <id>] <http-or-https-url> [--json]
   agent-desktop wait-window --process <name> [--title <substring>] --timeout <seconds> [--json]
-  agent-desktop focus --window-id <id> [--json]
-  agent-desktop focus --process <name> [--title <substring>] [--json]
-  agent-desktop restore --window-id <id> [--json]
+  agent-desktop focus --window-id <id> [--session <id>] [--json]
+  agent-desktop focus --process <name> [--title <substring>] [--session <id>] [--json]
+  agent-desktop restore --window-id <id> [--session <id>] [--json]
+  agent-desktop close --window-id <id> [--session <id>] [--json]
+  agent-desktop cleanup --session <id> [--dry-run] [--json]
+  agent-desktop cleanup --mine [--dry-run] [--json]
+  agent-desktop sessions list [--json]
+  agent-desktop sessions show --session <id> [--json]
 EOF
 }
 
@@ -66,6 +71,16 @@ run_with_timeout() {
   fi
 }
 
+workspace_root() {
+  local root
+  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -n "$root" ]; then
+    printf '%s\n' "$root"
+  else
+    pwd
+  fi
+}
+
 windows_host_ps1() {
   local ps1="$1"
   cat > "$ps1" <<'PS1'
@@ -78,7 +93,11 @@ param(
   [string]$App = "",
   [string]$Browser = "",
   [string]$Url = "",
+  [string]$SessionId = "",
+  [string]$LedgerRoot = "",
+  [string]$ProfileRoot = "",
   [switch]$NewWindow,
+  [switch]$DryRun,
   [switch]$VerboseTitles
 )
 
@@ -115,11 +134,15 @@ public class AgentDesktopNative {
   [DllImport("user32.dll")]
   public static extern bool IsWindowVisible(IntPtr hWnd);
   [DllImport("user32.dll")]
+  public static extern bool IsWindow(IntPtr hWnd);
+  [DllImport("user32.dll")]
   public static extern bool IsIconic(IntPtr hWnd);
   [DllImport("user32.dll")]
   public static extern int GetWindowTextLength(IntPtr hWnd);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)]
   public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)]
+  public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
   [DllImport("user32.dll")]
   public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
   [DllImport("user32.dll")]
@@ -132,6 +155,8 @@ public class AgentDesktopNative {
   public static extern bool SetForegroundWindow(IntPtr hWnd);
   [DllImport("user32.dll")]
   public static extern bool BringWindowToTop(IntPtr hWnd);
+  [DllImport("user32.dll")]
+  public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
   [DllImport("user32.dll")]
   public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
   [DllImport("user32.dll")]
@@ -197,6 +222,29 @@ function Get-WindowTitle([IntPtr]$hwnd) {
   return $sb.ToString()
 }
 
+function Get-WindowClass([IntPtr]$hwnd) {
+  $sb = New-Object System.Text.StringBuilder 256
+  [void][AgentDesktopNative]::GetClassName($hwnd, $sb, $sb.Capacity)
+  return $sb.ToString()
+}
+
+function Get-ProcessStartTimeIso([int64]$PidValue) {
+  try {
+    return (Get-Process -Id ([int]$PidValue) -ErrorAction Stop).StartTime.ToUniversalTime().ToString("o")
+  } catch {
+    return ""
+  }
+}
+
+function Get-ProcessCommandLine([int64]$PidValue) {
+  try {
+    $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$PidValue" -ErrorAction Stop
+    return ("" + $proc.CommandLine)
+  } catch {
+    return ""
+  }
+}
+
 function Short-Title([string]$Value) {
   if ($VerboseTitles -or $Value.Length -le 80) { return $Value }
   return $Value.Substring(0, 77) + "..."
@@ -222,13 +270,17 @@ function Window-Object([IntPtr]$hwnd) {
   [void][AgentDesktopNative]::GetWindowThreadProcessId($hwnd, [ref]$pidValue)
   $processValue = ""
   try { $processValue = (Get-Process -Id ([int]$pidValue) -ErrorAction Stop).ProcessName } catch {}
+  $pidInt = [int64]$pidValue
   $root = Root-Hwnd $hwnd
   return [pscustomobject]@{
     id = $hwnd.ToInt64().ToString()
     title = (Short-Title $titleValue)
     fullTitle = $titleValue
     process = $processValue
-    pid = [int64]$pidValue
+    pid = $pidInt
+    process_start_time = (Get-ProcessStartTimeIso $pidInt)
+    class = (Get-WindowClass $hwnd)
+    command_line = (Get-ProcessCommandLine $pidInt)
     x = $bounds.X
     y = $bounds.Y
     width = $bounds.Width
@@ -245,6 +297,8 @@ function Public-Window([object]$Window) {
     title = $Window.title
     process = $Window.process
     pid = $Window.pid
+    process_start_time = $Window.process_start_time
+    class = $Window.class
     x = $Window.x
     y = $Window.y
     width = $Window.width
@@ -267,6 +321,229 @@ function Get-Windows {
   }
   [void][AgentDesktopNative]::EnumWindows($callback, [IntPtr]::Zero)
   return @($items | Sort-Object process, title, id)
+}
+
+function New-SessionId {
+  return ("ad-" + (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ") + "-" + ([guid]::NewGuid().ToString("N").Substring(0, 8)))
+}
+
+function Normalize-SessionId([string]$Value) {
+  if ([string]::IsNullOrWhiteSpace($Value)) { return New-SessionId }
+  if ($Value -notmatch '^[A-Za-z0-9._-]{1,96}$') {
+    Finish 64 (Error-Payload "invalid-argument" "Session id may contain only letters, numbers, dot, underscore, and dash.")
+  }
+  return $Value
+}
+
+function Require-LedgerRoot {
+  if ([string]::IsNullOrWhiteSpace($LedgerRoot)) {
+    Finish 64 (Error-Payload "invalid-argument" "Ledger root was not provided by the launcher.")
+  }
+  New-Item -ItemType Directory -Force -Path $LedgerRoot | Out-Null
+}
+
+function Ledger-Path([string]$Sid) {
+  Require-LedgerRoot
+  return (Join-Path $LedgerRoot "$Sid.json")
+}
+
+function Session-ProfilePath([string]$Sid) {
+  $base = Join-Path $env:TEMP "agent-desktop-profiles"
+  $path = Join-Path $base $Sid
+  New-Item -ItemType Directory -Force -Path $path | Out-Null
+  return $path
+}
+
+function Session-ProfileRoot {
+  return (Join-Path $env:TEMP "agent-desktop-profiles")
+}
+
+function Host-BootMarker {
+  try {
+    return (Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).LastBootUpTime.ToUniversalTime().ToString("o")
+  } catch {
+    return ""
+  }
+}
+
+function New-Ledger([string]$Sid) {
+  return [pscustomobject]@{
+    schema_version = 1
+    session_id = $Sid
+    created_at = (Get-Date).ToUniversalTime().ToString("o")
+    updated_at = (Get-Date).ToUniversalTime().ToString("o")
+    host_boot = (Host-BootMarker)
+    windows = @()
+    events = @()
+  }
+}
+
+function Read-Ledger([string]$Sid, [switch]$AllowMissing) {
+  $path = Ledger-Path $Sid
+  if (-not (Test-Path -LiteralPath $path)) {
+    if ($AllowMissing) { return (New-Ledger $Sid) }
+    Finish 71 (Error-Payload "not-found" "Session ledger '$Sid' was not found.")
+  }
+  try {
+    $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+    $ledger = $raw | ConvertFrom-Json
+    if ($null -eq $ledger.windows) { $ledger | Add-Member -NotePropertyName windows -NotePropertyValue @() -Force }
+    if ($null -eq $ledger.events) { $ledger | Add-Member -NotePropertyName events -NotePropertyValue @() -Force }
+    return $ledger
+  } catch {
+    $bad = "$path.corrupt-$(Get-Date -Format yyyyMMddHHmmss)"
+    try { Move-Item -LiteralPath $path -Destination $bad -Force } catch {}
+    $payload = Error-Payload "corrupt-ledger" "Session ledger '$Sid' could not be parsed and was quarantined."
+    $payload | Add-Member -NotePropertyName quarantined_path -NotePropertyValue $bad -Force
+    Finish 1 $payload
+  }
+}
+
+function Write-Ledger([object]$Ledger) {
+  $sid = "" + $Ledger.session_id
+  $path = Ledger-Path $sid
+  $Ledger.updated_at = (Get-Date).ToUniversalTime().ToString("o")
+  $tmp = "$path.tmp-$PID-$([guid]::NewGuid().ToString("N"))"
+  $Ledger | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $tmp -Encoding UTF8
+  Move-Item -LiteralPath $tmp -Destination $path -Force
+}
+
+function Add-LedgerEvent([object]$Ledger, [string]$Type, [object]$Data) {
+  $events = @($Ledger.events)
+  $events += [pscustomobject]@{
+    at = (Get-Date).ToUniversalTime().ToString("o")
+    type = $Type
+    data = $Data
+  }
+  $Ledger.events = @($events)
+}
+
+function Ledger-WindowRecord([object]$Window, [string]$Sid, [string]$Kind, [bool]$Owned, [string]$ProfilePath, [string]$UrlValue) {
+  return [pscustomobject]@{
+    id = $Window.id
+    window_id = $Window.id
+    owned = $Owned
+    touched = (-not $Owned)
+    kind = $Kind
+    url = $UrlValue
+    status = "open"
+    recorded_at = (Get-Date).ToUniversalTime().ToString("o")
+    title = $Window.title
+    full_title = $Window.fullTitle
+    process = $Window.process
+    pid = $Window.pid
+    process_start_time = $Window.process_start_time
+    class = $Window.class
+    command_line = $Window.command_line
+    profile_path = $ProfilePath
+    session_id = $Sid
+    x = $Window.x
+    y = $Window.y
+    width = $Window.width
+    height = $Window.height
+  }
+}
+
+function Upsert-LedgerWindow([object]$Ledger, [object]$Record) {
+  $windows = @($Ledger.windows)
+  $updated = $false
+  for ($i = 0; $i -lt $windows.Count; $i++) {
+    if (("" + $windows[$i].window_id) -eq ("" + $Record.window_id)) {
+      $windows[$i] = $Record
+      $updated = $true
+      break
+    }
+  }
+  if (-not $updated) { $windows += $Record }
+  $Ledger.windows = @($windows)
+}
+
+function Find-LedgerWindow([object]$Ledger, [string]$TargetWindowId) {
+  $matches = @(@($Ledger.windows) | Where-Object { ("" + $_.window_id) -eq ("" + $TargetWindowId) })
+  if ($matches.Count -gt 0) { return $matches[0] }
+  return $null
+}
+
+function Verify-OwnedWindow([object]$Record) {
+  $result = [ordered]@{
+    ok = $false
+    state = "not_found"
+    reason = ""
+    window = $null
+  }
+  $hwnd = [IntPtr]::new([int64]$Record.window_id)
+  if (-not [AgentDesktopNative]::IsWindow($hwnd)) {
+    $result.state = "already_closed"
+    $result.reason = "window id no longer exists"
+    return [pscustomobject]$result
+  }
+  $window = Window-Object $hwnd
+  if ($null -eq $window) {
+    $result.state = "already_closed"
+    $result.reason = "window is no longer visible or has no title"
+    return [pscustomobject]$result
+  }
+  $mismatches = New-Object System.Collections.ArrayList
+  if (("" + $window.pid) -ne ("" + $Record.pid)) { [void]$mismatches.Add("pid") }
+  if (("" + $window.process) -ne ("" + $Record.process)) { [void]$mismatches.Add("process") }
+  if (("" + $window.process_start_time) -ne ("" + $Record.process_start_time)) { [void]$mismatches.Add("process_start_time") }
+  if (("" + $window.class) -ne ("" + $Record.class)) { [void]$mismatches.Add("class") }
+  $profile = "" + $Record.profile_path
+  if (-not [string]::IsNullOrWhiteSpace($profile)) {
+    $cmd = "" + $window.command_line
+    if ($cmd.IndexOf($profile, [StringComparison]::OrdinalIgnoreCase) -lt 0) { [void]$mismatches.Add("profile_path") }
+  }
+  $result.window = (Public-Window $window)
+  if ($mismatches.Count -gt 0) {
+    $result.state = "mismatched"
+    $result.reason = "identity mismatch: " + (($mismatches.ToArray()) -join ",")
+    return [pscustomobject]$result
+  }
+  $result.ok = $true
+  $result.state = "alive"
+  return [pscustomobject]$result
+}
+
+function Close-OwnedRecord([object]$Record, [switch]$Preview) {
+  $base = [ordered]@{
+    window_id = "" + $Record.window_id
+    owned = [bool]$Record.owned
+    dry_run = [bool]$Preview
+    result = ""
+    reason = ""
+    window = $null
+  }
+  if (-not [bool]$Record.owned) {
+    $base.result = "not_owned"
+    $base.reason = "ledger record is not owned by this session"
+    return [pscustomobject]$base
+  }
+  $verification = Verify-OwnedWindow $Record
+  $base.window = $verification.window
+  if (-not $verification.ok) {
+    $base.result = $verification.state
+    $base.reason = $verification.reason
+    return [pscustomobject]$base
+  }
+  if ($Preview) {
+    $base.result = "would_close"
+    $base.reason = "identity verified"
+    return [pscustomobject]$base
+  }
+  $hwnd = [IntPtr]::new([int64]$Record.window_id)
+  [void][AgentDesktopNative]::PostMessage($hwnd, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+  $deadline = (Get-Date).AddSeconds(4)
+  do {
+    Start-Sleep -Milliseconds 200
+    if (-not [AgentDesktopNative]::IsWindow($hwnd)) {
+      $base.result = "closed"
+      $base.reason = "WM_CLOSE accepted"
+      return [pscustomobject]$base
+    }
+  } while ((Get-Date) -lt $deadline)
+  $base.result = "still_open"
+  $base.reason = "window still exists after WM_CLOSE timeout"
+  return [pscustomobject]$base
 }
 
 function Resolve-Target {
@@ -437,6 +714,13 @@ function Resolve-AppPath([string]$NameOrPath) {
 
 function Command-Doctor {
   $chrome = Resolve-ChromePath
+  $checks = @(
+    [pscustomobject]@{ name = "windows-host"; ok = $true; detail = "PowerShell Win32 backend is running" },
+    [pscustomobject]@{ name = "powershell"; ok = $true; detail = $PSHOME },
+    [pscustomobject]@{ name = "chrome"; ok = ($null -ne $chrome); detail = $chrome },
+    [pscustomobject]@{ name = "ledger_root"; ok = (-not [string]::IsNullOrWhiteSpace($LedgerRoot)); detail = $LedgerRoot },
+    [pscustomobject]@{ name = "profile_root"; ok = $true; detail = (Session-ProfileRoot) }
+  )
   $payload = [pscustomobject]@{
     ok = $true
     command = "doctor"
@@ -444,6 +728,8 @@ function Command-Doctor {
     powershell = $PSHOME
     chrome_available = ($null -ne $chrome)
     chrome_path = $chrome
+    requirements = $checks
+    docs = "https://github.com/cfpperche/tachyon-plugins/tree/main/agent-desktop"
   }
   Finish 0 $payload
 }
@@ -481,11 +767,14 @@ function Command-OpenUrl {
   if ($null -eq $chrome) {
     Finish 71 (Error-Payload "not-found" "Chrome executable was not found on the Windows host.")
   }
+  $sid = Normalize-SessionId $SessionId
+  $profilePath = Session-ProfilePath $sid
+  $ledger = Read-Ledger $sid -AllowMissing
   $beforeIds = @{}
-  foreach ($window in @(Get-Windows | Where-Object { ("" + $_.process).ToLowerInvariant().Contains("chrome") })) {
+  foreach ($window in @(Get-Windows | Where-Object { ("" + $_.process).ToLowerInvariant().Contains("chrome") -and ("" + $_.command_line).IndexOf($profilePath, [StringComparison]::OrdinalIgnoreCase) -ge 0 })) {
     $beforeIds[$window.id] = $true
   }
-  $args = @("--new-window", $Url)
+  $args = @("--user-data-dir=$profilePath", "--no-first-run", "--no-default-browser-check", "--new-window", $Url)
   try {
     $proc = Start-Process -FilePath $chrome -ArgumentList $args -PassThru
   } catch {
@@ -494,7 +783,10 @@ function Command-OpenUrl {
   $deadline = (Get-Date).AddSeconds(8)
   $newWindows = @()
   do {
-    $chromeWindows = @(Get-Windows | Where-Object { ("" + $_.process).ToLowerInvariant().Contains("chrome") })
+    $chromeWindows = @(Get-Windows | Where-Object {
+      ("" + $_.process).ToLowerInvariant().Contains("chrome") -and
+      ("" + $_.command_line).IndexOf($profilePath, [StringComparison]::OrdinalIgnoreCase) -ge 0
+    })
     $newWindows = @($chromeWindows | Where-Object { -not $beforeIds.ContainsKey($_.id) })
     if ($newWindows.Count -eq 1) { break }
     if ($newWindows.Count -gt 1) {
@@ -513,17 +805,26 @@ function Command-OpenUrl {
     $candidates = @($newWindows | Select-Object -First 8 | ForEach-Object { Public-Window $_ })
     Finish 72 (Error-Payload "ambiguous" "Chrome opened more than one new matching top-level window." $candidates)
   }
+  $windowRecord = Ledger-WindowRecord $newWindows[0] $sid "open-url" $true $profilePath $Url
+  Upsert-LedgerWindow $ledger $windowRecord
+  Add-LedgerEvent $ledger "open-url" ([pscustomobject]@{ window_id = $windowRecord.window_id; url = $Url; profile_path = $profilePath })
+  Write-Ledger $ledger
   $window = Public-Window $newWindows[0]
   Finish 0 ([pscustomobject]@{
     ok = $true
     command = "open-url"
+    session_id = $sid
+    owned = $true
     browser = "chrome"
     path = $chrome
     url = $Url
     new_window = $true
+    profile_path = $profilePath
     launched = $true
     pid = $proc.Id
     window_id = $window.id
+    process_start_time = $windowRecord.process_start_time
+    class = $windowRecord.class
     window = $window
   })
 }
@@ -564,6 +865,170 @@ function Command-WaitWindow {
   Finish 73 (Error-Payload "timeout" "No matching window appeared before timeout.")
 }
 
+function Session-Summary([object]$Ledger) {
+  $owned = @(@($Ledger.windows) | Where-Object { [bool]$_.owned })
+  $open = @($owned | Where-Object { ("" + $_.status) -ne "closed" })
+  return [pscustomobject]@{
+    session_id = $Ledger.session_id
+    schema_version = $Ledger.schema_version
+    created_at = $Ledger.created_at
+    updated_at = $Ledger.updated_at
+    owned_count = $owned.Count
+    open_owned_count = $open.Count
+    path = (Ledger-Path ("" + $Ledger.session_id))
+  }
+}
+
+function Command-SessionsList {
+  Require-LedgerRoot
+  $items = @()
+  foreach ($file in @(Get-ChildItem -LiteralPath $LedgerRoot -Filter "*.json" -File -ErrorAction SilentlyContinue)) {
+    try {
+      $ledger = (Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8) | ConvertFrom-Json
+      $items += (Session-Summary $ledger)
+    } catch {
+      $items += [pscustomobject]@{ session_id = [System.IO.Path]::GetFileNameWithoutExtension($file.Name); corrupt = $true; path = $file.FullName }
+    }
+  }
+  Finish 0 ([pscustomobject]@{ ok = $true; command = "sessions-list"; sessions = $items; count = $items.Count })
+}
+
+function Command-SessionsShow {
+  $sid = Normalize-SessionId $SessionId
+  $ledger = Read-Ledger $sid
+  $windows = @()
+  foreach ($record in @($ledger.windows)) {
+    $verification = $null
+    if ([bool]$record.owned -and ("" + $record.status) -ne "closed") {
+      $verification = Verify-OwnedWindow $record
+    }
+    $windows += [pscustomobject]@{
+      window_id = $record.window_id
+      owned = [bool]$record.owned
+      touched = [bool]$record.touched
+      status = $record.status
+      kind = $record.kind
+      title = $record.title
+      process = $record.process
+      pid = $record.pid
+      profile_path = $record.profile_path
+      live_state = $(if ($null -ne $verification) { $verification.state } else { "" })
+      live_reason = $(if ($null -ne $verification) { $verification.reason } else { "" })
+    }
+  }
+  Finish 0 ([pscustomobject]@{
+    ok = $true
+    command = "sessions-show"
+    session = (Session-Summary $ledger)
+    windows = $windows
+  })
+}
+
+function Update-RecordStatus([object]$Ledger, [string]$WindowIdValue, [string]$StatusValue, [string]$ReasonValue) {
+  $windows = @($Ledger.windows)
+  for ($i = 0; $i -lt $windows.Count; $i++) {
+    if (("" + $windows[$i].window_id) -eq ("" + $WindowIdValue)) {
+      $windows[$i].status = $StatusValue
+      $windows[$i] | Add-Member -NotePropertyName last_result -NotePropertyValue $ReasonValue -Force
+      $windows[$i] | Add-Member -NotePropertyName updated_at -NotePropertyValue ((Get-Date).ToUniversalTime().ToString("o")) -Force
+      break
+    }
+  }
+  $Ledger.windows = @($windows)
+}
+
+function Command-CleanupSession {
+  $sid = Normalize-SessionId $SessionId
+  $ledger = Read-Ledger $sid
+  if (("" + $ledger.host_boot) -ne (Host-BootMarker)) {
+    $payload = Error-Payload "stale-ledger" "Session ledger '$sid' was created before the current Windows boot; refusing cleanup."
+    $payload | Add-Member -NotePropertyName session_id -NotePropertyValue $sid -Force
+    Finish 1 $payload
+  }
+  $results = @()
+  foreach ($record in @($ledger.windows)) {
+    if (-not [bool]$record.owned) { continue }
+    if (("" + $record.status) -eq "closed" -and -not $DryRun) {
+      $results += [pscustomobject]@{ window_id = $record.window_id; result = "already_closed"; owned = $true; dry_run = $false; reason = "ledger already marked closed" }
+      continue
+    }
+    $closeResult = Close-OwnedRecord $record -Preview:$DryRun
+    $results += $closeResult
+    if (-not $DryRun) {
+      switch ($closeResult.result) {
+        "closed" { Update-RecordStatus $ledger $record.window_id "closed" $closeResult.reason }
+        "already_closed" { Update-RecordStatus $ledger $record.window_id "closed" $closeResult.reason }
+        "mismatched" { Update-RecordStatus $ledger $record.window_id "mismatched" $closeResult.reason }
+        "stale" { Update-RecordStatus $ledger $record.window_id "stale" $closeResult.reason }
+        default { Update-RecordStatus $ledger $record.window_id $closeResult.result $closeResult.reason }
+      }
+    }
+  }
+  Add-LedgerEvent $ledger "cleanup" ([pscustomobject]@{ dry_run = [bool]$DryRun; results = $results })
+  if (-not $DryRun) { Write-Ledger $ledger }
+  $closed = @($results | Where-Object { $_.result -eq "closed" })
+  $wouldClose = @($results | Where-Object { $_.result -eq "would_close" })
+  Finish 0 ([pscustomobject]@{
+    ok = $true
+    command = "cleanup"
+    session_id = $sid
+    dry_run = [bool]$DryRun
+    results = $results
+    closed = $closed
+    would_close = $wouldClose
+  })
+}
+
+function Command-CleanupMine {
+  Require-LedgerRoot
+  $allResults = @()
+  foreach ($file in @(Get-ChildItem -LiteralPath $LedgerRoot -Filter "*.json" -File -ErrorAction SilentlyContinue)) {
+    $sid = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+    $SessionId = $sid
+    $ledger = Read-Ledger $sid
+    foreach ($record in @($ledger.windows)) {
+      if (-not [bool]$record.owned) { continue }
+      $closeResult = Close-OwnedRecord $record -Preview:$DryRun
+      $closeResult | Add-Member -NotePropertyName session_id -NotePropertyValue $sid -Force
+      $allResults += $closeResult
+      if (-not $DryRun -and ($closeResult.result -eq "closed" -or $closeResult.result -eq "already_closed")) {
+        Update-RecordStatus $ledger $record.window_id "closed" $closeResult.reason
+      }
+    }
+    if (-not $DryRun) { Write-Ledger $ledger }
+  }
+  Finish 0 ([pscustomobject]@{ ok = $true; command = "cleanup-mine"; dry_run = [bool]$DryRun; results = $allResults; closed = @($allResults | Where-Object { $_.result -eq "closed" }) })
+}
+
+function Command-CloseWindow {
+  if ([string]::IsNullOrWhiteSpace($WindowId)) {
+    Finish 64 (Error-Payload "invalid-argument" "close requires --window-id <id>.")
+  }
+  $ledgers = @()
+  if (-not [string]::IsNullOrWhiteSpace($SessionId)) {
+    $ledgers += (Read-Ledger (Normalize-SessionId $SessionId))
+  } else {
+    Require-LedgerRoot
+    foreach ($file in @(Get-ChildItem -LiteralPath $LedgerRoot -Filter "*.json" -File -ErrorAction SilentlyContinue)) {
+      try { $ledgers += ((Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8) | ConvertFrom-Json) } catch {}
+    }
+  }
+  foreach ($ledger in $ledgers) {
+    $record = Find-LedgerWindow $ledger $WindowId
+    if ($null -eq $record) { continue }
+    if (-not [bool]$record.owned) {
+      Finish 1 (Error-Payload "not-owned" "Window '$WindowId' is recorded but is not owned by agent-desktop.")
+    }
+    $result = Close-OwnedRecord $record
+    if ($result.result -eq "closed" -or $result.result -eq "already_closed") {
+      Update-RecordStatus $ledger $record.window_id "closed" $result.reason
+      Write-Ledger $ledger
+    }
+    Finish 0 ([pscustomobject]@{ ok = $true; command = "close"; session_id = $ledger.session_id; result = $result })
+  }
+  Finish 71 (Error-Payload "not-found" "No owned ledger record matched window id '$WindowId'.")
+}
+
 try {
   switch ($Command) {
     "doctor" { Command-Doctor }
@@ -571,12 +1036,26 @@ try {
     "launch" { Command-Launch }
     "open-url" { Command-OpenUrl }
     "wait-window" { Command-WaitWindow }
+    "sessions-list" { Command-SessionsList }
+    "sessions-show" { Command-SessionsShow }
+    "cleanup" { Command-CleanupSession }
+    "cleanup-mine" { Command-CleanupMine }
+    "close" { Command-CloseWindow }
     "focus" {
       $target = Resolve-Target
       $result = Focus-TargetWindow $target
+      if (-not [string]::IsNullOrWhiteSpace($SessionId)) {
+        $sid = Normalize-SessionId $SessionId
+        $ledger = Read-Ledger $sid -AllowMissing
+        $touch = Ledger-WindowRecord $target $sid "focus" $false "" ""
+        Upsert-LedgerWindow $ledger $touch
+        Add-LedgerEvent $ledger "focus" ([pscustomobject]@{ window_id = $touch.window_id; owned = $false })
+        Write-Ledger $ledger
+      }
       Finish 0 ([pscustomobject]@{
         ok = $true
         command = "focus"
+        session_id = $SessionId
         window_id = $result.window.id
         restored = $result.restored
         focused = $result.focused
@@ -587,9 +1066,18 @@ try {
     "restore" {
       $target = Resolve-Target
       $result = Restore-TargetWindow $target
+      if (-not [string]::IsNullOrWhiteSpace($SessionId)) {
+        $sid = Normalize-SessionId $SessionId
+        $ledger = Read-Ledger $sid -AllowMissing
+        $touch = Ledger-WindowRecord $target $sid "restore" $false "" ""
+        Upsert-LedgerWindow $ledger $touch
+        Add-LedgerEvent $ledger "restore" ([pscustomobject]@{ window_id = $touch.window_id; owned = $false })
+        Write-Ledger $ledger
+      }
       Finish 0 ([pscustomobject]@{
         ok = $true
         command = "restore"
+        session_id = $SessionId
         window_id = $result.window.id
         restored = $result.restored
         window = $result.window
@@ -614,7 +1102,7 @@ invoke_windows_host() {
   ps="$(resolve_powershell)" || emit_shell_error 70 "backend-unavailable" "powershell.exe was not found."
   command -v wslpath >/dev/null 2>&1 || emit_shell_error 70 "backend-unavailable" "wslpath was not found."
 
-  local ps1 ps1_win
+  local ps1 ps1_win root ledger_root profile_root ledger_root_win profile_root_win
   ps1="$(mktemp --suffix=.ps1)"
   if [ -z "${AGENT_DESKTOP_KEEP_HELPER:-}" ]; then
     trap 'rm -f -- "$ps1"' RETURN
@@ -623,8 +1111,14 @@ invoke_windows_host() {
   fi
   windows_host_ps1 "$ps1"
   ps1_win="$(wslpath -w "$ps1")" || emit_shell_error 70 "backend-unavailable" "could not convert helper path with wslpath."
+  root="$(workspace_root)"
+  ledger_root="$root/.tachyon/agent-desktop/sessions"
+  profile_root="$root/.tachyon/agent-desktop/profiles"
+  mkdir -p "$ledger_root" "$profile_root"
+  ledger_root_win="$(wslpath -w "$ledger_root")" || emit_shell_error 70 "backend-unavailable" "could not convert ledger path with wslpath."
+  profile_root_win="$(wslpath -w "$profile_root")" || emit_shell_error 70 "backend-unavailable" "could not convert profile path with wslpath."
 
-  run_with_timeout "$timeout_seconds" "$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1_win" -Command "$command" "$@"
+  run_with_timeout "$timeout_seconds" "$ps" -NoProfile -ExecutionPolicy Bypass -File "$ps1_win" -Command "$command" -LedgerRoot "$ledger_root_win" -ProfileRoot "$profile_root_win" "$@"
 }
 
 command_name="${1:-}"
@@ -649,32 +1143,36 @@ case "$command_name" in
     ;;
   launch)
     app=""
+    session_id=""
     while [ "$#" -gt 0 ]; do
       case "$1" in
         --json) shift ;;
         --app) [ "$#" -ge 2 ] || die_usage "--app requires a value"; app="$2"; shift 2 ;;
+        --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
         *) die_usage "unknown launch argument: $1" ;;
       esac
     done
     [ -n "$app" ] || die_usage "launch requires --app <name-or-path>"
-    invoke_windows_host launch 20 -App "$app"
+    invoke_windows_host launch 20 -App "$app" -SessionId "$session_id"
     ;;
   open-url)
     browser=""
     url=""
+    session_id=""
     new_window=()
     while [ "$#" -gt 0 ]; do
       case "$1" in
         --json) shift ;;
         --browser) [ "$#" -ge 2 ] || die_usage "--browser requires a value"; browser="$2"; shift 2 ;;
         --new-window) new_window=("-NewWindow"); shift ;;
+        --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
         --*) die_usage "unknown open-url argument: $1" ;;
         *) [ -z "$url" ] || die_usage "open-url accepts exactly one URL"; url="$1"; shift ;;
       esac
     done
     [ -n "$browser" ] || die_usage "open-url requires --browser chrome"
     [ -n "$url" ] || die_usage "open-url requires a URL"
-    invoke_windows_host open-url 20 -Browser "$browser" -Url "$url" "${new_window[@]}"
+    invoke_windows_host open-url 25 -Browser "$browser" -Url "$url" -SessionId "$session_id" "${new_window[@]}"
     ;;
   wait-window)
     process_name=""
@@ -697,19 +1195,84 @@ case "$command_name" in
     window_id=""
     process_name=""
     title=""
+    session_id=""
     while [ "$#" -gt 0 ]; do
       case "$1" in
         --json) shift ;;
         --window-id) [ "$#" -ge 2 ] || die_usage "--window-id requires a value"; window_id="$2"; shift 2 ;;
         --process) [ "$#" -ge 2 ] || die_usage "--process requires a value"; process_name="$2"; shift 2 ;;
         --title) [ "$#" -ge 2 ] || die_usage "--title requires a value"; title="$2"; shift 2 ;;
+        --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
         *) die_usage "unknown $command_name argument: $1" ;;
       esac
     done
     if [ -z "$window_id" ] && [ -z "$process_name" ]; then
       die_usage "$command_name requires --window-id <id> or --process <name>"
     fi
-    invoke_windows_host "$command_name" 20 -WindowId "$window_id" -ProcessName "$process_name" -Title "$title"
+    invoke_windows_host "$command_name" 20 -WindowId "$window_id" -ProcessName "$process_name" -Title "$title" -SessionId "$session_id"
+    ;;
+  close)
+    window_id=""
+    session_id=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --json) shift ;;
+        --window-id) [ "$#" -ge 2 ] || die_usage "--window-id requires a value"; window_id="$2"; shift 2 ;;
+        --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
+        *) die_usage "unknown close argument: $1" ;;
+      esac
+    done
+    [ -n "$window_id" ] || die_usage "close requires --window-id <id>"
+    invoke_windows_host close 20 -WindowId "$window_id" -SessionId "$session_id"
+    ;;
+  cleanup)
+    session_id=""
+    mine=false
+    dry_run=()
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --json) shift ;;
+        --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
+        --mine) mine=true; shift ;;
+        --dry-run) dry_run=("-DryRun"); shift ;;
+        *) die_usage "unknown cleanup argument: $1" ;;
+      esac
+    done
+    if [ "$mine" = true ]; then
+      invoke_windows_host cleanup-mine 60 "${dry_run[@]}"
+    else
+      [ -n "$session_id" ] || die_usage "cleanup requires --session <id> or --mine"
+      invoke_windows_host cleanup 60 -SessionId "$session_id" "${dry_run[@]}"
+    fi
+    ;;
+  sessions)
+    sub="${1:-}"
+    [ -n "$sub" ] || die_usage "sessions requires list or show"
+    shift || true
+    session_id=""
+    case "$sub" in
+      list)
+        while [ "$#" -gt 0 ]; do
+          case "$1" in
+            --json) shift ;;
+            *) die_usage "unknown sessions list argument: $1" ;;
+          esac
+        done
+        invoke_windows_host sessions-list 20
+        ;;
+      show)
+        while [ "$#" -gt 0 ]; do
+          case "$1" in
+            --json) shift ;;
+            --session) [ "$#" -ge 2 ] || die_usage "--session requires a value"; session_id="$2"; shift 2 ;;
+            *) die_usage "unknown sessions show argument: $1" ;;
+          esac
+        done
+        [ -n "$session_id" ] || die_usage "sessions show requires --session <id>"
+        invoke_windows_host sessions-show 20 -SessionId "$session_id"
+        ;;
+      *) die_usage "unknown sessions subcommand: $sub" ;;
+    esac
     ;;
   -h|--help|help)
     usage

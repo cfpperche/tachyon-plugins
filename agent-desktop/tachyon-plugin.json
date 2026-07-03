@@ -1,7 +1,7 @@
 {
   "name": "agent-desktop",
-  "version": "0.1.0",
-  "description": "Explicit desktop control primitives for agents: launch apps, open URLs, wait for windows, restore and focus target windows from WSL against the Windows host. Pairs with agent-screen for visual evidence; v1 deliberately excludes screenshots, arbitrary keyboard, and mouse automation.",
+  "version": "0.1.1",
+  "description": "Explicit desktop control primitives for agents: launch apps, open Chrome URLs in owned sessions, wait for windows, restore/focus targets, audit sessions, and clean up plugin-opened windows from WSL against the Windows host. Pairs with agent-screen for visual evidence; v1 deliberately excludes screenshots, arbitrary keyboard, and mouse automation.",
   "runtimes": [
     "claude",
     "codex"
