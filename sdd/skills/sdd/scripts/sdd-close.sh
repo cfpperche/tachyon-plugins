@@ -11,6 +11,7 @@
 #   dogfood-unrun        — `**Dogfood:**` declared but no passing Dogfood log
 #   dogfood-opt-out-empty — `**Dogfood-Opt-Out:**` exists but has no reason
 #   visual-qa-missing    — warning-only: likely UI/interface spec without visual proof or opt-out
+#   cookbook-missing     — warning-only: operator-surface / **Cookbook:** without cookbook.md or opt-out
 #
 # Writes nothing, ever. Complements `spec-verify.sh` and `sdd-dogfood.sh`:
 # verify proves the spec's COMMAND still passes; dogfood proves the shipped
@@ -170,6 +171,31 @@ has_visual_qa_evidence() {
   grep -hiqE '^(Evidence|Verdict):[[:space:]]*[^[:space:]]|^[[:space:]]*-[[:space:]]\[x\].*(Visual QA|visual proof|screenshot|preview|verdict|evidence)' "$TASKS_MD" "$SPEC_MD" "$NOTES_MD" 2>/dev/null
 }
 
+has_cookbook_file() {
+  [ -f "$SDIR/cookbook.md" ]
+}
+
+cookbook_declared() {
+  # Explicit opt-in flag (any non-empty value after the label).
+  grep -hqE '^\*\*Cookbook:\*\*[[:space:]]*[^[:space:]]' "$TASKS_MD" "$SPEC_MD" 2>/dev/null
+}
+
+cookbook_opt_out_line() {
+  grep -hE '^\*\*Cookbook-Opt-Out:\*\*' "$TASKS_MD" "$SPEC_MD" "$NOTES_MD" 2>/dev/null | head -n1
+}
+
+cookbook_opt_out_reason() {
+  cookbook_opt_out_line | sed -E 's/^\*\*Cookbook-Opt-Out:\*\*[[:space:]]*//; s/[[:space:]]+$//'
+}
+
+looks_operator_surface() {
+  # Prefer concrete tool/registry identifiers over vague English ("Bridge tool" also matches
+  # "no Bridge tools"). Explicit **Cookbook:** covers the rest. Inspects spec.md only.
+  [ -f "$SPEC_MD" ] || return 1
+  sed 's/`[^`]*`//g' "$SPEC_MD" 2>/dev/null |
+    grep -qiE 'create_worktree|list_worktrees|get_worktree|register_worktree|unregister_worktree|remove_worktree|managed worktree registry|git_delivery_prune'
+}
+
 # --- scan -------------------------------------------------------------------
 
 TOTAL_FINDINGS=0
@@ -269,6 +295,28 @@ for SDIR in $TARGETS; do
 "
       json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"visual-qa-missing\"}"
     fi
+  fi
+
+  # Cookbook: warning-only. Satisfied by cookbook.md, or Cookbook-Opt-Out with reason.
+  # Nudges when **Cookbook:** is declared OR the contract describes an operator surface.
+  cookbook_opt_line="$(cookbook_opt_out_line)"
+  if has_cookbook_file; then
+    : # present — no warning
+  elif [ -n "$cookbook_opt_line" ]; then
+    cb_reason="$(cookbook_opt_out_reason)"
+    if [ -z "$cb_reason" ]; then
+      warnings="${warnings}cookbook-opt-out-empty
+"
+      json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"cookbook-opt-out-empty\"}"
+    else
+      warnings="${warnings}cookbook-opt-out: $cb_reason
+"
+      json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"cookbook-opt-out\",\"reason\":\"$(json_escape "$cb_reason")\"}"
+    fi
+  elif cookbook_declared || looks_operator_surface; then
+    warnings="${warnings}cookbook-missing
+"
+    json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"cookbook-missing\"}"
   fi
 
   if [ -n "$findings" ]; then
