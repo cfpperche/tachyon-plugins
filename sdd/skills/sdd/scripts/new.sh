@@ -150,7 +150,10 @@ for f in spec plan tasks notes; do
     "$TEMPLATES/$f.md.tmpl" > "$dir/$f.md"
 done
 
-# 5. Report the four paths.
+# 5. Report the four paths. Supporting artifacts stay opt-in: when this spec
+#    needs a prototype or durable evidence file, the owning spec directory is
+#    their default home.
 echo "Scaffolded $dir:"
 for f in spec plan tasks notes; do echo "  $dir/$f.md"; done
 echo "Next: fill spec.md (intent first) — do not auto-fill; the human owns intent."
+echo "Optional artifacts: create them only when useful, inside $dir/ (for example prototypes/ or evidence/)."

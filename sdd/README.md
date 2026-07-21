@@ -25,7 +25,13 @@ local agents do not pick the same `NNN` while scaffolding concurrently.
 
 ```text
 docs/specs/NNN-<slug>/cookbook.md   # operator/agent how-to — sdd-cookbook.sh
+docs/specs/NNN-<slug>/prototypes/   # prototype files, only when useful
+docs/specs/NNN-<slug>/evidence/     # durable evidence, only when useful
 ```
+
+Prototypes and evidence are not required for every spec. When created for one spec, their default owner is that spec
+directory rather than a shared top-level `docs/prototypes/`. An artifact with a deliberate different owner can declare
+`**Artifact-Location-Opt-Out:** <reason>`.
 
 ## Commands
 
@@ -69,6 +75,7 @@ Warning-only (exit still 0 if no hard findings):
 
 - visual QA missing/opt-out for UI-looking contracts;
 - cookbook missing/opt-out for operator-surface contracts or explicit `**Cookbook:**`.
+- a declared local artifact missing from disk or stored outside its owning spec without a location opt-out.
 
 ## Install
 

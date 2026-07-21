@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: Spec-driven development scaffolding. Use when starting non-trivial work (3+ files, a new module, an API/schema change, or a vague request that needs decomposition). Scaffolds and progresses docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md — intent before code, then re-verifies, dogfoods, and audits closure at the end. Subcommands - new <slug>, plan, tasks, list, verify <spec>, dogfood <spec>, cookbook <spec> (opt-in operator how-to), close (audit shipped specs for closure debt and dogfood proof). Skip for one-file fixes, typos, or mechanical edits where the diff IS the spec.
+description: Spec-driven development scaffolding. Use when starting non-trivial work (3+ files, a new module, an API/schema change, or a vague request that needs decomposition). Scaffolds and progresses docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md — intent before code, then re-verifies, dogfoods, and audits closure plus optional artifact locality at the end. Subcommands - new <slug>, plan, tasks, list, verify <spec>, dogfood <spec>, cookbook <spec> (opt-in operator how-to), close (audit shipped specs for closure debt and dogfood proof). Skip for one-file fixes, typos, or mechanical edits where the diff IS the spec.
 compatibility: Runtime-neutral. Works on any agent runtime that can read a bundled skill directory and run shell commands (claude, codex). Resolves its templates relative to this SKILL.md — no host-specific path assumptions.
 license: MIT
 ---
@@ -46,7 +46,7 @@ sh scripts/check-ids.sh
 
 It exits nonzero and lists the colliding `docs/specs/NNN-*` directories when duplicates exist.
 
-After scaffolding: **do NOT auto-fill `spec.md`** — intent is the human's. Offer to draft it from a conversational description, but only after they describe the change. `notes.md` stays empty at scaffold time — its job is in-flight design memory during implementation.
+After scaffolding: **do NOT auto-fill `spec.md`** — intent is the human's. Offer to draft it from a conversational description, but only after they describe the change. `notes.md` stays empty at scaffold time — its job is in-flight design memory during implementation. The scaffold always contains only the four core Markdown files. Prototypes, screenshots, diagrams, and other supporting files are opt-in; create them only when they materially help the spec.
 
 ### `plan`
 
@@ -100,6 +100,25 @@ Keep this prose-based, not a fixed enum. In `plan.md`, describe the affected sur
 
 If visual QA is intentionally not useful, write `**Visual QA Opt-Out:** <reason>`. A shipped visual-looking spec without evidence or opt-out gets a `visual-qa-missing` warning from `close`, but warnings do not block closure. The goal is to catch avoidable layout/placement mistakes without turning SDD into a rigid UI taxonomy.
 
+## Supporting artifacts (opt-in, spec-owned)
+
+Not every spec needs a prototype or a durable evidence file. Do not create either as ceremony. When one is useful specifically for a spec, its default owner is the same spec directory:
+
+```text
+docs/specs/NNN-<slug>/
+  prototypes/   # optional HTML, SVG, or other exploratory prototype
+  evidence/     # optional screenshots, diagrams, logs, or review output
+```
+
+These directory names are conventions, not required scaffolding. A file directly under the spec directory is also valid. Reference durable local files in backticks on a `Prototype:` or `Evidence:` line so `close` can audit them, for example:
+
+```markdown
+Prototype: `docs/specs/NNN-<slug>/prototypes/flow.html`
+Evidence: `docs/specs/NNN-<slug>/evidence/sidebar.png`
+```
+
+Preview routes, URLs, and prose-only manual checks remain valid evidence and are not treated as local artifact declarations. If a declared artifact has a deliberate owner outside the spec — for example a canonical product asset — record `**Artifact-Location-Opt-Out:** <non-empty reason>` in `spec.md`, `plan.md`, `tasks.md`, or `notes.md`. `close` reports missing declared files and undeclared external placement as warning-only hygiene signals; it does not require an artifact to exist.
+
 ## Cookbook (opt-in operator how-to)
 
 When a ship introduces a **usable surface** — Bridge/MCP tools, CLI, registry lifecycle, product API a sibling agent or human will invoke — capture a short **how-to** so the next operator does not reverse-engineer the code.
@@ -135,7 +154,7 @@ bash "<this-skill-dir>"/scripts/sdd-close.sh                        # sweep ever
 bash "<this-skill-dir>"/scripts/sdd-close.sh docs/specs/NNN-<slug>  # just one (or just NNN)
 ```
 
-For each spec whose `**Status:**` is `shipped` (or `shipped-partial`) it reports: `tasks-unchecked` (`- [ ]` left in `tasks.md`), `acceptance-unchecked` (`- [ ]` left in `spec.md` § Acceptance criteria), `placeholders` (surviving `{{...}}` in `spec.md`/`tasks.md`), `missing-closure` (no `**Closure:**` line in `spec.md`), `dogfood-missing` (no headless dogfood declaration and no valid opt-out), `dogfood-unrun` (dogfood declared but no passing `## Dogfood log` entry), and `dogfood-opt-out-empty` (opt-out without a reason). It also emits warning-only hygiene signals: `visual-qa-missing` for likely UI without proof/opt-out, and `cookbook-missing` for likely operator surfaces (or explicit `**Cookbook:**`) without `cookbook.md`/opt-out. A valid `**Dogfood-Opt-Out:**` / cookbook / visual opt-out does not fail close, but is printed as a warning and emitted in JSON. Non-shipped specs are skipped. Exit `0` clean or warnings-only · `1` findings. `--json` emits a machine-readable report. A clean close = the boxes are checked, the placeholders are gone, a `**Closure:**` line records what shipped, and dogfood proof or a justified opt-out exists.
+For each spec whose `**Status:**` is `shipped` (or `shipped-partial`) it reports: `tasks-unchecked` (`- [ ]` left in `tasks.md`), `acceptance-unchecked` (`- [ ]` left in `spec.md` § Acceptance criteria), `placeholders` (surviving `{{...}}` in `spec.md`/`tasks.md`), `missing-closure` (no `**Closure:**` line in `spec.md`), `dogfood-missing` (no headless dogfood declaration and no valid opt-out), `dogfood-unrun` (dogfood declared but no passing `## Dogfood log` entry), and `dogfood-opt-out-empty` (opt-out without a reason). It also emits warning-only hygiene signals: `visual-qa-missing` for likely UI without proof/opt-out, `cookbook-missing` for likely operator surfaces (or explicit `**Cookbook:**`) without `cookbook.md`/opt-out, `artifact-missing` for a declared local file absent from disk, and `artifact-outside-spec` when a declared spec-specific file lives outside its owning spec without a location opt-out. A valid `**Dogfood-Opt-Out:**` / cookbook / visual / artifact-location opt-out does not fail close, but is printed as a warning and emitted in JSON. Non-shipped specs are skipped. Exit `0` clean or warnings-only · `1` findings. `--json` emits a machine-readable report. A clean close = the boxes are checked, the placeholders are gone, a `**Closure:**` line records what shipped, and dogfood proof or a justified opt-out exists.
 
 ## Verification & closure contract
 
@@ -147,6 +166,8 @@ These subcommands read markdown conventions on a spec — nothing else gates:
 - **`**Human dogfood:**`** in `tasks.md` — optional manual route/checklist for maintainer approval; `close` does not fail if it is absent or incomplete.
 - **`Evidence:` / `Verdict:` under `## Visual QA`** — optional visual proof for UI/interface work; concrete proof suppresses the `visual-qa-missing` warning.
 - **`**Visual QA Opt-Out:** <reason>`** — explicitly explains why visual QA is not useful for a visual-looking spec; warning-only.
+- **`Prototype:` / `Evidence:` with a backticked local artifact path** — optional declaration of a durable supporting file; spec-owned paths are the default and `close` warns when the file is missing.
+- **`**Artifact-Location-Opt-Out:** <reason>`** — non-empty reason for a declared artifact deliberately owned outside the spec; warning-only.
 - **`cookbook.md`** — optional operator how-to; scaffold with `sdd-cookbook.sh` (not `new`).
 - **`**Cookbook:** yes`** — declares cookbook intent; `close` warns if the file is still missing.
 - **`**Cookbook-Opt-Out:** <reason>`** — non-empty reason when no cookbook is warranted; warning-only.

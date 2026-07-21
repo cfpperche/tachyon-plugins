@@ -12,6 +12,8 @@
 #   dogfood-opt-out-empty — `**Dogfood-Opt-Out:**` exists but has no reason
 #   visual-qa-missing    — warning-only: likely UI/interface spec without visual proof or opt-out
 #   cookbook-missing     — warning-only: operator-surface / **Cookbook:** without cookbook.md or opt-out
+#   artifact-missing     — warning-only: a declared local artifact does not exist
+#   artifact-outside-spec — warning-only: declared artifact outside its owning spec without opt-out
 #
 # Writes nothing, ever. Complements `spec-verify.sh` and `sdd-dogfood.sh`:
 # verify proves the spec's COMMAND still passes; dogfood proves the shipped
@@ -171,6 +173,67 @@ has_visual_qa_evidence() {
   grep -hiqE '^(Evidence|Verdict):[[:space:]]*[^[:space:]]|^[[:space:]]*-[[:space:]]\[x\].*(Visual QA|visual proof|screenshot|preview|verdict|evidence)' "$TASKS_MD" "$SPEC_MD" "$NOTES_MD" 2>/dev/null
 }
 
+artifact_location_opt_out_line() {
+  grep -hE '^\*\*Artifact-Location-Opt-Out:\*\*' "$TASKS_MD" "$SPEC_MD" "$PLAN_MD" "$NOTES_MD" 2>/dev/null | head -n1
+}
+
+artifact_location_opt_out_reason() {
+  artifact_location_opt_out_line | sed -E 's/^\*\*Artifact-Location-Opt-Out:\*\*[[:space:]]*//; s/[[:space:]]+$//'
+}
+
+# Deliberately narrow declaration grammar: only backticked values on an
+# Evidence: or Prototype: line can become artifact candidates. This leaves URLs,
+# preview routes, commands, and prose-only checks alone.
+declared_artifact_paths() {
+  awk '
+    {
+      lower=tolower($0)
+    }
+    lower ~ /(^|[^[:alnum:]_-])(prototype|evidence):/ {
+      line=$0
+      while (match(line, /`[^`]+`/)) {
+        print substr(line, RSTART + 1, RLENGTH - 2)
+        line=substr(line, RSTART + RLENGTH)
+      }
+    }
+  ' "$SPEC_MD" "$PLAN_MD" "$TASKS_MD" "$NOTES_MD" 2>/dev/null | sort -u
+}
+
+looks_like_local_artifact() {
+  local raw="$1" lower
+  case "$raw" in
+    http://*|https://*|data:*|mailto:*|file://*) return 1 ;;
+  esac
+  raw="${raw%%#*}"
+  raw="${raw%%\?*}"
+  lower="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+  case "$lower" in
+    *.html|*.htm|*.png|*.jpg|*.jpeg|*.webp|*.gif|*.svg|*.pdf|*.mmd|*.json|*.txt|*.log|*.md|*.mp4|*.webm|*.vtt) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+artifact_absolute_path() {
+  local raw="$1"
+  raw="${raw%%#*}"
+  raw="${raw%%\?*}"
+  case "$raw" in
+    /*) printf '%s' "$raw" ;;
+    docs/*|test/*|tests/*|src/*|media/*|site/*|scripts/*|public/*|assets/*|packages/*|apps/*) printf '%s/%s' "$ROOT" "$raw" ;;
+    ./*) printf '%s/%s' "$SDIR" "${raw#./}" ;;
+    *) printf '%s/%s' "$SDIR" "$raw" ;;
+  esac
+}
+
+artifact_is_inside_spec() {
+  local declared="$1" absolute="$2"
+  printf '%s' "$declared" | grep -qE '(^|/)\.\.(/|$)' && return 1
+  case "$absolute" in
+    "$SDIR"|"$SDIR"/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 has_cookbook_file() {
   [ -f "$SDIR/cookbook.md" ]
 }
@@ -212,6 +275,7 @@ OLDIFS="$IFS"; IFS='
 for SDIR in $TARGETS; do
   IFS="$OLDIFS"
   SPEC_MD="$SDIR/spec.md"
+  PLAN_MD="$SDIR/plan.md"
   TASKS_MD="$SDIR/tasks.md"
   NOTES_MD="$SDIR/notes.md"
   [ -f "$SPEC_MD" ] || { IFS='
@@ -296,6 +360,39 @@ for SDIR in $TARGETS; do
       json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"visual-qa-missing\"}"
     fi
   fi
+
+  # Supporting artifacts are optional. When explicitly declared as local files,
+  # warn if they are absent or have drifted outside the owning spec directory.
+  artifact_opt_line="$(artifact_location_opt_out_line)"
+  artifact_opt_reason=""
+  if [ -n "$artifact_opt_line" ]; then
+    artifact_opt_reason="$(artifact_location_opt_out_reason)"
+    if [ -z "$artifact_opt_reason" ]; then
+      warnings="${warnings}artifact-location-opt-out-empty
+"
+      json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"artifact-location-opt-out-empty\"}"
+    else
+      warnings="${warnings}artifact-location-opt-out: $artifact_opt_reason
+"
+      json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"artifact-location-opt-out\",\"reason\":\"$(json_escape "$artifact_opt_reason")\"}"
+    fi
+  fi
+
+  while IFS= read -r artifact_path; do
+    [ -n "$artifact_path" ] || continue
+    looks_like_local_artifact "$artifact_path" || continue
+    artifact_abs="$(artifact_absolute_path "$artifact_path")"
+    if ! artifact_is_inside_spec "$artifact_path" "$artifact_abs" && [ -z "$artifact_opt_reason" ]; then
+      warnings="${warnings}artifact-outside-spec: $artifact_path
+"
+      json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"artifact-outside-spec\",\"path\":\"$(json_escape "$artifact_path")\"}"
+    fi
+    if [ ! -e "$artifact_abs" ]; then
+      warnings="${warnings}artifact-missing: $artifact_path
+"
+      json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"artifact-missing\",\"path\":\"$(json_escape "$artifact_path")\"}"
+    fi
+  done < <(declared_artifact_paths)
 
   # Cookbook: warning-only. Satisfied by cookbook.md, or Cookbook-Opt-Out with reason.
   # Nudges when **Cookbook:** is declared OR the contract describes an operator surface.

@@ -1,7 +1,7 @@
 {
   "name": "sdd",
-  "version": "1.5.0",
-  "description": "Spec-driven development scaffolding — intent before code. Scaffolds docs/specs/NNN-<slug> with same-clone worktree-safe numbering, then re-verifies, headless-dogfoods, optional cookbooks, and audits closure debt. Runtime-neutral (claude + codex).",
+  "version": "1.6.0",
+  "description": "Spec-driven development scaffolding — intent before code. Scaffolds docs/specs/NNN-<slug> with same-clone worktree-safe numbering, keeps optional artifacts spec-owned, then re-verifies, headless-dogfoods, and audits closure debt. Runtime-neutral (claude + codex).",
   "runtimes": ["claude", "codex"],
   "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/sdd"
 }
