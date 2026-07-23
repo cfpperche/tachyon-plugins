@@ -41,8 +41,12 @@ A staged secret → gitleaks exits non-zero → the commit is rejected (location
 **Layer 2 (the agent's commits):** intercepts a `git commit` Bash call and **blocks** these bypass shapes:
 
 - `git commit --no-verify` — disables the git-hook
-- `git add … && git commit` / `; git commit` — a compound that can smuggle `--no-verify`
+- `git add … && git commit` / `git stage … && git commit` / `git rm --cached … && git commit` / `git mv … && git commit` (same, chained with `;`) — a staging step folded directly into the commit, with nothing reviewable in between
 - `git commit -a` / `-am` — auto-stage that slips changes past the gate
+
+An unrelated command chained the same way (`cd <worktree> && git commit`, `npm test && git commit`, …)
+never touches the index and is not a bypass — layer 2 only flags a **staging** verb chained into the
+commit, not any `&&`/`;` in front of one (as of v2.0.4).
 
 A **clean** commit (`git add <files>` as its own step, then a plain `git commit`, no `-a`, no
 `--no-verify`) never needs anything extra — it passes silently, every time. `# OVERRIDE: <reason ≥10 chars>`
