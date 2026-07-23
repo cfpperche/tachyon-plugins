@@ -29,16 +29,12 @@ is_git_commit() {
 }
 is_git_commit "$CMD" || exit 0
 
-# Deliberate bypass: a `# OVERRIDE: <reason ≥10 chars>` line (anchored at start-of-line so a marker inside
-# a quoted -m string never matches). Valid override → allow; too-short → block.
-ovr="$(printf '%s' "$CMD" | grep -E '^[[:space:]]*# OVERRIDE: ' | head -1 | sed -e 's/^[[:space:]]*# OVERRIDE: //' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' 2>/dev/null || true)"
-if [ -n "$ovr" ]; then
-  if [ "${#ovr}" -ge 10 ]; then exit 0; fi
-  echo "secrets-guard: override reason must be ≥10 characters." >&2
-  exit 2
-fi
-
-# Detect a bypass shape (first match wins).
+# Detect a bypass shape FIRST (first match wins) — t-be535a: checking for the override marker before
+# knowing whether a shape even exists made a clean commit's stray/habitual `# OVERRIDE:` line silently
+# ACCEPTED, which is how an override written for one genuinely-blocked commit kept getting pasted onto
+# every later commit out of habit — including ones that never needed it — permanently polluting their
+# subject line (git commit -m doesn't strip a leading `#` line the way an interactive editor commit
+# does). A clean shape must never even look for an override; the two are now mutually exclusive checks.
 shape=""
 printf '%s' "$CMD" | grep -qE '&&[[:space:]]*git[[:space:]]+commit' && shape="compound"
 if [ -z "$shape" ]; then printf '%s' "$CMD" | grep -qE ';[[:space:]]*git[[:space:]]+commit' && shape="compound"; fi
@@ -48,8 +44,19 @@ if [ -z "$shape" ]; then
 fi
 if [ -z "$shape" ]; then printf '%s' "$CMD" | grep -qE '(^|[[:space:]])--no-verify([[:space:]]|$)' && shape="no-verify"; fi
 
-# Clean shape → allow; the git-hook (layer 1) does the actual gitleaks scan.
+# Clean shape → allow; the git-hook (layer 1) does the actual gitleaks scan. An override line on a
+# clean-shape commit is now simply inert (never reached), instead of being accepted and left to
+# pollute the commit message.
 [ -z "$shape" ] && exit 0
+
+# A bypass shape WAS detected — only now does a deliberate `# OVERRIDE: <reason ≥10 chars>` line
+# (anchored at start-of-line so a marker inside a quoted -m string never matches) let it through.
+ovr="$(printf '%s' "$CMD" | grep -E '^[[:space:]]*# OVERRIDE: ' | head -1 | sed -e 's/^[[:space:]]*# OVERRIDE: //' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' 2>/dev/null || true)"
+if [ -n "$ovr" ]; then
+  if [ "${#ovr}" -ge 10 ]; then exit 0; fi
+  echo "secrets-guard: override reason must be ≥10 characters." >&2
+  exit 2
+fi
 
 # A bypass shape with no override → block with an actionable message.
 case "$shape" in

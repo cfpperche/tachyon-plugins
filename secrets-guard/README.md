@@ -44,7 +44,14 @@ A staged secret → gitleaks exits non-zero → the commit is rejected (location
 - `git add … && git commit` / `; git commit` — a compound that can smuggle `--no-verify`
 - `git commit -a` / `-am` — auto-stage that slips changes past the gate
 
-A deliberate, human-authorized bypass: put an inline `# OVERRIDE: <reason ≥10 chars>` line in the command.
+A **clean** commit (`git add <files>` as its own step, then a plain `git commit`, no `-a`, no
+`--no-verify`) never needs anything extra — it passes silently, every time. `# OVERRIDE: <reason ≥10 chars>`
+is ONLY for a commit that just got blocked above and you're intentionally keeping the bypass shape anyway;
+put it as its own line, never inside the `-m` message body (a `-m "..."` doesn't strip a leading `#` line
+the way an interactive editor commit does, so an override inside the message text becomes the commit's
+permanent subject). As of v2.0.3 the override marker is only even inspected once a bypass shape is
+actually detected, so pasting a stale one onto an already-clean commit is simply ignored, not "harmlessly
+accepted into the message" — but the discipline above still saves you from writing it there by habit.
 
 > Layer 2 protects against the **agent / tool-driven** commit. A **human** typing `--no-verify` in their own
 > terminal is not gated by the runtime hook — that is by design (it's your repo; `--no-verify` is your escape
