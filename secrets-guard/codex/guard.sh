@@ -36,8 +36,31 @@ is_git_commit "$CMD" || exit 0
 # subject line (git commit -m doesn't strip a leading `#` line the way an interactive editor commit
 # does). A clean shape must never even look for an override; the two are now mutually exclusive checks.
 shape=""
-printf '%s' "$CMD" | grep -qE '&&[[:space:]]*git[[:space:]]+commit' && shape="compound"
-if [ -z "$shape" ]; then printf '%s' "$CMD" | grep -qE ';[[:space:]]*git[[:space:]]+commit' && shape="compound"; fi
+# t-789cda — "compound" means specifically a STAGING verb (git add/stage, git rm --cached, git mv)
+# chained via && or ; directly into `git commit`: that hides what got staged from a separate
+# reviewable step, which is the actual risk this shape exists to catch. An unrelated command chained
+# the same way (`cd <worktree> && git commit`, `echo done && git commit`, …) never touches the index
+# and is not a staging bypass — flagging it too just teaches agents to route around a correctly-clean
+# shape instead of catching anything real.
+# Regex over text, not a real shell parser: a literal "git add"-shaped SUBSTRING inside an unrelated
+# quoted string (e.g. `echo "reminder: git add later" && git commit`) still false-positives here. Not
+# a regression — the prior blanket check flagged that too — and per this file's own stated tolerance
+# (see is_git_commit's comment), a false negative is cheaper than a false positive; a real shell-lexing
+# fix is out of scope for a POSIX sh shim.
+is_staging_prefix() {
+  printf '%s' "$1" | grep -qE '(^|[^A-Za-z0-9_-])git[[:space:]]+(add|stage)([[:space:]]|$)' && return 0
+  printf '%s' "$1" | grep -qE '(^|[^A-Za-z0-9_-])git[[:space:]]+rm([[:space:]]+-[^[:space:]]+)*[[:space:]]+--cached([[:space:]]|$)' && return 0
+  printf '%s' "$1" | grep -qE '(^|[^A-Za-z0-9_-])git[[:space:]]+mv([[:space:]]|$)' && return 0
+  return 1
+}
+if printf '%s' "$CMD" | grep -qE '&&[[:space:]]*git[[:space:]]+commit'; then
+  prefix="$(printf '%s' "$CMD" | sed -e 's/&&[[:space:]]*git[[:space:]]\{1,\}commit.*$//')"
+  is_staging_prefix "$prefix" && shape="compound"
+fi
+if [ -z "$shape" ] && printf '%s' "$CMD" | grep -qE ';[[:space:]]*git[[:space:]]+commit'; then
+  prefix="$(printf '%s' "$CMD" | sed -e 's/;[[:space:]]*git[[:space:]]\{1,\}commit.*$//')"
+  is_staging_prefix "$prefix" && shape="compound"
+fi
 if [ -z "$shape" ]; then
   after="$(printf '%s' "$CMD" | sed -e 's/.*git[[:space:]]\{1,\}commit//')"
   printf '%s' "$after" | grep -qE '(^|[[:space:]])-[A-Za-z]*a[A-Za-z]*([[:space:]]|$)' && shape="dash-a"
