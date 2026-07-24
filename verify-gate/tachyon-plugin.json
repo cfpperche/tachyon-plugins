@@ -1,0 +1,12 @@
+{
+  "name": "verify-gate",
+  "version": "1.0.0",
+  "description": "A landing gate for your trunk: before a push reaches a protected branch, run the project's verification command and refuse the push if it fails. Scoped by git's pre-push stdin, so pushes to feature branches cost nothing. Fails closed — a gate that cannot determine what to run refuses rather than waving the push through.",
+  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/verify-gate",
+  "gitHooks": {
+    "pre-push": {
+      "kind": "script",
+      "path": "githooks/gate.sh"
+    }
+  }
+}
