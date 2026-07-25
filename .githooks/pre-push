@@ -1,0 +1,26 @@
+#!/bin/sh
+# Refuse a push to the trunk when any plugin package would be REFUSED by Tachyon's own parser.
+#
+# t-d8e772 — publishing had no forcing function: verify-gate v1.0.0 was tagged and released in a shape
+# that could not install anywhere, and only a human trying to install it found out. The author's side
+# is where that has to be caught, because after the tag the fix is a republish.
+#
+# Same shape as the verify-gate plugin this repository ships: scope by the ref lines git feeds on
+# stdin, so a push to a topic branch costs nothing.
+set -u
+ZERO="0000000000000000000000000000000000000000"
+PROTECTED=""
+while read -r _lref lsha rref _rsha; do
+  [ -n "${rref:-}" ] || continue
+  [ "$lsha" = "$ZERO" ] && continue   # a deletion publishes nothing
+  case "$rref" in refs/heads/main|refs/heads/master) PROTECTED="${rref#refs/heads/}";; esac
+done
+[ -n "$PROTECTED" ] || exit 0
+
+echo "plugin-manifests: validating every package before it reaches '$PROTECTED'…" >&2
+if ! ./scripts/validate-manifests.sh >&2; then
+  echo "plugin-manifests: REFUSED — the push to '$PROTECTED' was not sent." >&2
+  echo "  A package that fails here is one nobody can install. Fixing it after the tag means republishing." >&2
+  exit 1
+fi
+exit 0
