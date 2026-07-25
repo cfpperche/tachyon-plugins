@@ -6,12 +6,23 @@
 # We use that to scope the gate: a push to a feature branch costs nothing, a push to the
 # trunk pays for the verification.
 #
-# Configure (both optional, both read from the environment so nothing here is project-specific):
-#   VERIFY_GATE_BRANCHES  space/comma list of protected branch names   (default: "main master")
-#   VERIFY_GATE_CMD       the command to run                           (default: resolved from package.json)
-#   VERIFY_GATE_SKIP=1    documented, auditable opt-out for one push
+# Configure (all optional, all read from the environment so nothing here is project-specific):
+#   VERIFY_GATE_BRANCHES       space/comma list of protected branch names  (default: "main master")
+#   VERIFY_GATE_CMD            the command to run                         (default: resolved from package.json)
+#   VERIFY_GATE_SKIP=1         documented, auditable opt-out for one push
+#   VERIFY_GATE_BUSY_EXIT      exit code meaning "unavailable, retry"      (default: 75; empty disables)
+#   VERIFY_GATE_BUSY_WAIT_SEC  how long to keep retrying a busy command    (default: 300; 0 = do not wait)
 #
 # Fail-closed: if the gate cannot tell what to run, it refuses the push instead of passing.
+#
+# UNAVAILABLE IS NOT FAILURE. A verification command that could not run — because another one holds a
+# lock, a runner is saturated — has proven nothing. Reporting that as "REFUSED" reads as a red suite and
+# teaches the operator to distrust the gate, which ends with a reflex reach for VERIFY_GATE_SKIP. Both
+# outcomes still refuse the push; only a verification that actually RAN and passed lets it through.
+#
+# 75 is the default because it is EX_TEMPFAIL from sysexits.h — the long-standing convention for "not
+# really an error, try again later" — not a convention of any single project. Set the variable empty to
+# turn the distinction off for a command that does not use it.
 set -u
 
 SELF="verify-gate"
@@ -66,15 +77,37 @@ fi
 say "push to '$PROTECTED' — running: $CMD"
 say "  (set VERIFY_GATE_SKIP=1 to bypass once; VERIFY_GATE_CMD to change what runs)"
 
-# The hook's stdin is the ref list, already consumed. Give the command a clean stdin so an
-# interactive-ish tool does not read leftovers or block on a closed pipe.
-sh -c "$CMD" < /dev/null
-RC=$?
+BUSY_EXIT="${VERIFY_GATE_BUSY_EXIT-75}"
+BUSY_WAIT="${VERIFY_GATE_BUSY_WAIT_SEC:-300}"
+POLL=10
+WAITED=0
+
+while :; do
+  # The hook's stdin is the ref list, already consumed. Give the command a clean stdin so an
+  # interactive-ish tool does not read leftovers or block on a closed pipe.
+  sh -c "$CMD" < /dev/null
+  RC=$?
+
+  # Not the declared "unavailable" code → this is a real verdict, pass or fail.
+  [ -n "$BUSY_EXIT" ] && [ "$RC" = "$BUSY_EXIT" ] || break
+
+  if [ "$WAITED" -ge "$BUSY_WAIT" ]; then
+    say "NOT VERIFIED: '$CMD' reported unavailable (exit $RC) for ${WAITED}s — it never ran."
+    say "  The push to '$PROTECTED' was NOT sent, and nothing was verified. This is not a failing suite."
+    say "  Try again when the other run finishes, or raise VERIFY_GATE_BUSY_WAIT_SEC."
+    exit "$RC"
+  fi
+
+  [ "$WAITED" -eq 0 ] && say "unavailable (exit $RC) — something else is verifying. Waiting up to ${BUSY_WAIT}s…"
+  sleep "$POLL"
+  WAITED=$((WAITED + POLL))
+done
 
 if [ "$RC" -ne 0 ]; then
   say "REFUSED: '$CMD' exited $RC — the push to '$PROTECTED' was not sent."
   exit "$RC"
 fi
 
+[ "$WAITED" -gt 0 ] && say "  (waited ${WAITED}s for another verification to finish)"
 say "passed — pushing to '$PROTECTED'."
 exit 0
