@@ -6,6 +6,19 @@ small plan and checklist, then verify, dogfood, and close the spec with evidence
 It installs the `sdd` skill into Claude and Codex. It does not wire hooks, provision binaries, fetch data artifacts, or
 call paid services.
 
+SDD is optional and repository-local. Installing Tachyon does not require it, and Tachyon does not invoke it for
+startup, operation, verification, or releases. The skill reads only repository/conversation context and manages its
+own `docs/specs/` artifacts; it has no integration with task boards, agent state, handoff systems, or work queues.
+
+## When to use it
+
+Use a spec when the change carries meaningful decision complexity: ambiguous behavior, a new or changed module/API/
+schema/protocol, migration or lifecycle design, cross-cutting behavior, real alternatives, costly reversal, or
+coordination that needs a shared contract.
+
+Do not use file count as a proxy. A bounded, reversible change can touch a component, CSS, tests, localization, and
+documentation without needing a spec. If a spec would only restate an obvious diff, skip it.
+
 ## What it creates
 
 `sdd new <slug>` scaffolds:
@@ -51,7 +64,7 @@ append dated logs to `notes.md`.
 
 ## Cookbook (opt-in)
 
-When a ship adds a usable surface (Bridge tools, registry lifecycle, CLI), write a short `cookbook.md` so the next
+When a ship adds a usable surface (tools, registry lifecycle, CLI), write a short `cookbook.md` so the next
 operator does not reverse-engineer the code. Scaffold with:
 
 ```sh

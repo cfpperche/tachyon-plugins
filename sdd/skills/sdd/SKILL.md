@@ -1,19 +1,40 @@
 ---
 name: sdd
-description: Spec-driven development scaffolding. Use when starting non-trivial work (3+ files, a new module, an API/schema change, or a vague request that needs decomposition). Scaffolds and progresses docs/specs/NNN-<slug>/{spec,plan,tasks,notes}.md — intent before code, then re-verifies, dogfoods, and audits closure plus optional artifact locality at the end. Subcommands - new <slug>, plan, tasks, list, verify <spec>, dogfood <spec>, cookbook <spec> (opt-in operator how-to), close (audit shipped specs for closure debt and dogfood proof). Skip for one-file fixes, typos, or mechanical edits where the diff IS the spec.
-compatibility: Runtime-neutral. Works on any agent runtime that can read a bundled skill directory and run shell commands (claude, codex). Resolves its templates relative to this SKILL.md — no host-specific path assumptions.
+description: "Spec-driven development scaffolding for work whose decisions need an explicit contract: meaningful ambiguity, new modules or interfaces, migrations or lifecycle changes, cross-cutting behavior, real alternatives, costly reversal, or coordination. Scaffolds and progresses repository-local spec, plan, task, and notes documents; then re-verifies, dogfoods, and audits closure plus optional artifact locality. Provides new, plan, tasks, list, verify, dogfood, cookbook, and close workflows. Skip bounded, reversible changes even when they touch several files."
 license: MIT
 ---
 
 # Spec-driven development
 
-Non-trivial work is spec-first: capture **intent** before writing code, in a small set of living documents under `docs/specs/NNN-<slug>/`. The spec is the contract; the code is the implementation of a contract that already exists.
+Decision-heavy work is spec-first: capture **intent** before writing code, in a small set of living documents under `docs/specs/NNN-<slug>/`. The spec is the contract; the code is the implementation of a contract that already exists.
 
 ## When to use / when to skip
 
-**Use** when the work is 3+ files, a new module, an API/schema change, or a vague request that needs decomposition.
+Choose by the decisions the change requires, not by file count, diff size, or whether UI and tests happen to live in separate files.
 
-**Skip** for a one-file fix, a typo, a rename, or a mechanical edit where the diff itself is self-evidently the whole change. Spec-driving a trivial change is overhead; match the rigor to the work.
+**Use** when at least one of these is material:
+
+- the desired behavior or acceptance boundary is meaningfully ambiguous;
+- the change introduces or reshapes a module, API, schema, protocol, or other durable contract;
+- migration, persistence, compatibility, rollout, recovery, or lifecycle behavior must be designed;
+- behavior changes across multiple subsystems or ownership boundaries;
+- there are real alternatives whose tradeoffs should be recorded before implementation;
+- reversal would be expensive, risky, or destructive;
+- multiple people or agents need a shared contract to coordinate independent work.
+
+**Skip** when the outcome is bounded, understood, and cheaply reversible. A component change may legitimately include
+its implementation, CSS, tests, localization, and documentation without needing a spec. The same applies to focused
+fixes, renames, and mechanical edits whose behavior and boundary are already clear.
+
+If signals conflict, ask one question: **would writing the intent and rejected alternatives prevent a plausible wrong
+implementation or coordination failure?** If yes, use a spec. If it would only restate an already-obvious diff, skip it.
+
+This skill is repository-local and orchestration-neutral. It uses only the repository and conversation context supplied
+to it, and manages only its local spec artifacts. It does not discover or mutate external task boards, agent state,
+handoff systems, or runtime-specific work queues.
+
+It is runtime-neutral: any agent runtime that can read the bundled skill directory and run shell commands can use it.
+Scripts and templates resolve relative to this `SKILL.md`; there are no host-specific path assumptions.
 
 ## The four artifacts
 
@@ -121,7 +142,7 @@ Preview routes, URLs, and prose-only manual checks remain valid evidence and are
 
 ## Cookbook (opt-in operator how-to)
 
-When a ship introduces a **usable surface** — Bridge/MCP tools, CLI, registry lifecycle, product API a sibling agent or human will invoke — capture a short **how-to** so the next operator does not reverse-engineer the code.
+When a ship introduces a **usable surface** — tools, CLI, registry lifecycle, or product API another operator will invoke — capture a short **how-to** so the next operator does not reverse-engineer the code.
 
 | File | Role |
 |------|------|
