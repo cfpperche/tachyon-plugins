@@ -1,7 +1,7 @@
 {
   "name": "agent-browser",
-  "version": "2.1.2",
-  "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content — including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). A MECHANICAL write gate holds state-mutating actions for an explicit confirmation; reads (navigate/snapshot/screenshot/extract) stay frictionless. The gate is HUMAN-CONFIGURABLE via the Plugins Config editor — the bundled default asks only for the highest-risk actions (run code / upload / download) and lets ordinary clicks & typing through; edit the native confirmActions to hold everything (full list) or nothing (empty) instead. Tachyon feeds your config to the CLI and refuses the agent's attempts to override it. Needs a host Chrome/Chromium.",
+  "version": "3.0.0",
+  "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content — including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). BREAKING vs 2.x: this plugin no longer claims a write gate. Measured on the pinned CLI 0.31.0, confirmActions is accepted and then ignored on the CLI surface — via config, via --confirm-actions, and with --confirm-interactive; eval and click run immediately. Treat every write as unreviewed. The restraint that DOES hold is allowedDomains in the human-owned config: Tachyon feeds that config to the CLI and refuses the agent's attempts to widen it (the flag and the env var are blocked), so only a human can decide where the browser may act. Scope it before letting an agent drive a form. Needs a host Chrome/Chromium.",
   "runtimes": [
     "claude",
     "codex"
@@ -25,11 +25,13 @@
           "AGENT_BROWSER_PLUGINS",
           "AGENT_BROWSER_CDP",
           "AGENT_BROWSER_AUTO_CONNECT",
-          "AGENT_BROWSER_ARGS"
+          "AGENT_BROWSER_ARGS",
+          "AGENT_BROWSER_ALLOWED_DOMAINS"
         ],
         "denyArgs": [
           "--confirm-actions",
           "--action-policy",
+          "--allowed-domains",
           "--config",
           "--init-script",
           "--extension",
