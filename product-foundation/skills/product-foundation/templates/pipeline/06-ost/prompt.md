@@ -105,5 +105,5 @@ OST is the sibling artifact that lets the team SEE the discovery-implementation 
 
 ## Cross-references
 
-- `.claude/skills/product-foundation/references/delegation-briefs.md` § Step 06 — full brief
-- `.claude/skills/product-foundation/references/pipeline-coverage.md` § Step 06 — size targets + lightening
+- `<this-skill-dir>/references/delegation-briefs.md` § Step 06 — full brief
+- `<this-skill-dir>/references/pipeline-coverage.md` § Step 06 — size targets + lightening

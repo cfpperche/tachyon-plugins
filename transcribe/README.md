@@ -32,7 +32,7 @@ Install through the Tachyon Plugins view. On install you'll see:
 ## Usage
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/transcribe/skills/transcribe/scripts/transcribe.sh" recording.mp3 --format srt --language auto
+bash "<this-skill-dir>"/scripts/transcribe.sh recording.mp3 --format srt --language auto
 ```
 
 ## Model provenance + attribution

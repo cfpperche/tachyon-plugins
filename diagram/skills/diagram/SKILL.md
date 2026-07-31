@@ -11,8 +11,13 @@ browser is resolved through Tachyon's shim — the skill never runs a tool off t
 ## Invocation
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/diagram/skills/diagram/scripts/diagram.sh" "<source.mmd | mermaid text>" [--format svg|png|pdf] [--out <dir>] [--theme default|dark|forest|neutral]
+bash "<this-skill-dir>"/scripts/diagram.sh "<source.mmd | mermaid text>" [--format svg|png|pdf] [--out <dir>] [--theme default|dark|forest|neutral]
 ```
+
+> `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+> materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+> Resolve it and run from anywhere in the workspace. Do **not** hardcode `.claude/skills/…`, `.agents/skills/…`
+> or `.tachyon/plugins/…` — an agent working in its own git worktree has none of those directories.
 
 - **`<source>`** — a path to a `.mmd` file, or inline Mermaid text (e.g. `"flowchart TD\n A-->B"`).
 - **`--format`** — `svg` (default), `png`, or `pdf`.

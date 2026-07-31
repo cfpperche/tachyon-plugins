@@ -12,14 +12,19 @@ windows.
 ## Invocation
 
 ```bash
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" doctor
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" list-windows --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --active --out <png>
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --screen --out <png>
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id <id> --out <png>
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id <id> --restore-minimized --out <png>
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window "<title-query>" --out <png>
+bash "<this-skill-dir>"/scripts/agent-screen.sh doctor
+bash "<this-skill-dir>"/scripts/agent-screen.sh list-windows --json
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --active --out <png>
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --screen --out <png>
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --window-id <id> --out <png>
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --window-id <id> --restore-minimized --out <png>
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --window "<title-query>" --out <png>
 ```
+
+> `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+> materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+> Resolve it and run from anywhere in the workspace. Do **not** hardcode `.claude/skills/…`, `.agents/skills/…`
+> or `.tachyon/plugins/…` — an agent working in its own git worktree has none of those directories.
 
 ## Use this when
 

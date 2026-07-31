@@ -77,8 +77,9 @@ commit on a vuln scan is noise — that is why this is on-demand. If your team w
 yourself; the engine already speaks exit codes:
 
 ```sh
-# in CI — fail the job on a high+ finding. The skill is materialized per-runtime
-# (.claude/skills or .agents/skills), so resolve it runtime-agnostically:
+# in CI — fail the job on a high+ finding. In a plain CHECKOUT the installer wrote the
+# skill per-runtime (.claude/skills or .agents/skills), so resolve it runtime-agnostically.
+# (An AGENT does not use this form — it runs the script from its own skill dir; see SKILL.md.)
 ROOT="$(git rev-parse --show-toplevel)"
 for d in .agents/skills .claude/skills; do
   S="$ROOT/$d/dep-audit/scripts/audit.sh"; [ -f "$S" ] && break

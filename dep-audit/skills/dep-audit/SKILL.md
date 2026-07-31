@@ -25,15 +25,15 @@ proposal only. CVEs appear independently of your commits, so gating every commit
      consumer-owned CI. Omit for the default advisory behavior (always exit 0).
    - `--severity <low|moderate|high|critical>` — report only findings at or above this floor.
 
-2. **Invoke the script.** It is materialized per-runtime (claude → `.claude/skills/dep-audit/…`, codex →
-   `.agents/skills/dep-audit/…`), so resolve it runtime-agnostically from the repo root:
+2. **Invoke the script.** It ships inside this skill, so run it from **this skill's own directory**:
    ```bash
-   ROOT="$(git rev-parse --show-toplevel)"
-   for d in .agents/skills .claude/skills; do
-     S="$ROOT/$d/dep-audit/scripts/audit.sh"; [ -f "$S" ] && break
-   done
-   bash "$S" $ARGUMENTS
+   bash "<this-skill-dir>"/scripts/audit.sh $ARGUMENTS
    ```
+   > `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+   > materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+   > Do **not** hardcode `.claude/skills/…`, `.agents/skills/…` or `.tachyon/plugins/…` — an agent working in
+   > its own git worktree has none of those directories.
+
    The script itself is runtime-neutral; it resolves osv-scanner via the launcher regardless of which runtime it
    was materialized into.
 

@@ -74,7 +74,7 @@ Unless Step 09 legal posture confirms those certifications are actually in place
 ## Cross-references
 
 - `prompt.md` — full sub-agent brief
-- `.claude/skills/product-foundation/references/pipeline-coverage.md` § Step 12
+- `<this-skill-dir>/references/pipeline-coverage.md` § Step 12
 
 ## Layer-1 floor (machine-readable — `validate-step.ts` consumes this)
 

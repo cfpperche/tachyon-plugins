@@ -12,13 +12,13 @@ capture has proven useful and the recording backend, cancel-safe output format, 
 From a Tachyon workspace with the plugin installed:
 
 ```bash
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" doctor
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" list-windows --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --active --out .tachyon/evidence/sidebar.png
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --screen --out .tachyon/evidence/desktop.png
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id 123456 --out .tachyon/evidence/window.png
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window-id 123456 --restore-minimized --out .tachyon/evidence/window.png
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-screen/skills/agent-screen/scripts/agent-screen.sh" screenshot --window "Visual Studio Code" --out .tachyon/evidence/vscode.png
+bash "<this-skill-dir>"/scripts/agent-screen.sh doctor
+bash "<this-skill-dir>"/scripts/agent-screen.sh list-windows --json
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --active --out .tachyon/evidence/sidebar.png
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --screen --out .tachyon/evidence/desktop.png
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --window-id 123456 --out .tachyon/evidence/window.png
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --window-id 123456 --restore-minimized --out .tachyon/evidence/window.png
+bash "<this-skill-dir>"/scripts/agent-screen.sh screenshot --window "Visual Studio Code" --out .tachyon/evidence/vscode.png
 ```
 
 ## Contract

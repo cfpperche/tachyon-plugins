@@ -77,7 +77,7 @@ Post-launch maintenance remains sibling infrastructure, not Phase 6. After a pro
 
 ## Bundled-template provenance + drift discipline
 
-All 15 step prompts + schemas + references live at `.claude/skills/product-foundation/templates/pipeline/<step>/`. The skill is the canonical delivery.
+All 15 step prompts + schemas + references live at `<this-skill-dir>/templates/pipeline/<step>/`. The skill is the canonical delivery.
 
 **Why bundle (not symlink or runtime-read):** the skill is standalone — must work in any project. Bundle is the price of portability.
 

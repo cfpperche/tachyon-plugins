@@ -13,11 +13,16 @@ costs **$0.50–$3** and takes ~5 min, so it is **fire-and-forget**: `submit` qu
 ## Invocation
 
 ```
-V="$(git rev-parse --show-toplevel)/.tachyon/plugins/video/skills/video/scripts/video.sh"
+V="<this-skill-dir>"/scripts/video.sh
 bash "$V" submit "<prompt>" --tier draft|standard|premium [--duration <sec>] [--image-url <https-url>] [--name <slug>] --confirm-cost-usd <max>
 bash "$V" poll --all          # reap finished jobs (status → download)
 bash "$V" poll --id <request_id>
 ```
+
+> `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+> materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+> Resolve it and run from anywhere in the workspace. Do **not** hardcode `.claude/skills/…`, `.agents/skills/…`
+> or `.tachyon/plugins/…` — an agent working in its own git worktree has none of those directories.
 
 - **`--tier`** — `draft` (Wan ~$0.10/s, ≤5s, image→video) · `standard` (Kling ~$0.112/s, ≤15s, image→video) ·
   `premium` (Veo ≤$0.60/s worst-case, ≤8s, text or image, audio).

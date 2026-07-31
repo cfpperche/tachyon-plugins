@@ -1,6 +1,6 @@
 {
   "name": "diagram",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Deterministic technical diagrams: turn a Mermaid source into a tracked SVG/PNG/PDF asset, locally and free. Renders via the Mermaid CLI (mmdc, fetched on first run via npx at a pinned version) in a system headless Chrome. Detects the browser (google-chrome / chromium / ...) and offers a consent-gated assisted install; degrades to structural validation (source kept) when no browser is present. Not organic/photo imagery, not motion, not custom design craft.",
   "runtimes": [
     "claude",

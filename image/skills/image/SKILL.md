@@ -12,8 +12,13 @@ env or `.tachyon/secrets.env` and never stored or echoed.
 ## Invocation
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/image/skills/image/scripts/image.sh" --tier draft|brand-text|brand-photo [--aspect square|landscape|portrait] [--name <slug>] "<prompt>"
+bash "<this-skill-dir>"/scripts/image.sh --tier draft|brand-text|brand-photo [--aspect square|landscape|portrait] [--name <slug>] "<prompt>"
 ```
+
+> `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+> materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+> Resolve it and run from anywhere in the workspace. Do **not** hardcode `.claude/skills/…`, `.agents/skills/…`
+> or `.tachyon/plugins/…` — an agent working in its own git worktree has none of those directories.
 
 - **`--tier`** (REQUIRED) — `draft` (~$0.003, jpg, gitignored mockup) · `brand-text` (~$0.04+, png, tracked) ·
   `brand-photo` (~$0.06, png, tracked).

@@ -23,7 +23,7 @@ half of the split video capability; its deterministic/free sibling is the `hyper
 ## Usage
 
 ```
-V="$(git rev-parse --show-toplevel)/.tachyon/plugins/video/skills/video/scripts/video.sh"
+V="<this-skill-dir>"/scripts/video.sh
 bash "$V" submit "a slow drone shot over a misty forest at dawn" --tier draft --image-url https://example.com/still.jpg --duration 4 --confirm-cost-usd 0.40
 bash "$V" poll --all
 ```

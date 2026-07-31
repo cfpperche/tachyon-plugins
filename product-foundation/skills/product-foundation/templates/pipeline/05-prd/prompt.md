@@ -108,6 +108,6 @@ Industry framing: PRD shrinks to 1-pager, OST sibling carries discovery, prototy
 
 ## Cross-references
 
-- `.claude/skills/product-foundation/references/delegation-briefs.md` § Step 05 — full sub-agent brief
-- `.claude/skills/product-foundation/references/pipeline-coverage.md` § Step 05 — size targets + lightening
+- `<this-skill-dir>/references/delegation-briefs.md` § Step 05 — full sub-agent brief
+- `<this-skill-dir>/references/pipeline-coverage.md` § Step 05 — size targets + lightening
 - `references/prd-format.md` (this step's own reference) — US-NN convention details

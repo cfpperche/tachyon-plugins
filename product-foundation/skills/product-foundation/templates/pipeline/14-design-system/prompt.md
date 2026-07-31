@@ -42,13 +42,13 @@ The parent decides this and tells the sub-agent in CONTEXT. Two paths:
 
 **Catalog path** — when one of:
 - The brand-book § Visual Direction names a catalog system explicitly (e.g. "Cool Brutalist anchored on Composio + Voltagent + Warp")
-- The founder declared a preference for a known design system (Linear / Vercel / Notion / etc — 150 vendored systems catalogued at `.claude/skills/product-foundation/references/od-catalog-index.json`)
+- The founder declared a preference for a known design system (Linear / Vercel / Notion / etc — 150 vendored systems catalogued at `<this-skill-dir>/references/od-catalog-index.json`)
 - The product is in a category where a catalog system is a strong fit and the brand-book left visual direction open
 
 Catalog path procedure:
-1. `Read` `.claude/skills/product-foundation/references/od-catalog-index.json` to see the available 150 systems (each entry carries `name + category + mood + palette_primary + vendor_path`).
+1. `Read` `<this-skill-dir>/references/od-catalog-index.json` to see the available 150 systems (each entry carries `name + category + mood + palette_primary + vendor_path`).
 2. Pick 1 primary system (anchor) + optionally 1–2 secondary systems for accent treatment (e.g. *Composio anchor + Warp partial-fit on terminal-block layout*).
-3. The `vendor_path` field of each chosen entry is the relative path to its `DESIGN.md` (e.g. `.claude/skills/product-foundation/design-systems/linear/DESIGN.md`).
+3. The `vendor_path` field of each chosen entry is the relative path to its `DESIGN.md` (e.g. `<this-skill-dir>/design-systems/linear/DESIGN.md`).
 4. `Read` the catalog DESIGN.md(s). They are dense (~10–20 KB each, 9 sections, full token specs). Derive the project's `tokens.css` directly from the catalog DESIGN.md's hex/typography/spacing values.
 5. Document in `design-system.md` § "Catalog Lineage" which systems were borrowed from, what was taken verbatim, and what was deviated (every deviation needs a one-line justification grounded in the brand-book).
 
@@ -154,7 +154,7 @@ Step 6 is mid-Identity. No gate yet. After a clean write, advance `.state.json` 
 
 This template synthesises two design-system disciplines into one 4-file bundle:
 
-- **Bootstrap discipline** — catalog OR custom, semantic-token taxonomy, stack-adapted token output. The catalog/custom split is preserved; the catalog lookup uses the bundled `.claude/skills/product-foundation/references/od-catalog-index.json` + direct `Read` of `.claude/skills/product-foundation/design-systems/<system>/DESIGN.md` (the skill ships the vendor in-tree, no shell-out).
+- **Bootstrap discipline** — catalog OR custom, semantic-token taxonomy, stack-adapted token output. The catalog/custom split is preserved; the catalog lookup uses the bundled `<this-skill-dir>/references/od-catalog-index.json` + direct `Read` of `<this-skill-dir>/design-systems/<system>/DESIGN.md` (the skill ships the vendor in-tree, no shell-out).
 - **Governance discipline** — token semantic naming, primitive vs semantic distinction, component inventory with status, accessibility-as-a-hard-gate. The inventory + governance posture flow through `components.md`.
 
 Stack adaptation is deferred to consumer choice — the consuming codebase converts `tokens.css` to whatever its framework uses (Tailwind config, Style Dictionary, etc.). The catalog lookup uses in-tree vendor reads.

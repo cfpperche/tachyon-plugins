@@ -22,7 +22,7 @@ price × duration, **printed before the call**, with a **hard `--confirm-cost-us
 ## Usage
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/sound/skills/sound/scripts/sound.sh" \
+bash "<this-skill-dir>"/scripts/sound.sh \
   "warm lo-fi loop, mellow" --kind music --duration 20 --out assets/sound
 # above $0.25 → re-run with --confirm-cost-usd <amount> (only if the spend was authorized)
 ```

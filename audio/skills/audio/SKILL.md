@@ -12,8 +12,13 @@ installs to a user dir). The skill never downloads the pinned voice itself.
 ## Invocation
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/audio/skills/audio/scripts/audio.sh" "<text>" [--engine piper|kokoro] [--voice <name>] [--lang <code>] [--format wav|mp3] [--out <dir>]
+bash "<this-skill-dir>"/scripts/audio.sh "<text>" [--engine piper|kokoro] [--voice <name>] [--lang <code>] [--format wav|mp3] [--out <dir>]
 ```
+
+> `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+> materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+> Resolve it and run from anywhere in the workspace. Do **not** hardcode `.claude/skills/…`, `.agents/skills/…`
+> or `.tachyon/plugins/…` — an agent working in its own git worktree has none of those directories.
 
 - **`<text>`** — the text to speak (quote it).
 - **`--engine`** — `piper` (default; self-contained, the pinned voice) or `kokoro` (higher quality + multilingual; needs espeak-ng).

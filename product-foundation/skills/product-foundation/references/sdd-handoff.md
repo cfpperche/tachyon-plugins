@@ -10,14 +10,14 @@ Two spec directories under `<out>/docs/specs/`, written **directly** (NOT via a 
 
 | Dir | Role | What `/product-foundation` fills |
 |---|---|---|
-| `<out>/docs/specs/001-<slug>/` | **umbrella spec** — tracks the whole v1 build | `spec.md` filled (`**Type:** umbrella` + child-spec matrix + standing constraints); `plan.md` / `tasks.md` / `notes.md` left as `.claude/skills/sdd/templates/*.tmpl` scaffolds (an umbrella ships no code — the matrix in `spec.md` IS its tracking surface) |
+| `<out>/docs/specs/001-<slug>/` | **umbrella spec** — tracks the whole v1 build | `spec.md` filled (`**Type:** umbrella` + child-spec matrix + standing constraints); `plan.md` / `tasks.md` / `notes.md` left as `<sdd-skill-dir>/templates/*.tmpl` scaffolds (an umbrella ships no code — the matrix in `spec.md` IS its tracking surface) |
 | `<out>/docs/specs/002-foundation/` | **child #1 — foundation** (skeleton + tooling + route-group dirs + thin layout shells) | `spec.md` filled (ready to start); `plan.md` / `tasks.md` / `notes.md` left as scaffolds (the founder runs `/sdd plan` then `/sdd tasks` on it) |
 
 Children #2..N are **matrix rows in the umbrella's `spec.md` only** — NOT pre-scaffolded. Eight empty child dirs that sit untouched for months are clutter; the founder materializes each via `/sdd new <phase-slug>` when reaching it (the spec-060 umbrella pattern).
 
 When `docs/system-design.md § Stack` declares non-trivial backend services or a monorepo, Phase 5 emits additional **infra children** between child #2 component-library and the per-phase visual children — one per `docs/roadmap.md` Fase 1 deliverable that has no owner among the per-phase visual children. Children #3..M are infra (block-precede); children #(M+1)..N are the per-phase visual children, renumbered accordingly.
 
-Use `.claude/skills/sdd/templates/{spec,plan,tasks,notes}.md.tmpl` as the base for every file. Substitute `{{NNN}}` / `{{SLUG}}` / `{{DATE}}` as `/sdd new` would; then overwrite the body sections `/product-foundation` fills.
+Use `<sdd-skill-dir>/templates/{spec,plan,tasks,notes}.md.tmpl` as the base for every file. Substitute `{{NNN}}` / `{{SLUG}}` / `{{DATE}}` as `/sdd new` would; then overwrite the body sections `/product-foundation` fills.
 
 ## The umbrella spec — `001-<slug>/spec.md`
 
@@ -101,4 +101,4 @@ Phase 5 copies every row from `docs/system-design.md § Trade-off Triggers → O
 
 - `SKILL.md` § Phase 5 — the orchestration body that executes this contract
 - § The four artifacts — the `**Type:** umbrella` convention
-- `.claude/skills/sdd/templates/` — the four template files used as the scaffold base
+- `<sdd-skill-dir>/templates/` — the four template files used as the scaffold base

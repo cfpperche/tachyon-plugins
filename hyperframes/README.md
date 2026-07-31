@@ -15,7 +15,7 @@ separate `video` plugin.
 ## Usage
 
 ```
-HF="$(git rev-parse --show-toplevel)/.tachyon/plugins/hyperframes/skills/hyperframes/scripts/hyperframes.sh"
+HF="<this-skill-dir>"/scripts/hyperframes.sh
 bash "$HF" doctor
 bash "$HF" scaffold my-clip
 # edit assets/video/compositions/my-clip/index.html

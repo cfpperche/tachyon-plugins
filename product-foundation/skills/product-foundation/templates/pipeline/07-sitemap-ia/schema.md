@@ -16,7 +16,7 @@ A uniform 200 KB catastrophe cap applies.
 
 ## Binding schema
 
-The YAML output binds to `.claude/skills/product-foundation/references/sitemap-schema.md`. That doc is the canonical schema; this file is the per-step calibration.
+The YAML output binds to `<this-skill-dir>/references/sitemap-schema.md`. That doc is the canonical schema; this file is the per-step calibration.
 
 ## Required top-level keys
 
@@ -53,7 +53,7 @@ Below minimum + not deferred = orchestrator BLOCKS step + re-dispatch.
 
 ## Validation rules (parent-side enforcement)
 
-See `.claude/skills/product-foundation/references/sitemap-schema.md` § "Validation rules" for the full 10-rule list. Highlights:
+See `<this-skill-dir>/references/sitemap-schema.md` § "Validation rules" for the full 10-rule list. Highlights:
 
 1. Schema parses as valid YAML
 2. All 5 required_categories accounted (≥1 route OR deferred with reason)
@@ -66,8 +66,8 @@ See `.claude/skills/product-foundation/references/sitemap-schema.md` § "Validat
 ## Cross-references
 
 - `prompt.md` — full sub-agent brief
-- `.claude/skills/product-foundation/references/sitemap-schema.md` — canonical binding schema
-- `.claude/skills/product-foundation/references/delegation-briefs.md` § Step 07
+- `<this-skill-dir>/references/sitemap-schema.md` — canonical binding schema
+- `<this-skill-dir>/references/delegation-briefs.md` § Step 07
 
 ## Layer-1 floor (machine-readable — `validate-step.ts` consumes this)
 

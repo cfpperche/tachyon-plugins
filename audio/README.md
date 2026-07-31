@@ -28,7 +28,7 @@ The Python engines are fetched from PyPI via pinned-version `uvx` — a **lower-
 ## Usage
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/audio/skills/audio/scripts/audio.sh" \
+bash "<this-skill-dir>"/scripts/audio.sh \
   "Hello from a local voice." --engine piper --format wav --out assets/audio
 ```
 

@@ -344,7 +344,7 @@ Open decisions without a deciding signal are red flags — the design owes the f
 This step ships `architecture.json` only. A sibling `<slug>-architecture.html` rendering is deferred as a future refinement:
 
 - **Why deferred:** "one of `architecture.json` / `architecture.html`" satisfies acceptance. Vendoring a renderer is a 1-2 day chore that doesn't unlock new pipeline capability (the JSON is the load-bearing artifact; HTML is presentation).
-- **What the refinement would do:** vendor a `render-architecture-diagram.mjs` (or similar) into `.claude/skills/product-foundation/scripts/`, schema-validate the JSON against the vendored schema, emit HTML next to the JSON at submit time, surface the file path so the parent can ping the user with the rendered diagram (Layer 3 visual checkpoint).
+- **What the refinement would do:** vendor a `render-architecture-diagram.mjs` (or similar) into `<this-skill-dir>/scripts/`, schema-validate the JSON against the vendored schema, emit HTML next to the JSON at submit time, surface the file path so the parent can ping the user with the rendered diagram (Layer 3 visual checkpoint).
 - **Forward-compat:** the JSON shape this template emits (`title`, `summary_prose`, `components[]`, `arrows[]`, optional `zones[]`, optional `summary_cards[]`) is the contract any future renderer must accept.
 
 ## Voice & anti-patterns

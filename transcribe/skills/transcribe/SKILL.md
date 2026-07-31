@@ -11,8 +11,13 @@ skill NEVER downloads the model itself and NEVER runs a tool off the bare PATH.
 ## Invocation
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/transcribe/skills/transcribe/scripts/transcribe.sh" <audio-or-video-file> [--format txt|srt|vtt|json] [--language <code|auto>]
+bash "<this-skill-dir>"/scripts/transcribe.sh <audio-or-video-file> [--format txt|srt|vtt|json] [--language <code|auto>]
 ```
+
+> `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+> materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+> Resolve it and run from anywhere in the workspace. Do **not** hardcode `.claude/skills/…`, `.agents/skills/…`
+> or `.tachyon/plugins/…` — an agent working in its own git worktree has none of those directories.
 
 - **`<file>`** — any audio/video ffmpeg can decode (mp3, m4a, wav, mp4, mov, …).
 - **`--format`** — `txt` (default), `srt`, `vtt`, or `json`.

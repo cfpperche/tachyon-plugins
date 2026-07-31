@@ -12,12 +12,17 @@ regenerable. ffmpeg is resolved trusted through Tachyon's shim; HyperFrames mana
 ## Invocation
 
 ```
-HF="$(git rev-parse --show-toplevel)/.tachyon/plugins/hyperframes/skills/hyperframes/scripts/hyperframes.sh"
+HF="<this-skill-dir>"/scripts/hyperframes.sh
 bash "$HF" doctor                      # check Node 22+/ffmpeg/browser
 bash "$HF" scaffold my-clip            # copy the minimal composition → assets/video/compositions/my-clip/
 # edit assets/video/compositions/my-clip/index.html (see references/authoring.md)
 bash "$HF" render my-clip [--quality draft|high] [--name <out-slug>]
 ```
+
+> `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+> materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+> Resolve it and run from anywhere in the workspace. Do **not** hardcode `.claude/skills/…`, `.agents/skills/…`
+> or `.tachyon/plugins/…` — an agent working in its own git worktree has none of those directories.
 
 - **scaffold `<slug>`** — copies the owned minimal template (we never run `hyperframes init`).
 - **render `<slug>`** — renders the composition → `assets/generated/videos/<date>-<slug>.mp4` (draft by default).

@@ -22,7 +22,7 @@ binary/data).
 ## Usage
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/image/skills/image/scripts/image.sh" \
+bash "<this-skill-dir>"/scripts/image.sh \
   --tier draft --aspect landscape --name hero "a calm mountain lake at dawn"
 ```
 

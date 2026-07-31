@@ -36,7 +36,7 @@ regardless — a render with no browser degrades to **validation-only** (the sou
 ## Usage
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/diagram/skills/diagram/scripts/diagram.sh" \
+bash "<this-skill-dir>"/scripts/diagram.sh \
   "flowchart TD
    A[Start] --> B{Decision}
    B -->|yes| C[Do it]

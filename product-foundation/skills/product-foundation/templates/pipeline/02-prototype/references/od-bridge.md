@@ -2,19 +2,19 @@
 
 This document teaches the agent how to consume the vendored **Open Design (OD)** bundle that ships *inside* the `/product-foundation` skill. It is the grounded replacement for `pipeline.md`'s inline 5-school description: instead of inventing palette/typography from training data, the agent reads a pinned, vendored `DESIGN.md` per direction and cites it by name in `REPORT.md`.
 
-The agent reads vendor paths directly under `.claude/skills/product-foundation/` — no tool round-trip needed, because the skill ships the vendor in-tree.
+The agent reads vendor paths directly under `<this-skill-dir>/` — no tool round-trip needed, because the skill ships the vendor in-tree.
 
 ## Vendor layout (canonical paths)
 
 | What | Path |
 |------|------|
-| Design systems index (150 entries, lightweight) | `.claude/skills/product-foundation/references/od-catalog-index.json` |
-| Per-system `DESIGN.md` | `.claude/skills/product-foundation/design-systems/<system>/DESIGN.md` |
-| Skill bundles (`web-prototype`, `saas-landing`, 31 others) | `.claude/skills/product-foundation/vendor/open-design/skills/<bundle>/` |
-| Prompt sources (`directions`, `discovery`, `system`) | `.claude/skills/product-foundation/vendor/open-design/prompts/<name>.ts` |
-| Frames (`iphone-15-pro`, `macbook`, `browser-chrome`) | `.claude/skills/product-foundation/vendor/open-design/frames/<frame>.html` |
-| Pitch-deck template | `.claude/skills/product-foundation/vendor/open-design/templates/deck-framework.html` |
-| Manifest + provenance | `.claude/skills/product-foundation/vendor/open-design/{MANIFEST.json,LICENSE,NOTICE}` |
+| Design systems index (150 entries, lightweight) | `<this-skill-dir>/references/od-catalog-index.json` |
+| Per-system `DESIGN.md` | `<this-skill-dir>/design-systems/<system>/DESIGN.md` |
+| Skill bundles (`web-prototype`, `saas-landing`, 31 others) | `<this-skill-dir>/vendor/open-design/skills/<bundle>/` |
+| Prompt sources (`directions`, `discovery`, `system`) | `<this-skill-dir>/vendor/open-design/prompts/<name>.ts` |
+| Frames (`iphone-15-pro`, `macbook`, `browser-chrome`) | `<this-skill-dir>/vendor/open-design/frames/<frame>.html` |
+| Pitch-deck template | `<this-skill-dir>/vendor/open-design/templates/deck-framework.html` |
+| Manifest + provenance | `<this-skill-dir>/vendor/open-design/{MANIFEST.json,LICENSE,NOTICE}` |
 
 Paths are repo-relative; sub-agents working from `$CLAUDE_PROJECT_DIR` resolve them via the `Read` tool with an absolute prefix.
 
@@ -23,24 +23,24 @@ Paths are repo-relative; sub-agents working from `$CLAUDE_PROJECT_DIR` resolve t
 Run in order. Reading these *before* writing prevents re-deriving defaults the vendored assets already encode.
 
 ```
-1. Read .claude/skills/product-foundation/references/od-catalog-index.json
+1. Read <this-skill-dir>/references/od-catalog-index.json
    → the 73-system catalogue (name + category + mood + palette + path)
    → scan moods/palettes; shortlist 1-4 systems per direction (a/b/c)
 
 2. For each shortlisted system:
-   Read .claude/skills/product-foundation/design-systems/<system>/DESIGN.md
+   Read <this-skill-dir>/design-systems/<system>/DESIGN.md
    → this is the compositional source for that direction: palette roles,
      typography rules, component stylings, layout principles, do's/don'ts
 
-3. Read .claude/skills/product-foundation/vendor/open-design/prompts/directions.ts
+3. Read <this-skill-dir>/vendor/open-design/prompts/directions.ts
    → the 5 canonical visual schools, full specs — map each direction to one
      school (or justify a blend, citing both)
 
-4. Read .claude/skills/product-foundation/vendor/open-design/prompts/discovery.ts
+4. Read <this-skill-dir>/vendor/open-design/prompts/discovery.ts
    → discovery-form structure, if step 2's discovery turn needs one
 
 5. Pick the right skill bundle:
-   Read .claude/skills/product-foundation/vendor/open-design/skills/web-prototype/SKILL.md
+   Read <this-skill-dir>/vendor/open-design/skills/web-prototype/SKILL.md
        + assets/template.html  (seed: token system + class inventory)
        + references/layouts.md  (paste-ready section skeletons)
        + references/checklist.md  (P0/P1/P2 self-review)
@@ -54,7 +54,7 @@ OD skill selection heuristic:
 
 ## The 5 canonical schools
 
-Source of truth: `.claude/skills/product-foundation/vendor/open-design/prompts/directions.ts`. Each direction the agent emits maps to ONE school, or explicitly justifies a blend in `REPORT.md`.
+Source of truth: `<this-skill-dir>/vendor/open-design/prompts/directions.ts`. Each direction the agent emits maps to ONE school, or explicitly justifies a blend in `REPORT.md`.
 
 | id | Label | Mood |
 |----|-------|------|
@@ -84,18 +84,18 @@ This is the citation chain that makes 3 directions genuinely distinct: their gro
 
 Follow `pipeline.md` § *Build phase* for the per-direction HTML scaffold, the 8 required surfaces, the token-system enrichment guidance, and the hard rules. The OD bridge adds two grounding obligations on top of that playbook:
 
-1. **Seed from the vendored template, not from scratch.** Copy `.claude/skills/product-foundation/vendor/open-design/skills/web-prototype/assets/template.html` as the starting token system + class inventory. Replace the `:root` tokens with palette values *taken from the consulted DESIGN.md files* — verbatim, not improvised.
+1. **Seed from the vendored template, not from scratch.** Copy `<this-skill-dir>/vendor/open-design/skills/web-prototype/assets/template.html` as the starting token system + class inventory. Replace the `:root` tokens with palette values *taken from the consulted DESIGN.md files* — verbatim, not improvised.
 2. **Apply the school-specific tells from `prompts/directions.ts`** — e.g. the Linear-anchored direction carries `font-feature-settings: "cv01", "ss03"` on body.
 
-Frames (`.claude/skills/product-foundation/vendor/open-design/frames/{iphone-15-pro,macbook,browser-chrome}.html`) are optional device-chrome wrappers for screen mocks.
+Frames (`<this-skill-dir>/vendor/open-design/frames/{iphone-15-pro,macbook,browser-chrome}.html`) are optional device-chrome wrappers for screen mocks.
 
 ## Anti-AI-slop hard rules
 
-Unchanged from `pipeline.md` § *Anti-AI-slop hard rules* — that P0 gate still applies. The vendored `checklist.md` (`.claude/skills/product-foundation/vendor/open-design/skills/web-prototype/references/checklist.md`) carries the OD project's own P0/P1/P2 list; run both.
+Unchanged from `pipeline.md` § *Anti-AI-slop hard rules* — that P0 gate still applies. The vendored `checklist.md` (`<this-skill-dir>/vendor/open-design/skills/web-prototype/references/checklist.md`) carries the OD project's own P0/P1/P2 list; run both.
 
 ## When the vendor is genuinely missing
 
-The vendor ships inside the skill; if it's missing, the skill itself is broken. The agent surfaces the error (`OD vendor missing at .claude/skills/product-foundation/design-systems/ — reinstall the /product-foundation skill or check git status for an incomplete checkout`) and consults the "Manual escape" section of `pipeline.md` (the pre-OD inline 5-school method) only as an explicit, documented fallback. The escape is a conscious choice, not a silent degradation.
+The vendor ships inside the skill; if it's missing, the skill itself is broken. The agent surfaces the error (`OD vendor missing at <this-skill-dir>/design-systems/ — reinstall the /product-foundation skill or check git status for an incomplete checkout`) and consults the "Manual escape" section of `pipeline.md` (the pre-OD inline 5-school method) only as an explicit, documented fallback. The escape is a conscious choice, not a silent degradation.
 
 ## PT-BR product considerations
 

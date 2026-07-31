@@ -4,9 +4,9 @@ The operational playbook for step 2's Turn 1: discovery → 3 direction families
 
 ## OD vendor grounding — read `od-bridge.md` first
 
-The Open Design (OD) vendor bundle ships **inside the `/product-foundation` skill**: 150 named `DESIGN.md` design systems at `.claude/skills/product-foundation/design-systems/<vendor>/DESIGN.md`, 33 skill bundles + the canonical 5-school direction library at `.claude/skills/product-foundation/vendor/open-design/`, all pinned and checksum-verified.
+The Open Design (OD) vendor bundle ships **inside the `/product-foundation` skill**: 150 named `DESIGN.md` design systems at `<this-skill-dir>/design-systems/<vendor>/DESIGN.md`, 33 skill bundles + the canonical 5-school direction library at `<this-skill-dir>/vendor/open-design/`, all pinned and checksum-verified.
 
-**The grounded path is `references/od-bridge.md`.** It teaches the catalogue lookup (`.claude/skills/product-foundation/references/od-catalog-index.json`), the per-system `Read` sequence, and the mandatory DS-citation rule. Each direction is composed from 1-4 named vendored design systems and cites them by name in `REPORT.md` — replacing "agent invents palette/typography from training data" with "agent reads a vendored, pinned `DESIGN.md`".
+**The grounded path is `references/od-bridge.md`.** It teaches the catalogue lookup (`<this-skill-dir>/references/od-catalog-index.json`), the per-system `Read` sequence, and the mandatory DS-citation rule. Each direction is composed from 1-4 named vendored design systems and cites them by name in `REPORT.md` — replacing "agent invents palette/typography from training data" with "agent reads a vendored, pinned `DESIGN.md`".
 
 Read `od-bridge.md` before the discovery turn. The discovery / build / critique guidance below is the playbook `od-bridge.md` feeds into; the **Manual escape** section at the bottom of this file is the fallback when the vendor is genuinely unavailable.
 
@@ -120,7 +120,7 @@ Two fix passes is normal. Do NOT emit with a failing dimension.
 
 ## Manual escape — OD vendor unavailable
 
-**Use this section when the OD vendor is genuinely missing on disk** — `.claude/skills/product-foundation/design-systems/` directory absent or empty (the skill itself is broken; reinstall or check `git status`). The grounded path (`od-bridge.md` + direct `Read` of vendored `DESIGN.md` paths) produces measurably better output because each direction carries a real DESIGN.md citation chain — so `od-vendor-missing` is not a legitimate steady-state path. Degradation stays explicit, never silent: surface the missing-vendor error before falling into manual escape.
+**Use this section when the OD vendor is genuinely missing on disk** — `<this-skill-dir>/design-systems/` directory absent or empty (the skill itself is broken; reinstall or check `git status`). The grounded path (`od-bridge.md` + direct `Read` of vendored `DESIGN.md` paths) produces measurably better output because each direction carries a real DESIGN.md citation chain — so `od-vendor-missing` is not a legitimate steady-state path. Degradation stays explicit, never silent: surface the missing-vendor error before falling into manual escape.
 
 In manual-escape mode the agent grounds directions in training-data knowledge of named design systems, using the 5-school table below as the direction library (the same library `directions.extracted.md` carries in vendored form).
 

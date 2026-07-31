@@ -15,21 +15,21 @@ context.
 From a Tachyon workspace with the plugin installed:
 
 ```bash
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" doctor
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" list-windows --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" apps find notepad --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" launch --app notepad --dry-run --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" launch --app notepad --wait-window --session dogfood-1 --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" open-url --browser chrome --new-window --session dogfood-1 https://github.com --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" wait-window --process chrome --title GitHub --timeout 10 --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" focus --window-id 123456 --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" restore --window-id 123456 --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" type --window-id 123456 --text "hello" --session dogfood-1 --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" key --window-id 123456 --key ctrl+a --session dogfood-1 --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" click --window-id 123456 --x 40 --y 80 --session dogfood-1 --dry-run --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" sessions show --session dogfood-1 --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" cleanup --session dogfood-1 --dry-run --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" cleanup --session dogfood-1 --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh doctor
+bash "<this-skill-dir>"/scripts/agent-desktop.sh list-windows --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh apps find notepad --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh launch --app notepad --dry-run --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh launch --app notepad --wait-window --session dogfood-1 --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh open-url --browser chrome --new-window --session dogfood-1 https://github.com --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh wait-window --process chrome --title GitHub --timeout 10 --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh focus --window-id 123456 --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh restore --window-id 123456 --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh type --window-id 123456 --text "hello" --session dogfood-1 --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh key --window-id 123456 --key ctrl+a --session dogfood-1 --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh click --window-id 123456 --x 40 --y 80 --session dogfood-1 --dry-run --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh sessions show --session dogfood-1 --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh cleanup --session dogfood-1 --dry-run --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh cleanup --session dogfood-1 --json
 ```
 
 All commands write compact JSON to stdout. `--json` is accepted for readability but JSON is the only v1 output format.

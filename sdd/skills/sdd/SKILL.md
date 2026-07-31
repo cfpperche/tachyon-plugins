@@ -83,7 +83,7 @@ List the specs under `docs/specs/` with their status (read the `**Status:**` lin
 
 ### `verify <spec>`
 
-Re-run a spec's declared verification command(s) to prove its mechanical claim still holds. A spec opts in by declaring one or more `**Verify:** ` `` `<cmd>` `` lines in its `tasks.md` (canonical; `spec.md` is the fallback). The bundled script lives in **this skill's `scripts/` directory** and requires `bash`; invoke it by that path (resolve this skill's dir — `.claude/skills/sdd/` on Claude, `.agents/skills/sdd/` on Codex — and run from anywhere inside the workspace; it finds the repo root via git). The spec target may be the dir (`docs/specs/NNN-<slug>`) or just the `NNN`:
+Re-run a spec's declared verification command(s) to prove its mechanical claim still holds. A spec opts in by declaring one or more `**Verify:** ` `` `<cmd>` `` lines in its `tasks.md` (canonical; `spec.md` is the fallback). The bundled script lives in **this skill's `scripts/` directory** and requires `bash`; invoke it by that path. `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it materialized it (Claude prints it as *Base directory for this skill*). Run from anywhere inside the workspace; the script finds the repo root via git. Do **not** hardcode `.claude/skills/…` or `.agents/skills/…`: an agent working in its own git worktree has neither, and the skill tree is delivered into the agent's private runtime home. The spec target may be the dir (`docs/specs/NNN-<slug>`) or just the `NNN`:
 
 ```
 bash "<this-skill-dir>"/scripts/spec-verify.sh docs/specs/NNN-<slug>

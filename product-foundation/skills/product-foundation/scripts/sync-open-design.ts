@@ -37,7 +37,7 @@ const DESIGN_SYSTEMS_DIR = path.join(SKILL_ROOT, 'design-systems');
 // Repo-relative prefix the pipeline-facing catalogue stores in `vendor_path`
 // (steps 02/14 reference this literal). Fallback when no existing catalogue
 // declares a `source`; matches the one-off /tmp/gen-catalog.py reference impl.
-const CATALOG_VENDOR_PREFIX = '.claude/skills/product-foundation/design-systems';
+const CATALOG_VENDOR_PREFIX = '<this-skill-dir>/design-systems';
 const UPSTREAM_URL = 'https://github.com/nexu-io/open-design';
 const UPSTREAM_GIT = `${UPSTREAM_URL}.git`;
 

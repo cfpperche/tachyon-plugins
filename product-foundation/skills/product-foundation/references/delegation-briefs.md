@@ -19,13 +19,13 @@ Every `Agent` tool call dispatched by `/product-foundation` v0.6.0 MUST use the 
 ```
 TASK: Produce concept-brief.md for the product idea "{{idea}}" — a deep concept brief covering market fit, persona, mechanics, growth, monetization, risks, AND market sizing (TAM/SAM/SOM).
 
-CONTEXT: Read .claude/skills/product-foundation/templates/pipeline/01-ideation/prompt.md for the canonical brief structure. Read .claude/skills/product-foundation/templates/pipeline/01-ideation/references/concept-brief-template.md for the section shape. Read .claude/skills/product-foundation/templates/pipeline/01-ideation/references/discovery-playbook.md for the 5-track market discovery process. Read .claude/skills/product-foundation/references/pipeline-coverage.md § "Per-step output + size floors" for the standard-tier calibration. Use WebSearch + WebFetch for 5-8 market discovery searches.
+CONTEXT: Read <this-skill-dir>/templates/pipeline/01-ideation/prompt.md for the canonical brief structure. Read <this-skill-dir>/templates/pipeline/01-ideation/references/concept-brief-template.md for the section shape. Read <this-skill-dir>/templates/pipeline/01-ideation/references/discovery-playbook.md for the 5-track market discovery process. Read <this-skill-dir>/references/pipeline-coverage.md § "Per-step output + size floors" for the standard-tier calibration. Use WebSearch + WebFetch for 5-8 market discovery searches.
 
 CONSTRAINTS:
 - Standard tier: ≥ 4 KB (anti-stub floor — NOT a ceiling; the catastrophe cap below is the only upper bound).
 - Catastrophe cap: a uniform 200 KB ceiling — if output crosses it, STOP and emit a partial-result naming what was being produced (a token-runaway circuit-breaker, NOT a scope budget; no trim-loop, no re-emit-at-smaller-scope).
 - **Target language: `{{target_language}}`** (BCP-47, resolved at Phase 0.5). All section bodies + persona language + tagline candidates + name candidates in this language; cited sources stay in their original language.
-- Cover the standard-tier minimum sections as H2 headings: Hook (problem + audience) / Mechanics (user flow) / Monetization / Growth loop / Competitive positioning / Risks / Anti-goals / JTBD statement / **Product Form (one of screen-app | headless-service | cli | bot | embedded via a `**Form:**` line + 1-3 line rationale per .claude/skills/product-foundation/references/product-forms.md — where is the PRIMARY user value delivered; flag genuine ambiguity for the concept gate)** / **Market Sizing (TAM/SAM/SOM — 1 paragraph each, desk research with 1-2 cited sources per number, NOT primary research; the section OPENS by declaring its numbers pre-validation hypotheses, prefers ranges over point values, and never presents a sized market as established fact)**. SKIP critique-mode at standard tier.
+- Cover the standard-tier minimum sections as H2 headings: Hook (problem + audience) / Mechanics (user flow) / Monetization / Growth loop / Competitive positioning / Risks / Anti-goals / JTBD statement / **Product Form (one of screen-app | headless-service | cli | bot | embedded via a `**Form:**` line + 1-3 line rationale per <this-skill-dir>/references/product-forms.md — where is the PRIMARY user value delivered; flag genuine ambiguity for the concept gate)** / **Market Sizing (TAM/SAM/SOM — 1 paragraph each, desk research with 1-2 cited sources per number, NOT primary research; the section OPENS by declaring its numbers pre-validation hypotheses, prefers ranges over point values, and never presents a sized market as established fact)**. SKIP critique-mode at standard tier.
 - Cite at least 5 unique sources with inline [N] references. Market Sizing section cites at minimum 1 source per TAM/SAM/SOM number.
 - Name placeholder discipline: if final product name not yet decided, use `**Working name:** <placeholder> (placeholder, never shipped; final at Step 13 brand-book § Product Name)`. Suggest 2-3 candidates.
 - Do NOT invent statistics — every claim either cites a source OR is hedged ("anecdotally", "in this researcher's view").
@@ -46,7 +46,7 @@ Two sub-agent dispatches: (a) one direction-writer for the visual mood board; (b
 # SKILL-DIRECTED: product
 TASK: Produce direction-a.html — a single HTML mood board proposing the visual direction for "{{idea}}".
 
-CONTEXT: Read concept-brief.md at {{out}}/docs/concept-brief.md for product persona + mechanics. Read .claude/skills/product-foundation/templates/pipeline/02-prototype/prompt.md for the canonical mood-board structure (ONE direction at standard tier). Read .claude/skills/product-foundation/references/od-catalog-index.json for the 72-vendor catalog; pick 1-2 vendors whose mood matches the product and cite by name + vendor_path. Read .claude/skills/product-foundation/templates/pipeline/02-prototype/schema.md for the 8 mandatory sections.
+CONTEXT: Read concept-brief.md at {{out}}/docs/concept-brief.md for product persona + mechanics. Read <this-skill-dir>/templates/pipeline/02-prototype/prompt.md for the canonical mood-board structure (ONE direction at standard tier). Read <this-skill-dir>/references/od-catalog-index.json for the 72-vendor catalog; pick 1-2 vendors whose mood matches the product and cite by name + vendor_path. Read <this-skill-dir>/templates/pipeline/02-prototype/schema.md for the 8 mandatory sections.
 
 CONSTRAINTS:
 - Standard tier: ONE direction only.
@@ -56,7 +56,7 @@ CONSTRAINTS:
 - CSS :root custom properties (vendor-agnostic names: --color-primary, --background, --foreground).
 - Includes "Most Popular" string token + ≥1 `<svg` (catalog citation discipline).
 - **Do NOT produce sitemap.yaml** — that's Step 07's deliverable (sitemap-IA is its own step).
-- Size floor: per `.claude/skills/product-foundation/templates/pipeline/02-prototype/schema.md § Size floor` — the `min_size` anti-stub floor (no scope ceiling).
+- Size floor: per `<this-skill-dir>/templates/pipeline/02-prototype/schema.md § Size floor` — the `min_size` anti-stub floor (no scope ceiling).
 - Catastrophe cap: a uniform 200 KB ceiling — if output crosses it, STOP and emit a partial-result naming what was being produced (a token-runaway circuit-breaker, NOT a scope budget; no trim-loop, no re-emit-at-smaller-scope).
 - Write file DIRECTLY to {{out}}/docs/direction-a.html. The 3-5 killer-flow lo-fi mood screens are produced by separate § Mood-screen-writer dispatches in lo-fi mode (sub-agent b — see § Mood-screen-writer below).
 
@@ -75,7 +75,7 @@ DONE_WHEN: File exists; size ≥ the `schema.md § Size floor` `min_size`; conta
 # SKILL-DIRECTED: product
 TASK: Produce functional-spec.md decomposing "{{idea}}" into pages, components, interactions, states, features with Gherkin acceptance scenarios + preliminary architecture skeleton + the Assumption Register (the bets this product rests on; seeds OST at Step 06).
 
-CONTEXT: Read concept-brief.md at {{out}}/docs/concept-brief.md for product scope. Read direction-a.html at {{out}}/docs/direction-a.html + screens at {{out}}/docs/screens/ for surface inventory. Read .claude/skills/product-foundation/templates/pipeline/03-spec/prompt.md for canonical structure (standard tier combines spec + architecture into a single file). Read .claude/skills/product-foundation/templates/pipeline/03-spec/schema.md § Size floor for the `min_size` anti-stub floor + required sections.
+CONTEXT: Read concept-brief.md at {{out}}/docs/concept-brief.md for product scope. Read direction-a.html at {{out}}/docs/direction-a.html + screens at {{out}}/docs/screens/ for surface inventory. Read <this-skill-dir>/templates/pipeline/03-spec/prompt.md for canonical structure (standard tier combines spec + architecture into a single file). Read <this-skill-dir>/templates/pipeline/03-spec/schema.md § Size floor for the `min_size` anti-stub floor + required sections.
 
 CONSTRAINTS:
 - Standard tier: combined functional-spec.md (skip separate architecture.md). Size floor: per `schema.md § Size floor` — the `min_size` anti-stub floor (no scope ceiling).
@@ -100,7 +100,7 @@ DONE_WHEN: File exists; size ≥ the `schema.md § Size floor` `min_size`; conta
 # SKILL-DIRECTED: product
 TASK: Produce validation-report.md — heuristic audit (Nielsen's 10 + WCAG 2.1 AA) on the Phase 1 prototype surfaces + validation mode declaration.
 
-CONTEXT: Read direction-a.html at {{out}}/docs/direction-a.html + screens at {{out}}/docs/screens/ for rendered surfaces (PROJECTED-mode audit at standard tier). Read functional-spec.md at {{out}}/docs/functional-spec.md for declared behavior. Read .claude/skills/product-foundation/templates/pipeline/04-validation/prompt.md + schema.md.
+CONTEXT: Read direction-a.html at {{out}}/docs/direction-a.html + screens at {{out}}/docs/screens/ for rendered surfaces (PROJECTED-mode audit at standard tier). Read functional-spec.md at {{out}}/docs/functional-spec.md for declared behavior. Read <this-skill-dir>/templates/pipeline/04-validation/prompt.md + schema.md.
 
 CONSTRAINTS:
 - Standard tier: PROJECTED mode. Audit infers contrast / tab order / a11y from spec + HTML inspection.
@@ -127,7 +127,7 @@ DONE_WHEN: File exists; size ≥ 5 KB (anti-stub floor); contains `Nielsen` + `W
 # SKILL-DIRECTED: product
 TASK: Produce prd.md — Lenny Rachitsky 1-pager hybrid for "{{idea}}". This is a TIGHT 1-pager, NOT a multi-page PRD.
 
-CONTEXT: Read concept-brief.md + functional-spec.md + validation-report.md frontmatter + direction-a.html + screens at {{out}}/docs/ for product scope. Read .claude/skills/product-foundation/templates/pipeline/05-prd/prompt.md + schema.md for the Lenny hybrid shape.
+CONTEXT: Read concept-brief.md + functional-spec.md + validation-report.md frontmatter + direction-a.html + screens at {{out}}/docs/ for product scope. Read <this-skill-dir>/templates/pipeline/05-prd/prompt.md + schema.md for the Lenny hybrid shape.
 
 CONSTRAINTS:
 - ≥ 4 KB (anti-stub floor; no ceiling). Each section ≤3 bullets to preserve 1-pager honesty.
@@ -155,7 +155,7 @@ DONE_WHEN: File exists; size ≥ 4 KB (anti-stub floor); contains literal table-
 # SKILL-DIRECTED: product
 TASK: Produce ost.md — Opportunity Solution Tree (Teresa Torres methodology) for "{{idea}}", consuming Step 05's PRD NSM as the desired outcome root.
 
-CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md for NSM (desired outcome) + user stories + anti-goals. Read functional-spec.md at {{out}}/docs/functional-spec.md § Assumption Register — the `value`-risk rows are the opportunity inputs, each carrying a confidence level (high/medium/low) + basis. Read concept-brief.md at {{out}}/docs/concept-brief.md for persona context. Read .claude/skills/product-foundation/templates/pipeline/06-ost/prompt.md for canonical OST shape. Reference: Teresa Torres, Continuous Discovery Habits (Product Talk Academy).
+CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md for NSM (desired outcome) + user stories + anti-goals. Read functional-spec.md at {{out}}/docs/functional-spec.md § Assumption Register — the `value`-risk rows are the opportunity inputs, each carrying a confidence level (high/medium/low) + basis. Read concept-brief.md at {{out}}/docs/concept-brief.md for persona context. Read <this-skill-dir>/templates/pipeline/06-ost/prompt.md for canonical OST shape. Reference: Teresa Torres, Continuous Discovery Habits (Product Talk Academy).
 
 CONSTRAINTS:
 - Standard tier: 1 desired outcome root (NSM from Step 05) → 3-5 opportunities (user problems discovered/inferred) → 2-3 solutions per opportunity.
@@ -180,7 +180,7 @@ DONE_WHEN: File exists; size ≥ 3 KB (anti-stub floor); tree structure with 1 o
 # SKILL-DIRECTED: product
 TASK: Produce sitemap.yaml — full screen inventory + IA decomposition for "{{idea}}", schema-bound to references/sitemap-schema.md's required_categories enforcement.
 
-CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md for US-NN inventory. Read functional-spec.md at {{out}}/docs/functional-spec.md § Pages & Surfaces for surface inventory. Read concept-brief.md at {{out}}/docs/concept-brief.md for product class (B2C / B2B / internal-tool / etc — drives deferral judgment). **Declared product form: `{{product_form}}`** — selects WHICH required_categories set applies, per .claude/skills/product-foundation/references/product-forms.md § Step 07 (the constraints below spell out the screen-app set; non-screen forms substitute their set from that table, inventorying the form's interface units — endpoints / commands / intents / host touchpoints — with min 1 route per category). Read .claude/skills/product-foundation/references/sitemap-schema.md for the binding schema. Read .claude/skills/product-foundation/templates/pipeline/07-sitemap-ia/prompt.md + schema.md for canonical shape.
+CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md for US-NN inventory. Read functional-spec.md at {{out}}/docs/functional-spec.md § Pages & Surfaces for surface inventory. Read concept-brief.md at {{out}}/docs/concept-brief.md for product class (B2C / B2B / internal-tool / etc — drives deferral judgment). **Declared product form: `{{product_form}}`** — selects WHICH required_categories set applies, per <this-skill-dir>/references/product-forms.md § Step 07 (the constraints below spell out the screen-app set; non-screen forms substitute their set from that table, inventorying the form's interface units — endpoints / commands / intents / host touchpoints — with min 1 route per category). Read <this-skill-dir>/references/sitemap-schema.md for the binding schema. Read <this-skill-dir>/templates/pipeline/07-sitemap-ia/prompt.md + schema.md for canonical shape.
 
 CONSTRAINTS:
 - YAML output. Top-level keys: `slug`, `platform`, `stack`, `required_categories`, `routes`, `deferred_categories` (optional).
@@ -213,10 +213,10 @@ NOTE: Orchestrator parses this YAML after sub-agent returns and BLOCKS step + re
 # SKILL-DIRECTED: product
 TASK: Produce system-design.md + security.md + data-flow.json for "{{idea}}". System-design includes RACI matrix + risk register. Data-flow.json is the structured inventory consumed by Step 09 legal for DPIA trigger.
 
-CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (scope drives scale assumption) + sitemap.yaml at {{out}}/docs/sitemap.yaml (route inventory drives integration list + auth requirements) + functional-spec.md at {{out}}/docs/functional-spec.md (preliminary architecture) + concept-brief.md at {{out}}/docs/concept-brief.md (product class + audience). **Stack hint from invocation:** `{{stack_hint}}` — the founder passed `--stack={{stack_hint}}` at invocation. Treat as a default the product class either justifies (record in § Stack rationale) or overrides (record the rationale for override in § Alternatives Considered). The final § Stack section is the binding contract — Phase 5 reads only what you write there; the flag is not re-read downstream. Read .claude/skills/product-foundation/templates/pipeline/08-system-design/prompt.md + schema.md.
+CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (scope drives scale assumption) + sitemap.yaml at {{out}}/docs/sitemap.yaml (route inventory drives integration list + auth requirements) + functional-spec.md at {{out}}/docs/functional-spec.md (preliminary architecture) + concept-brief.md at {{out}}/docs/concept-brief.md (product class + audience). **Stack hint from invocation:** `{{stack_hint}}` — the founder passed `--stack={{stack_hint}}` at invocation. Treat as a default the product class either justifies (record in § Stack rationale) or overrides (record the rationale for override in § Alternatives Considered). The final § Stack section is the binding contract — Phase 5 reads only what you write there; the flag is not re-read downstream. Read <this-skill-dir>/templates/pipeline/08-system-design/prompt.md + schema.md.
 
 CONSTRAINTS:
-- system-design.md: BRIDGE-FLOOR (6+ sections H2): Stack / Integrations / Data Model / Decisions Locked / Security / Observability / **RACI Matrix** / **Risk Register**. Size floor: per `.claude/skills/product-foundation/templates/pipeline/08-system-design/schema.md § Size floor` — the `min_size` anti-stub floor (no scope ceiling).
+- system-design.md: BRIDGE-FLOOR (6+ sections H2): Stack / Integrations / Data Model / Decisions Locked / Security / Observability / **RACI Matrix** / **Risk Register**. Size floor: per `<this-skill-dir>/templates/pipeline/08-system-design/schema.md § Size floor` — the `min_size` anti-stub floor (no scope ceiling).
 - Catastrophe cap: a uniform 200 KB ceiling — if output crosses it, STOP and emit a partial-result naming what was being produced (a token-runaway circuit-breaker, NOT a scope budget; no trim-loop, no re-emit-at-smaller-scope).
 - RACI Matrix: 5-10 key roles (founder/engineer/designer/data/legal/...) × 5-10 key activities (auth/payments/audit-trail/...). Each cell: R/A/C/I or blank.
 - Risk Register: 5-10 risks with columns: ID · description · probability (L/M/H) · impact (L/M/H) · mitigation · owner.
@@ -240,10 +240,10 @@ DONE_WHEN: system-design.md meets the `08-system-design/schema.md § Size floor`
 # SKILL-DIRECTED: product
 TASK: Produce legal-posture.md — founder's articulated legal posture briefing for v1 of "{{idea}}". This is BRIEFING for counsel, NOT the actual Terms/Privacy/DPA documents. Includes DPIA section IF Step 08 data-flow includes sensitive categories.
 
-CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (audience drives jurisdiction exposure) + system-design.md at {{out}}/docs/system-design.md (Integrations name every sub-processor) + **data-flow.json at {{out}}/docs/data-flow.json (parses flows[]; if any flow has data_categories ⊃ {pii, health, minors, financial}, DPIA section is MANDATORY)** + concept-brief.md at {{out}}/docs/concept-brief.md (audience). Read .claude/skills/product-foundation/templates/pipeline/09-legal/prompt.md + schema.md.
+CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (audience drives jurisdiction exposure) + system-design.md at {{out}}/docs/system-design.md (Integrations name every sub-processor) + **data-flow.json at {{out}}/docs/data-flow.json (parses flows[]; if any flow has data_categories ⊃ {pii, health, minors, financial}, DPIA section is MANDATORY)** + concept-brief.md at {{out}}/docs/concept-brief.md (audience). Read <this-skill-dir>/templates/pipeline/09-legal/prompt.md + schema.md.
 
 CONSTRAINTS:
-- Standard tier: BRIEF CHECKLIST + POSTURE. Size floor: per `.claude/skills/product-foundation/templates/pipeline/09-legal/schema.md § Size floor` — the conditional `min_size` model (base floor plus an additional floor per triggered conditional section); no scope ceiling.
+- Standard tier: BRIEF CHECKLIST + POSTURE. Size floor: per `<this-skill-dir>/templates/pipeline/09-legal/schema.md § Size floor` — the conditional `min_size` model (base floor plus an additional floor per triggered conditional section); no scope ceiling.
 - Catastrophe cap: a uniform 200 KB ceiling — if output crosses it, STOP and emit a partial-result naming what was being produced (a token-runaway circuit-breaker, NOT a scope budget; no trim-loop, no re-emit-at-smaller-scope).
 - TOP-OF-DOCUMENT escape clause (line 1-5): "This is founder's posture, NOT legal advice. Counsel review required before launch."
 - Sections required (H2): Terms Model / Privacy Posture (regulation applicability checklist GDPR/LGPD/CCPA Yes/No based on audience) / Data Handling Snapshot / Licensing (product license + OSS compatibility flag) / Sub-Processor Disclosure (extracted from system-design § Integrations — count must match) / IP Assignment Posture / Open Decisions.
@@ -267,7 +267,7 @@ DONE_WHEN: File exists; size ≥ the `schema.md § Size floor` conditional `min_
 # SKILL-DIRECTED: product
 TASK: Produce roadmap.md — 3-phase MVP/Growth/Polish sketch for v1 of "{{idea}}". Phase boundaries defined HERE drive Step 11's per-phase cost calculation.
 
-CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (user stories + priorities) + system-design.md at {{out}}/docs/system-design.md (dependencies + integrations driving build sequence) + concept-brief.md at {{out}}/docs/concept-brief.md (product class) + validation-report.md at {{out}}/docs/validation-report.md (validation_mode drives canonical-vs-bridge mode). Read .claude/skills/product-foundation/templates/pipeline/10-roadmap/prompt.md + schema.md.
+CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (user stories + priorities) + system-design.md at {{out}}/docs/system-design.md (dependencies + integrations driving build sequence) + concept-brief.md at {{out}}/docs/concept-brief.md (product class) + validation-report.md at {{out}}/docs/validation-report.md (validation_mode drives canonical-vs-bridge mode). Read <this-skill-dir>/templates/pipeline/10-roadmap/prompt.md + schema.md.
 
 CONSTRAINTS:
 - Standard tier: 3-phase sketch (MVP / Growth / Polish) with phase titles USER-FLOW SHAPED (e.g. "Install harness, see first override-marker hit") NOT label-shaped ("Foundation").
@@ -277,7 +277,7 @@ CONSTRAINTS:
 - Milestones are observable end-of-phase deliverables.
 - § Overview 2-3 one-liners. § Horizon (duration estimate + team shape). § Open Decisions table.
 - **Projection notice (required):** the document opens — immediately after its H1 — with the `> **Pre-validation projection.** …` blockquote per `10-roadmap/prompt.md § Projection notice` (Layer 1 anchors the bolded lead). Phase-2+ content phrased as sequencing intent, not commitment.
-- Size floor: per `.claude/skills/product-foundation/templates/pipeline/10-roadmap/schema.md § Size floor` — the `min_size` anti-stub floor (no scope ceiling).
+- Size floor: per `<this-skill-dir>/templates/pipeline/10-roadmap/schema.md § Size floor` — the `min_size` anti-stub floor (no scope ceiling).
 - Catastrophe cap: a uniform 200 KB ceiling — if output crosses it, STOP and emit a partial-result naming what was being produced (a token-runaway circuit-breaker, NOT a scope budget; no trim-loop, no re-emit-at-smaller-scope).
 - Write file DIRECTLY to {{out}}/docs/roadmap.md.
 
@@ -294,7 +294,7 @@ DONE_WHEN: File exists; size ≥ the `schema.md § Size floor` `min_size`; the *
 # SKILL-DIRECTED: product
 TASK: Produce cost-estimate.md — single-scenario burn rate + run-cost line items for v1 of "{{idea}}", calculated PER PHASE using Step 10's roadmap phase boundaries (cost↔roadmap ordering).
 
-CONTEXT: Read **roadmap.md at {{out}}/docs/roadmap.md (phase boundaries drive cost calculation — load-bearing for per-phase breakdown)** + system-design.md at {{out}}/docs/system-design.md (stack + integrations drive line items) + legal-posture.md at {{out}}/docs/legal-posture.md (DPIA + counsel review budget) + prd.md at {{out}}/docs/prd/v1.md (success metric drives scale assumption). Read .claude/skills/product-foundation/templates/pipeline/11-cost-estimate/prompt.md + schema.md.
+CONTEXT: Read **roadmap.md at {{out}}/docs/roadmap.md (phase boundaries drive cost calculation — load-bearing for per-phase breakdown)** + system-design.md at {{out}}/docs/system-design.md (stack + integrations drive line items) + legal-posture.md at {{out}}/docs/legal-posture.md (DPIA + counsel review budget) + prd.md at {{out}}/docs/prd/v1.md (success metric drives scale assumption). Read <this-skill-dir>/templates/pipeline/11-cost-estimate/prompt.md + schema.md.
 
 CONSTRAINTS:
 - Standard tier: SINGLE-SCENARIO only. ≥ 5 KB (anti-stub floor; no ceiling).
@@ -324,7 +324,7 @@ DONE_WHEN: File exists; size ≥ 5 KB (anti-stub floor); the **Pre-validation pr
 # SKILL-DIRECTED: product
 TASK: Produce gtm-launch.md — positioning canvas (April Dunford methodology) + 4-week launch plan sketch + pricing strategy for v1 of "{{idea}}".
 
-CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (NSM + audience for positioning) + concept-brief.md at {{out}}/docs/concept-brief.md (competitive positioning + monetization tier hints) + roadmap.md at {{out}}/docs/roadmap.md (launch timing aligns with roadmap Phase 1 close) + legal-posture.md at {{out}}/docs/legal-posture.md (compliance signals affect launch claims). Read .claude/skills/product-foundation/templates/pipeline/12-gtm-launch/prompt.md + schema.md. Reference: April Dunford, Obviously Awesome.
+CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (NSM + audience for positioning) + concept-brief.md at {{out}}/docs/concept-brief.md (competitive positioning + monetization tier hints) + roadmap.md at {{out}}/docs/roadmap.md (launch timing aligns with roadmap Phase 1 close) + legal-posture.md at {{out}}/docs/legal-posture.md (compliance signals affect launch claims). Read <this-skill-dir>/templates/pipeline/12-gtm-launch/prompt.md + schema.md. Reference: April Dunford, Obviously Awesome.
 
 CONSTRAINTS:
 - Standard tier: ≥ 4 KB (anti-stub floor; no ceiling).
@@ -358,7 +358,7 @@ DONE_WHEN: File exists; size ≥ 4 KB (anti-stub floor); the **Pre-validation pr
 # SKILL-DIRECTED: product
 TASK: Produce brand-book.md — voice + visual direction posture + we-are/we-are-not contrast pair for "{{idea}}".
 
-CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (finalized scope + NSM + persona) + gtm-launch.md at {{out}}/docs/gtm-launch.md (positioning canvas already locked — brand voice should reinforce, not contradict) + concept-brief.md at {{out}}/docs/concept-brief.md (audience + product class) + direction-a.html at {{out}}/docs/direction-a.html (visual lineage). Read .claude/skills/product-foundation/templates/pipeline/13-brand/prompt.md for canonical 7-section structure (we target 2-3 section snapshot at standard tier).
+CONTEXT: Read prd.md at {{out}}/docs/prd/v1.md (finalized scope + NSM + persona) + gtm-launch.md at {{out}}/docs/gtm-launch.md (positioning canvas already locked — brand voice should reinforce, not contradict) + concept-brief.md at {{out}}/docs/concept-brief.md (audience + product class) + direction-a.html at {{out}}/docs/direction-a.html (visual lineage). Read <this-skill-dir>/templates/pipeline/13-brand/prompt.md for canonical 7-section structure (we target 2-3 section snapshot at standard tier).
 
 CONSTRAINTS:
 - Standard tier: voice (1-2 paragraphs) + voice samples + ONE "We are / We are not" pair minimum + **`## Language` section** + **`## Glossary` section** + Visual Direction posture + Logo Direction (clear-space + min-size + ≥3 prohibited uses) + Color Story + Anti-Patterns.
@@ -387,7 +387,7 @@ DONE_WHEN: File exists; size ≥ 4 KB (anti-stub floor); contains **Version:** +
 # SKILL-DIRECTED: product
 TASK: Produce tokens.css + components.md + README.md (3 files inside `{{out}}/docs/design-system/`) applying the brand-book to concrete semantic design tokens for "{{idea}}". Catalog-path PREFERRED (cite 1-2 OD vendors).
 
-CONTEXT: Read brand-book.md at {{out}}/docs/brand-book.md for posture + voice. Read sitemap.yaml at {{out}}/docs/sitemap.yaml for component scope (what surfaces need styling). Read concept-brief.md at {{out}}/docs/concept-brief.md for product class. **Declared product form: `{{product_form}}`** — for non-`screen-app` forms, scope the design system per .claude/skills/product-foundation/references/product-forms.md § Step 14 (e.g. cli → terminal palette + output conventions; headless-service → docs styling + API conventions; bot → message templates + tone); the component minimum below applies to screen-app. Read .claude/skills/product-foundation/references/od-catalog-index.json for the 72-vendor catalog — pick 1-2 vendors whose mood + category match the brand-book; their DESIGN.md path (vendor_path field) is the lineage citation source. Read validation-report.md at {{out}}/docs/validation-report.md frontmatter `findings[]` and filter `fix_skill_hint: "design-system"` — these are token tunes to apply. Read .claude/skills/product-foundation/templates/pipeline/14-design-system/prompt.md + schema.md.
+CONTEXT: Read brand-book.md at {{out}}/docs/brand-book.md for posture + voice. Read sitemap.yaml at {{out}}/docs/sitemap.yaml for component scope (what surfaces need styling). Read concept-brief.md at {{out}}/docs/concept-brief.md for product class. **Declared product form: `{{product_form}}`** — for non-`screen-app` forms, scope the design system per <this-skill-dir>/references/product-forms.md § Step 14 (e.g. cli → terminal palette + output conventions; headless-service → docs styling + API conventions; bot → message templates + tone); the component minimum below applies to screen-app. Read <this-skill-dir>/references/od-catalog-index.json for the 72-vendor catalog — pick 1-2 vendors whose mood + category match the brand-book; their DESIGN.md path (vendor_path field) is the lineage citation source. Read validation-report.md at {{out}}/docs/validation-report.md frontmatter `findings[]` and filter `fix_skill_hint: "design-system"` — these are token tunes to apply. Read <this-skill-dir>/templates/pipeline/14-design-system/prompt.md + schema.md.
 
 CONSTRAINTS:
 - Standard tier: catalog path PREFERRED — if 1-2 vendors match, inherit their tokens with brand-tuned overrides. Custom path fallback only.
@@ -421,13 +421,13 @@ CONTEXT: Read ALL prior artifacts at {{out}}/docs/ (semantic-named; pipeline ord
 - Phase 1 (Discovery): concept-brief.md, functional-spec.md, validation-report.md, direction-a.html + screens/ (lo-fi mood — visual lineage)
 - Phase 2 (Specification): prd/v1.md (US-NN inventory — load-bearing for PRD coverage), ost.md, sitemap.yaml (route inventory — load-bearing for the Screens Index), system-design.md + security.md + data-flow.json, legal-posture.md (legal-mandatory surfaces — consent dialog if DPIA fires), roadmap.md, cost-estimate.md, gtm-launch.md
 - Phase 3 (Identity): brand-book.md, design-system/tokens.css, design-system/components.md, design-system/README.md
-Read .claude/skills/product-foundation/templates/pipeline/15-screen-atlas/prompt.md + schema.md + references/ for the atlas shape.
-**Declared product form: `{{product_form}}`** — for non-`screen-app` forms the atlas indexes the form's interface units per .claude/skills/product-foundation/references/product-forms.md § Phase 4 (endpoints / commands / intents / host touchpoints) instead of screens; section names and table shapes stay the same, the inventory unit changes.
+Read <this-skill-dir>/templates/pipeline/15-screen-atlas/prompt.md + schema.md + references/ for the atlas shape.
+**Declared product form: `{{product_form}}`** — for non-`screen-app` forms the atlas indexes the form's interface units per <this-skill-dir>/references/product-forms.md § Phase 4 (endpoints / commands / intents / host touchpoints) instead of screens; section names and table shapes stay the same, the inventory unit changes.
 The hi-fi killer-flow mood screens at {{out}}/docs/screens/hifi/ (Step 15b, produced in parallel) are the RENDERED half of this contract — reference them in § Design Fidelity, do not reproduce their markup.
 
 CONSTRAINTS:
 - **The atlas markdown file is the ONLY deliverable. Write NO `app/`, NO `.tsx`, NO `.html`.** The atlas is a contract document, not an implementation.
-- Size floor: per `.claude/skills/product-foundation/templates/pipeline/15-screen-atlas/schema.md § Size floor` — the `min_size` anti-stub floor (no scope ceiling).
+- Size floor: per `<this-skill-dir>/templates/pipeline/15-screen-atlas/schema.md § Size floor` — the `min_size` anti-stub floor (no scope ceiling).
 - Catastrophe cap: a uniform 200 KB ceiling — if output crosses it, STOP and emit a partial-result naming what was being produced (a token-runaway circuit-breaker, NOT a scope budget; no trim-loop, no re-emit-at-smaller-scope).
 - **Target language: `{{target_language}}`** (BCP-47). All prose, screen descriptions, and the user-flow walkthrough in this language; H2 section headers stay English-canonical.
 - Required H2 sections (verbatim, in order): Overview / Screens Index / Sitemap Coverage Cross-Check / PRD Coverage Matrix / Design Fidelity / States Coverage Matrix / User Flow Walkthrough / Open Decisions.
@@ -457,7 +457,7 @@ The hi-fi mood is 3-5 brand+tokens-applied killer-flow screens as self-contained
 # SKILL-DIRECTED: product
 TASK: Produce fixture-spec.md — the single coherent mock-data contract for "{{idea}}". Every SDD-built screen will import ONE shared fixture set (foundation child implements it as `lib/mock-data.ts`); this spec defines it so no screen invents its own incoherent data.
 
-CONTEXT: Read concept-brief.md at {{out}}/docs/concept-brief.md for the primary persona. Read system-design.md at {{out}}/docs/system-design.md § Data Model for the entity set + relationships. Read prd/v1.md at {{out}}/docs/prd/v1.md for the user-story surfaces the data must populate. Read sitemap.yaml at {{out}}/docs/sitemap.yaml for which screens consume which entities. **Declared product form: `{{product_form}}`** — for non-`screen-app` forms the fixture fixes the form's context per .claude/skills/product-foundation/references/product-forms.md § Phase 4 (e.g. headless-service → one tenant + API keys + coherent payloads; cli → one project tree + deterministic outputs; bot → one user + conversation history).
+CONTEXT: Read concept-brief.md at {{out}}/docs/concept-brief.md for the primary persona. Read system-design.md at {{out}}/docs/system-design.md § Data Model for the entity set + relationships. Read prd/v1.md at {{out}}/docs/prd/v1.md for the user-story surfaces the data must populate. Read sitemap.yaml at {{out}}/docs/sitemap.yaml for which screens consume which entities. **Declared product form: `{{product_form}}`** — for non-`screen-app` forms the fixture fixes the form's context per <this-skill-dir>/references/product-forms.md § Phase 4 (e.g. headless-service → one tenant + API keys + coherent payloads; cli → one project tree + deterministic outputs; bot → one user + conversation history).
 
 CONSTRAINTS:
 - ONE persona (the primary persona from concept-brief.md — name, role, the account they own) — every screen renders that one persona's view.
@@ -491,11 +491,11 @@ TASK: Write the {{mood_tier}} mood screen `{{NN}}-{{name}}.html` for "{{idea}}" 
 
 CONTEXT:
 - Mode: {{mood_tier}}. lo-fi = Step 02 pre-brand visual exploration; hi-fi = Step 15b brand+tokens-applied killer-flow screen (the rendered half of the visual contract).
-- Declared product form: `{{product_form}}` — for non-`screen-app` forms, render the form's mood variant per .claude/skills/product-foundation/references/product-forms.md § Step 02 (cli → styled terminal-session transcript; bot → styled conversation thread; headless-service → quickstart/annotated request-response walkthrough; embedded → panels inside a neutral host-chrome sketch). Still self-contained static HTML — every constraint below applies unchanged.
+- Declared product form: `{{product_form}}` — for non-`screen-app` forms, render the form's mood variant per <this-skill-dir>/references/product-forms.md § Step 02 (cli → styled terminal-session transcript; bot → styled conversation thread; headless-service → quickstart/annotated request-response walkthrough; embedded → panels inside a neutral host-chrome sketch). Still self-contained static HTML — every constraint below applies unchanged.
 - concept-brief.md at {{out}}/docs/concept-brief.md — product persona + mechanics + the killer flow.
 - direction-a.html at {{out}}/docs/direction-a.html — the picked visual direction (lo-fi: copy its `:root` tokens; hi-fi: visual lineage only).
 - hi-fi mode ALSO reads: design-system/tokens.css at {{out}}/docs/design-system/tokens.css (copy the `:root` token VALUES verbatim into this screen's `<style>` so it renders self-contained); brand-book.md at {{out}}/docs/brand-book.md (`## Language` for target language + `## Glossary` for the `We don't say` term-replacement lookup + voice samples for copy); design-system/components.md for component anatomy; fixture-spec.md at {{out}}/docs/fixture-spec.md for the mock data this screen renders.
-- Step 02 template references: .claude/skills/product-foundation/templates/pipeline/02-prototype/references/{visual-constraints,a11y-checklist,anti-patterns}.md.
+- Step 02 template references: <this-skill-dir>/templates/pipeline/02-prototype/references/{visual-constraints,a11y-checklist,anti-patterns}.md.
 
 CONSTRAINTS:
 - **Self-contained static HTML** — single file, one `<style>` block in `<head>`, inline `<svg>` for any chart/icon. NO external CSS/JS, NO build step, NO framework. The file opens directly via `file://`.
@@ -529,8 +529,8 @@ TASK: Grade every judge-unit of pipeline phase "{{phase_label}}" — each unit's
 CONTEXT:
 - The judge-units in this batch (one entry per unit — step_label, artifact paths, schema dir, rubric section, verdict path):
 {{judge_units}}
-- .claude/skills/product-foundation/references/quality-judge.md — the operational contract: rubric assembly, the right-sizing criterion, the cross-consistency criterion, the verdict JSON shape, the routing. READ THIS FIRST.
-- .claude/skills/product-foundation/references/quality-checklist.md — each unit's `rubric_section` names its per-step semantic criteria (each a stable `id`). Some steps have none — then that unit's rubric is right-sizing + schema context only.
+- <this-skill-dir>/references/quality-judge.md — the operational contract: rubric assembly, the right-sizing criterion, the cross-consistency criterion, the verdict JSON shape, the routing. READ THIS FIRST.
+- <this-skill-dir>/references/quality-checklist.md — each unit's `rubric_section` names its per-step semantic criteria (each a stable `id`). Some steps have none — then that unit's rubric is right-sizing + schema context only.
 - Each unit's `schema_dir`/schema.md + prompt.md — the step's required shape + job; CONTEXT for "what this artifact is for", NOT a checklist to re-run (the deterministic anchor check already ran at submit).
 - {{out}}/docs/.state.json — the run's declared scope: `idea`, `flags`, `product_form`, and the roadmap phase count where present. The right-sizing criterion is judged against THIS, not a fixed size.
 

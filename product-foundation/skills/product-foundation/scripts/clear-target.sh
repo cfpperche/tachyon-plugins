@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# .claude/skills/product-foundation/scripts/clear-target.sh
+# <this-skill-dir>/scripts/clear-target.sh
 # selective clear of a /product-foundation --out target.
 #
 # Removes every top-level entry of <out> that is NOT in the runtime/harness

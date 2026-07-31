@@ -13,8 +13,13 @@ never stored or echoed.
 ## Invocation
 
 ```
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/sound/skills/sound/scripts/sound.sh" "<prompt>" --kind music|sfx [--tier <name>] [--duration <sec>] [--format mp3|wav] [--out <dir>] [--confirm-cost-usd <n>]
+bash "<this-skill-dir>"/scripts/sound.sh "<prompt>" --kind music|sfx [--tier <name>] [--duration <sec>] [--format mp3|wav] [--out <dir>] [--confirm-cost-usd <n>]
 ```
+
+> `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+> materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+> Resolve it and run from anywhere in the workspace. Do **not** hardcode `.claude/skills/…`, `.agents/skills/…`
+> or `.tachyon/plugins/…` — an agent working in its own git worktree has none of those directories.
 
 - **`--kind`** (REQUIRED) — `music` (tiers `standard`/`premium`) or `sfx`.
 - **`--duration`** — seconds (defaults per tier). **`--confirm-cost-usd`** — required when the estimate exceeds $0.25.

@@ -12,23 +12,28 @@ Use `agent-desktop` when the user has consented to desktop control and the agent
 ## Invocation
 
 ```bash
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" doctor
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" list-windows --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" apps find <name-or-path> --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" launch --app <name-or-path> --dry-run --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" launch --app <name-or-path> --wait-window --session <id> --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" open-url --browser chrome --new-window [--session <id>] <http-or-https-url> --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" wait-window --process <name> [--title <substring>] --timeout <seconds> --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" focus --window-id <id> --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" focus --process <name> [--title <substring>] --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" restore --window-id <id> --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" type --window-id <id> --text <text> --session <id> [--dry-run] --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" key --window-id <id> --key <allowed-key> --session <id> [--dry-run] --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" click --window-id <id> --x <px> --y <px> --session <id> [--expected-bounds <json>] [--dry-run] --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" sessions show --session <id> --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" cleanup --session <id> --dry-run --json
-bash "$(git rev-parse --show-toplevel)/.tachyon/plugins/agent-desktop/skills/agent-desktop/scripts/agent-desktop.sh" cleanup --session <id> --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh doctor
+bash "<this-skill-dir>"/scripts/agent-desktop.sh list-windows --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh apps find <name-or-path> --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh launch --app <name-or-path> --dry-run --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh launch --app <name-or-path> --wait-window --session <id> --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh open-url --browser chrome --new-window [--session <id>] <http-or-https-url> --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh wait-window --process <name> [--title <substring>] --timeout <seconds> --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh focus --window-id <id> --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh focus --process <name> [--title <substring>] --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh restore --window-id <id> --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh type --window-id <id> --text <text> --session <id> [--dry-run] --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh key --window-id <id> --key <allowed-key> --session <id> [--dry-run] --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh click --window-id <id> --x <px> --y <px> --session <id> [--expected-bounds <json>] [--dry-run] --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh sessions show --session <id> --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh cleanup --session <id> --dry-run --json
+bash "<this-skill-dir>"/scripts/agent-desktop.sh cleanup --session <id> --json
 ```
+
+> `<this-skill-dir>` is the directory this SKILL.md was loaded from — your runtime tells you where it
+> materialized it (Claude prints it as *Base directory for this skill*; Codex uses the bundled skill path).
+> Resolve it and run from anywhere in the workspace. Do **not** hardcode `.claude/skills/…`, `.agents/skills/…`
+> or `.tachyon/plugins/…` — an agent working in its own git worktree has none of those directories.
 
 ## Use this when
 
