@@ -42,4 +42,27 @@ if [ ${#PKGS[@]} -eq 0 ]; then
   exit 1
 fi
 
+# The README plugin table is the repository index. Derive its expected rows from the same package
+# directories passed to the manifest validator so adding a package cannot silently leave the index
+# stale. Check the reverse direction too, so deleting/renaming a package cannot leave a dead row.
+README="README.md"
+INDEXED_PKGS=()
+while IFS= read -r plugin; do
+  INDEXED_PKGS+=("$plugin")
+done < <(sed -nE 's/^\| \[`([^`]+)`\]\(\.\/([^)]*)\) \|.*$/\1 \2/p' "$README" | awk '$1 == $2 { print $1 }')
+
+for plugin in "${PKGS[@]}"; do
+  if ! printf '%s\n' "${INDEXED_PKGS[@]}" | grep -Fxq "$plugin"; then
+    echo "validate-manifests: REFUSING — plugin '$plugin' has tachyon-plugin.json but is missing from the README plugin table." >&2
+    exit 1
+  fi
+done
+
+for plugin in "${INDEXED_PKGS[@]}"; do
+  if [ ! -f "$plugin/tachyon-plugin.json" ]; then
+    echo "validate-manifests: REFUSING — plugin '$plugin' is in the README plugin table but has no tachyon-plugin.json." >&2
+    exit 1
+  fi
+done
+
 exec node "$VALIDATOR" "${PKGS[@]}"
