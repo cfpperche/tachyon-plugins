@@ -10,7 +10,10 @@
 # git-hook (which does the real scan). A deliberate human-authorized bypass: put an inline
 # `# OVERRIDE: <reason ≥10 chars>` line in the command.
 #
-# Contract: stdin = the PreToolUse JSON ({tool_input:{command}}); exit 2 = block (stderr shown to the
+# Contract: stdin = the PreToolUse JSON. Grok's envelope is camelCase — `{toolInput:{command}}`, NOT
+# Claude's `{tool_input:{command}}`. Measured 2026-08-02: feeding a real Grok payload to the claude/
+# block exits 0, so a gate derived by copying claude/ would be open while looking shut. Read
+# `.toolInput.command` here and nothing else; exit 2 = block (stderr shown to the
 # agent), exit 0 = allow. jq is required; if it is missing the gate FAILS OPEN (exit 0) — the git-hook
 # still scans. POSIX sh (no bashisms).
 set -u
