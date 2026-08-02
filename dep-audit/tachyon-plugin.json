@@ -1,6 +1,6 @@
 {
   "name": "dep-audit",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "On-demand OSV vulnerability audit for dependency lockfiles. Scans a repo's INSTALLED dependencies (npm/pnpm/yarn/bun, PyPI, Go, crates, Packagist, RubyGems, Maven/Gradle, NuGet) for known CVEs/advisories via osv-scanner (Tachyon fetches the pinned, checksum-verified binary) and REPORTS + PROPOSES upgrades. Advisory-only: it never auto-fixes, never edits a manifest/lockfile, and never gates install or commit.",
   "runtimes": [
     "claude",

@@ -1,6 +1,6 @@
 {
   "name": "sdd",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "Spec-driven development for decision-heavy changes — semantic complexity, not file count. Scaffolds repository-local specs, then re-verifies, headless-dogfoods, and audits closure debt. Runtime-neutral (claude + codex + grok).",
   "runtimes": ["claude", "codex", "grok"],
   "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/sdd"

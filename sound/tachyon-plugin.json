@@ -1,6 +1,6 @@
 {
   "name": "sound",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "PAID creative audio generation (music + sound effects) via the fal.ai REST API — needs FAL_KEY in env or .tachyon/secrets.env. Music (--kind music: standard ~$0.02/min, premium ~$0.80/min) or SFX (--kind sfx ~$0.002/sec) from a text prompt. Cost = price x duration; a hard --confirm-cost-usd gate is required above $0.25. Every call prints the estimated cost BEFORE it fires. PAID — only run when the user authorized the spend. NOT speech (audio plugin), NOT free/local.",
   "runtimes": [
     "claude",

@@ -1,6 +1,6 @@
 {
   "name": "video",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "PAID generative AI video via the fal.ai queue REST API — needs FAL_KEY in env or .tachyon/secrets.env. Generate organic/photoreal motion (Wan/Kling/Veo class) from a prompt (+ a source image for image-to-video tiers). ASYNC and fire-and-forget — submit queues a job (~5 min), poll reaps it; a clip costs $0.50-$3 so a HARD --confirm-cost-usd gate is required on every submit. NOT deterministic/free code video (that is the hyperframes plugin); NOT music/SFX (sound) or images (image).",
   "runtimes": [
     "claude",
