@@ -3,7 +3,7 @@
 A runtime-neutral Tachyon skill for spec-driven development: capture intent before code, break implementation into a
 small plan and checklist, then verify, dogfood, and close the spec with evidence.
 
-It installs the `sdd` skill into Claude and Codex. It does not wire hooks, provision binaries, fetch data artifacts, or
+It installs the `sdd` skill into Claude, Codex, and Grok. It does not wire hooks, provision binaries, fetch data artifacts, or
 call paid services.
 
 SDD is optional and repository-local. Installing Tachyon does not require it, and Tachyon does not invoke it for

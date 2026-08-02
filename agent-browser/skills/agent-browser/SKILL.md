@@ -1,7 +1,7 @@
 ---
 name: agent-browser
 description: Drive a real Chrome browser to inspect pages, take screenshots, extract web content (including from pages behind a login), AND drive forms — using the pinned, checksum-verified agent-browser CLI. Use when a task needs to see, read, or interact with a web page (visual inspection, scraping rendered content, reading auth-gated content, filling/submitting a form, checking a deployed UI). Reads are free. Writes (click/fill/type/submit/upload/eval/download) RUN IMMEDIATELY — the CLI's confirmation feature is inert on the pinned version, so nothing holds a write for review; get the human's go-ahead yourself before any write. The one restraint that does hold is allowedDomains in the human-owned config, which you cannot widen. Needs a host Chrome/Chromium.
-compatibility: Runtime-neutral. Works on any runtime that can run a bundled skill's shell scripts (claude, codex). Invokes the browser only through the plugin-scoped launcher; resolves it relative to the workspace root — no host-specific path assumptions.
+compatibility: Runtime-neutral. Works on any runtime that can run a bundled skill's shell scripts (claude, codex, grok). Invokes the browser only through the plugin-scoped launcher; resolves it relative to the workspace root — no host-specific path assumptions.
 license: MIT
 ---
 

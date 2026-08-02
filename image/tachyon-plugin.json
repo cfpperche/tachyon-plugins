@@ -4,7 +4,8 @@
   "description": "PAID AI image generation via the fal.ai REST API — needs FAL_KEY in env or .tachyon/secrets.env. Produce a mockup, brand asset, or hero image from a prompt. Three tiers: draft (FLUX schnell, ~$0.003, throwaway/gitignored), brand-text (gpt-image-2, ~$0.04+, crisp typography, tracked), brand-photo (Imagen 4 Ultra, ~$0.06, photo-real, tracked). Every call prints the estimated cost BEFORE generation fires. NOT free/local, NOT music/SFX (that is the sound plugin), NOT technical diagrams (that is diagram).",
   "runtimes": [
     "claude",
-    "codex"
+    "codex",
+    "grok"
   ],
   "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/image",
   "externalTools": {

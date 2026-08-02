@@ -17,7 +17,7 @@ Via the Tachyon **Plugins View** → *Add by source*, with a pinned git ref:
 github:cfpperche/tachyon-plugins@<ref>#path=dep-audit
 ```
 
-The consent drawer shows the **runtimes** the skill installs into (claude/codex) and the **tool** (osv-scanner:
+The consent drawer shows the **runtimes** the skill installs into (claude/codex/grok) and the **tool** (osv-scanner:
 resolved platform + URL + checksum + publisher) behind its acknowledgement. On confirm, Tachyon downloads
 osv-scanner for your platform, verifies it, installs it read-only + content-addressed under `.tachyon/bin/`, and
 materializes the skill. A fresh clone rehydrates the binary from the lockfile.
@@ -78,10 +78,10 @@ yourself; the engine already speaks exit codes:
 
 ```sh
 # in CI — fail the job on a high+ finding. In a plain CHECKOUT the installer wrote the
-# skill per-runtime (.claude/skills or .agents/skills), so resolve it runtime-agnostically.
+# skill per-runtime (.claude/skills, .agents/skills, or .grok/skills), so resolve it runtime-agnostically.
 # (An AGENT does not use this form — it runs the script from its own skill dir; see SKILL.md.)
 ROOT="$(git rev-parse --show-toplevel)"
-for d in .agents/skills .claude/skills; do
+for d in .agents/skills .claude/skills .grok/skills; do
   S="$ROOT/$d/dep-audit/scripts/audit.sh"; [ -f "$S" ] && break
 done
 bash "$S" --exit-code --severity high || exit 1

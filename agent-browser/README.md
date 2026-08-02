@@ -10,7 +10,7 @@ accessibility snapshot with `@eN` element refs — not brittle CSS selectors.
 - **A pinned tool** — the `agent-browser` v0.31.0 binary, per platform (linux x64/arm64 glibc+musl, macOS
   x64/arm64), fetched over HTTPS, sha256-verified, content-addressed, and re-validated by the plugin launcher
   before every run. Invoke it only through `.tachyon/bin/_tachyon-tool agent-browser agent-browser …`.
-- **A thin skill** (`claude` + `codex`) — the read loop, form-driving, per-agent session naming, the auth-state
+- **A thin skill** (`claude` + `codex` + `grok`) — the read loop, form-driving, per-agent session naming, the auth-state
   workflow, and a preflight `doctor`. The authoritative, version-matched command reference is the binary's own
   `--help` / `<command> --help` (the standalone binary ships no `skills` dir).
 

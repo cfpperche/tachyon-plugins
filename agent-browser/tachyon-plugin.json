@@ -4,7 +4,8 @@
   "description": "Give an agent eyes + hands on the web. Tachyon fetches the pinned, checksum-verified agent-browser CLI (a native Chrome-driving binary) and ships a runtime-neutral skill: open a page, get an accessibility snapshot with @eN refs, screenshot, and extract content — including from auth-gated pages via the CLI's saved-session state (the LLM never sees a credential). BREAKING vs 2.x: this plugin no longer claims a write gate. Measured on the pinned CLI 0.31.0, confirmActions is accepted and then ignored on the CLI surface — via config, via --confirm-actions, and with --confirm-interactive; eval and click run immediately. Treat every write as unreviewed. The restraint that DOES hold is allowedDomains in the human-owned config: Tachyon feeds that config to the CLI and refuses the agent's attempts to widen it (the flag and the env var are blocked), so only a human can decide where the browser may act. Scope it before letting an agent drive a form. Needs a host Chrome/Chromium.",
   "runtimes": [
     "claude",
-    "codex"
+    "codex",
+    "grok"
   ],
   "config": {
     "file": "config/agent-browser.json",
