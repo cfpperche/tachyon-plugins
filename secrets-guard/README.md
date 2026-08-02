@@ -6,7 +6,7 @@ secrets gate genuinely hard to slip — for you, the agent, and your IDE.
 | Layer | What | Capability | Bypassable by `--no-verify`? |
 |---|---|---|---|
 | **1 — scan** | a `pre-commit` git-hook runs gitleaks over the staged diff; a detected secret **blocks the commit** | `gitHooks` + `tools` (the pinned gitleaks binary) | **Yes** — by git's design |
-| **2 — shape-gate** | a per-runtime `PreToolUse(Bash)` hook stops an **agent** from *silently* bypassing layer 1 via `--no-verify` / compound `&&` / `git commit -a` | `blocks` (claude + codex native hooks) | **No** — it runs before git |
+| **2 — shape-gate** | a per-runtime `PreToolUse(Bash)` hook stops an **agent** from *silently* bypassing layer 1 via `--no-verify` / compound `&&` / `git commit -a` | `blocks` (claude + codex + grok native hooks) | **No** — it runs before git |
 
 Layer 1 is the scan. Layer 2 closes the obvious escape hatch: a git pre-commit hook is bypassable with
 `git commit --no-verify` (or a compound `git add … && git commit`, or `git commit -a`), so an agent could
@@ -23,7 +23,7 @@ Via the Tachyon **Plugins View** → *Add by source*, with a pinned git ref:
 github:cfpperche/tachyon-plugins@<ref>#path=secrets-guard
 ```
 
-The consent drawer shows all of it: the **runtimes** the shape-gate wires into (claude/codex), the **git-hook**
+The consent drawer shows all of it: the **runtimes** the shape-gate wires into (claude/codex/grok), the **git-hook**
 command, and the **tool** (gitleaks: resolved platform + URL + checksum + publisher) — each behind its own
 acknowledgement. On confirm, Tachyon downloads gitleaks for your platform, verifies it, installs it read-only +
 content-addressed under `.tachyon/bin/`, wires the pre-commit gate, and registers the per-runtime shape-gate.

@@ -4,12 +4,14 @@
   "description": "A two-layer git secrets gate powered by gitleaks. Layer 1: a pre-commit git-hook scans staged changes (Tachyon fetches the pinned, checksum-verified gitleaks binary). Layer 2: a per-runtime PreToolUse shape-gate stops an agent from silently bypassing layer 1 via --no-verify / compound / -a. Together they make the gate hard to slip \u2014 for you, the agent, and your IDE.",
   "runtimes": [
     "claude",
-    "codex"
+    "codex",
+    "grok"
   ],
   "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/secrets-guard",
   "blocks": {
     "claude": "claude/",
-    "codex": "codex/"
+    "codex": "codex/",
+    "grok": "grok/"
   },
   "gitHooks": {
     "pre-commit": {
