@@ -46,7 +46,7 @@ A staged secret → gitleaks exits non-zero → the commit is rejected (location
 
 An unrelated command chained the same way (`cd <worktree> && git commit`, `npm test && git commit`, …)
 never touches the index and is not a bypass — layer 2 only flags a **staging** verb chained into the
-commit, not any `&&`/`;` in front of one (as of v2.0.4).
+commit, not any `&&`/`;` in front of one (as of v2.1.0).
 
 A **clean** commit (`git add <files>` as its own step, then a plain `git commit`, no `-a`, no
 `--no-verify`) never needs anything extra — it passes silently, every time. `# OVERRIDE: <reason ≥10 chars>`
