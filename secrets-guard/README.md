@@ -1,12 +1,13 @@
 # secrets-guard
 
-A **two-layer git secrets gate** powered by [gitleaks](https://github.com/gitleaks/gitleaks). It makes the
-secrets gate genuinely hard to slip — for you, the agent, and your IDE.
+A **two-layer git secrets gate** powered by [gitleaks](https://github.com/gitleaks/gitleaks). Both layers
+exist in the package; **only layer 1 is on by default after install.** Layer 2 reaches managed agent
+sessions only when the workspace classifies the plugin (see [Install](#install)).
 
-| Layer | What | Capability | Bypassable by `--no-verify`? |
-|---|---|---|---|
-| **1 — scan** | a `pre-commit` git-hook runs gitleaks over the staged diff; a detected secret **blocks the commit** | `gitHooks` + `tools` (the pinned gitleaks binary) | **Yes** — by git's design |
-| **2 — shape-gate** | a per-runtime `PreToolUse(Bash)` hook stops an **agent** from *silently* bypassing layer 1 via `--no-verify` / compound `&&` / `git commit -a` | `blocks` (claude + codex + grok native hooks) | **No** — it runs before git |
+| Layer | What | Capability | On after install alone? | Bypassable by `--no-verify`? |
+|---|---|---|---|---|
+| **1 — scan** | a `pre-commit` git-hook runs gitleaks over the staged diff; a detected secret **blocks the commit** | `gitHooks` + `tools` (the pinned gitleaks binary) | **Yes** | **Yes** — by git's design |
+| **2 — shape-gate** | a per-runtime `PreToolUse(Bash)` hook stops an **agent** from *silently* bypassing layer 1 via `--no-verify` / compound `&&` / `git commit -a` | `blocks` (claude + codex + grok native hooks) | **No** — needs workspace classification | **No** — it runs before git |
 
 Layer 1 is the scan. Layer 2 closes the obvious escape hatch: a git pre-commit hook is bypassable with
 `git commit --no-verify` (or a compound `git add … && git commit`, or `git commit -a`), so an agent could
@@ -23,14 +24,29 @@ Via the Tachyon **Plugins View** → *Add by source*, with a pinned git ref:
 github:cfpperche/tachyon-plugins@<ref>#path=secrets-guard
 ```
 
-The consent drawer shows all of it: the **runtimes** the shape-gate wires into (claude/codex/grok), the **git-hook**
+The consent drawer shows the **runtimes** the shape-gate can wire into (claude/codex/grok), the **git-hook**
 command, and the **tool** (gitleaks: resolved platform + URL + checksum + publisher) — each behind its own
 acknowledgement. On confirm, Tachyon downloads gitleaks for your platform, verifies it, installs it read-only +
-content-addressed under `.tachyon/bin/`, wires the pre-commit gate, and registers the per-runtime shape-gate.
+content-addressed under `.tachyon/bin/`, wires the pre-commit gate (**layer 1 is live**), and **registers** the
+per-runtime shape-gate settings-hooks in the plugin lockfile.
+
+**Registering is not projecting.** Layer 2 does **not** enter an agent's session until the workspace classifies
+this plugin under `settings.agentHookProjection`. Without that line, a fresh install has **one** layer (the
+scan), and an agent can still use `--no-verify` / compound stage+commit / `git commit -a` to skip it. Add:
+
+```yaml
+settings:
+  agentHookProjection:
+    secrets-guard: enforcement
+```
+
+Only `enforcement` projects. Unclassified installs project nothing for this plugin (Tachyon withholds with an
+explicit reason rather than failing open into a fake gate). Classification is a **workspace-wide** decision
+about a gate — not a per-agent capability grant — so it is not toggled from Agent Studio authorize buttons.
 
 ## How each layer behaves
 
-**Layer 1 (every commit, everyone):**
+**Layer 1 (every commit, everyone — on after install):**
 
 ```
 gitleaks protect --staged --no-banner --redact
@@ -38,7 +54,8 @@ gitleaks protect --staged --no-banner --redact
 
 A staged secret → gitleaks exits non-zero → the commit is rejected (location shown, secret value `--redact`ed).
 
-**Layer 2 (the agent's commits):** intercepts a `git commit` Bash call and **blocks** these bypass shapes:
+**Layer 2 (the agent's commits — only after `secrets-guard: enforcement`):** intercepts a `git commit` Bash
+call and **blocks** these bypass shapes:
 
 - `git commit --no-verify` — disables the git-hook
 - `git add … && git commit` / `git stage … && git commit` / `git rm --cached … && git commit` / `git mv … && git commit` (same, chained with `;`) — a staging step folded directly into the commit, with nothing reviewable in between
@@ -70,10 +87,11 @@ in this Tachyon version.) The shape-gate (layer 2) needs `jq` on PATH; if it is 
 
 ## Removing / clone-rehydrate
 
-- Removing the plugin un-registers both layers, deletes the provisioned gitleaks binary when no other plugin
-  references it, and restores your prior hook setup.
+- Removing the plugin un-registers both layers (git-hook + lockfile settings-hooks), deletes the provisioned
+  gitleaks binary when no other plugin references it, and restores your prior hook setup. You can also drop
+  the `agentHookProjection` line if you added one.
 - A fresh clone (where `.tachyon/bin` is gitignored) rehydrates the tool explicitly from the lockfile — never a
-  silent fetch.
+  silent fetch. Re-classify `secrets-guard: enforcement` in the new workspace if you want layer 2 again.
 
 ## Updating gitleaks
 

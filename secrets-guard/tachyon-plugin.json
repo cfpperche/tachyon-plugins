@@ -1,7 +1,7 @@
 {
   "name": "secrets-guard",
-  "version": "2.1.0",
-  "description": "A two-layer git secrets gate powered by gitleaks. Layer 1: a pre-commit git-hook scans staged changes (Tachyon fetches the pinned, checksum-verified gitleaks binary). Layer 2: a per-runtime PreToolUse shape-gate stops an agent from silently bypassing layer 1 via --no-verify / compound / -a. Together they make the gate hard to slip \u2014 for you, the agent, and your IDE.",
+  "version": "2.1.1",
+  "description": "A two-layer git secrets gate powered by gitleaks. Layer 1 (on after install): pre-commit scans staged changes via a pinned gitleaks binary. Layer 2 (opt-in): a per-runtime PreToolUse shape-gate stops agents from silently bypassing layer 1 via --no-verify / compound / -a — only reaches managed sessions when the workspace sets settings.agentHookProjection.secrets-guard: enforcement.",
   "runtimes": [
     "claude",
     "codex",
