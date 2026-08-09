@@ -14,6 +14,7 @@
 #   cookbook-missing     — warning-only: operator-surface / **Cookbook:** without cookbook.md or opt-out
 #   artifact-missing     — warning-only: a declared local artifact does not exist
 #   artifact-outside-spec — warning-only: declared artifact outside its owning spec without opt-out
+#   undistilled          — warning-only: closed spec still carrying plan/tasks/notes (see `sdd distill`)
 #
 # Writes nothing, ever. Complements `spec-verify.sh` and `sdd-dogfood.sh`:
 # verify proves the spec's COMMAND still passes; dogfood proves the shipped
@@ -393,6 +394,23 @@ for SDIR in $TARGETS; do
       json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"artifact-missing\",\"path\":\"$(json_escape "$artifact_path")\"}"
     fi
   done < <(declared_artifact_paths)
+
+  # Undistilled: warning-only. A shipped spec that recorded its closure is four files
+  # where one would do — plan.md is how it was going to be built, tasks.md is a list of
+  # ticked boxes, notes.md is the conversation. `sdd distill` collapses them once anything
+  # durable has been folded into spec.md. Warning, never a finding: distilling is a
+  # judgement about what must survive, and this script cannot make it.
+  if has_closure "$SPEC_MD"; then
+    undistilled=""
+    for _leftover in plan.md tasks.md notes.md; do
+      [ -f "$SDIR/$_leftover" ] && undistilled="${undistilled}${undistilled:+ }$_leftover"
+    done
+    if [ -n "$undistilled" ]; then
+      warnings="${warnings}undistilled: $undistilled
+"
+      json_warnings="${json_warnings}${json_warnings:+,}{\"type\":\"undistilled\",\"files\":\"$(json_escape "$undistilled")\"}"
+    fi
+  fi
 
   # Cookbook: warning-only. Satisfied by cookbook.md, or Cookbook-Opt-Out with reason.
   # Nudges when **Cookbook:** is declared OR the contract describes an operator surface.

@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: "Spec-driven development scaffolding for work whose decisions need an explicit contract: meaningful ambiguity, new modules or interfaces, migrations or lifecycle changes, cross-cutting behavior, real alternatives, costly reversal, or coordination. Scaffolds and progresses repository-local spec, plan, task, and notes documents; then re-verifies, dogfoods, and audits closure plus optional artifact locality. Provides new, plan, tasks, list, verify, dogfood, cookbook, and close workflows. Skip bounded, reversible changes even when they touch several files."
+description: "Spec-driven development scaffolding for work whose decisions need an explicit contract: meaningful ambiguity, new modules or interfaces, migrations or lifecycle changes, cross-cutting behavior, real alternatives, costly reversal, or coordination. Scaffolds and progresses repository-local spec, plan, task, and notes documents; then re-verifies, dogfoods, and audits closure plus optional artifact locality. Provides new, plan, tasks, list, verify, dogfood, cookbook, close, and distill workflows. Skip bounded, reversible changes even when they touch several files."
 license: MIT
 ---
 
@@ -175,7 +175,43 @@ bash "<this-skill-dir>"/scripts/sdd-close.sh                        # sweep ever
 bash "<this-skill-dir>"/scripts/sdd-close.sh docs/specs/NNN-<slug>  # just one (or just NNN)
 ```
 
-For each spec whose `**Status:**` is `shipped` (or `shipped-partial`) it reports: `tasks-unchecked` (`- [ ]` left in `tasks.md`), `acceptance-unchecked` (`- [ ]` left in `spec.md` § Acceptance criteria), `placeholders` (surviving `{{...}}` in `spec.md`/`tasks.md`), `missing-closure` (no `**Closure:**` line in `spec.md`), `dogfood-missing` (no headless dogfood declaration and no valid opt-out), `dogfood-unrun` (dogfood declared but no passing `## Dogfood log` entry), and `dogfood-opt-out-empty` (opt-out without a reason). It also emits warning-only hygiene signals: `visual-qa-missing` for likely UI without proof/opt-out, `cookbook-missing` for likely operator surfaces (or explicit `**Cookbook:**`) without `cookbook.md`/opt-out, `artifact-missing` for a declared local file absent from disk, and `artifact-outside-spec` when a declared spec-specific file lives outside its owning spec without a location opt-out. A valid `**Dogfood-Opt-Out:**` / cookbook / visual / artifact-location opt-out does not fail close, but is printed as a warning and emitted in JSON. Non-shipped specs are skipped. Exit `0` clean or warnings-only · `1` findings. `--json` emits a machine-readable report. A clean close = the boxes are checked, the placeholders are gone, a `**Closure:**` line records what shipped, and dogfood proof or a justified opt-out exists.
+For each spec whose `**Status:**` is `shipped` (or `shipped-partial`) it reports: `tasks-unchecked` (`- [ ]` left in `tasks.md`), `acceptance-unchecked` (`- [ ]` left in `spec.md` § Acceptance criteria), `placeholders` (surviving `{{...}}` in `spec.md`/`tasks.md`), `missing-closure` (no `**Closure:**` line in `spec.md`), `dogfood-missing` (no headless dogfood declaration and no valid opt-out), `dogfood-unrun` (dogfood declared but no passing `## Dogfood log` entry), and `dogfood-opt-out-empty` (opt-out without a reason). It also emits warning-only hygiene signals: `visual-qa-missing` for likely UI without proof/opt-out, `cookbook-missing` for likely operator surfaces (or explicit `**Cookbook:**`) without `cookbook.md`/opt-out, `artifact-missing` for a declared local file absent from disk, and `artifact-outside-spec` when a declared spec-specific file lives outside its owning spec without a location opt-out, and `undistilled` when a closed spec still carries `plan.md`/`tasks.md`/`notes.md` (see `distill`). A valid `**Dogfood-Opt-Out:**` / cookbook / visual / artifact-location opt-out does not fail close, but is printed as a warning and emitted in JSON. Non-shipped specs are skipped. Exit `0` clean or warnings-only · `1` findings. `--json` emits a machine-readable report. A clean close = the boxes are checked, the placeholders are gone, a `**Closure:**` line records what shipped, and dogfood proof or a justified opt-out exists.
+
+### `distill <spec>`
+
+Collapse a **closed** spec to `spec.md` alone. This is the only verb in the skill that removes
+anything; `close` still writes nothing, ever.
+
+```
+bash "<this-skill-dir>"/scripts/sdd-distill.sh docs/specs/NNN-<slug>          # preview
+bash "<this-skill-dir>"/scripts/sdd-distill.sh docs/specs/NNN-<slug> --run    # remove
+```
+
+A spec is four files while it is being built and one file once it has shipped. `plan.md` is how it
+was going to be done, `tasks.md` is a list of boxes that are all ticked, and `notes.md` is the
+conversation that got there. What a later reader needs — the intent, the acceptance boundary, the
+**rejected alternatives and why**, and the **measurements** — belongs in `spec.md`.
+
+**Deleting loses nothing: git keeps every byte.** What it stops is 3 files per shipped spec
+accumulating in `ls`, in grep, and in every agent's search results. Measured in one repository on
+2026-08-09: 308 specs, 222 shipped, 1193 files, 108k lines — more than half the size of that
+product's own source.
+
+**Preview by default — this removes NOTHING without `--run`.** Read the three files once before
+running: folding what must survive into `spec.md` is a judgement the script cannot make for you.
+
+It refuses, by name, when: the status is not `shipped`/`shipped-partial` (distilling an open spec
+would delete work in progress); there is no `**Closure:**` line (nothing was recorded to distil
+*to*); or `tasks.md` declares `**Verify:**`/`**Dogfood:**` and `spec.md` does not — because deleting
+`tasks.md` would then silently disarm `sdd verify` for that spec. Targets outside `docs/specs/` are
+refused. Exit: `0` (preview shown, distilled, or already distilled) · `1` (refused, reason printed) ·
+`64` (usage).
+
+`close` reports `undistilled` as a **warning** on any closed spec still carrying the other three.
+
+One interaction, stated rather than engineered around: `verify --run` appends its log to `notes.md`,
+so re-verifying a distilled spec recreates that one file. That is honest — there is a new log —
+and `distill` again removes it.
 
 ## Verification & closure contract
 
