@@ -35,9 +35,10 @@ Then **edit the config** (Plugins View → Config) — the two things an agent m
 }
 ```
 
-- **`anchor`** (≥1 of `text`/`path`/`url`) — REQUIRED. No anchor → the verdict is `unable_to_judge` (a verdict
-  without intent is just taste). A prior screenshot is *context*, never a canonical baseline.
-- **`routes`** — REQUIRED, a bounded list of direct URLs (not "the UI"). v1 does not infer them.
+- **`anchor`** (≥1 of `text`/`path`/`url`) — optional persistent project intent. An invocation anchor is composed with
+  it rather than replacing it. With no configured anchor, invocation-driven runs behave exactly as before. No anchor
+  from either source → the verdict is `unable_to_judge` (a verdict without intent is just taste).
+- **`routes`** — optional when the invocation supplies a target; otherwise a bounded list of direct URLs (not "the UI").
 - **`viewports`** — optional (default desktop).
 
 ## Use
@@ -46,6 +47,10 @@ Ask an agent to "visual-QA this UI change" / "does this page look right?" — th
 task. It (1) preflights (anchor? agent-browser? app reachable?), (2) screenshots each route×viewport to
 `.vqa/visual-qa/*.png`, (3) judges vs the anchor with concrete per-dimension observations, (4) attaches a
 `judgment` verdict (`pass|concern|fail|unable_to_judge`) + the screenshots via `attach_evidence`.
+
+For an ad-hoc run, `/visual-qa <url> --anchor "<run-specific intent>"` adds that intent to any configured project
+anchor. A deliberately divergent prototype may use `--ignore-project-anchor`; that explicit bypass requires an
+invocation anchor and is recorded in both the verdict detail and provenance data.
 
 ## Scope
 

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Visual QA Configuration",
-  "description": "The PERSISTENT BASELINE for Visual QA — the design-intent anchor + the routes judged every run when the skill is invoked with no args. Both are OPTIONAL: the skill is invocation-driven (`/visual-qa <url> --anchor \"<intent>\"`) and the invocation overrides the baseline. An empty config is valid (useful only for invocation-driven runs). The skill enforces 'an anchor must come from EITHER the invocation OR this config' as a RUNTIME check, not a schema requirement — schema-valid does NOT mean a no-args run is runnable.",
+  "description": "The PERSISTENT BASELINE for Visual QA — the design-intent anchor + the routes judged every run when the skill is invoked with no args. Both are OPTIONAL: the skill remains invocation-driven (`/visual-qa <url> --anchor \"<intent>\"`) when no project anchor is declared. When both exist, the invocation anchor adds run-specific intent to the project anchor unless the invocation explicitly bypasses it. An empty config is valid (useful only for invocation-driven runs). The skill enforces 'an anchor must come from EITHER the invocation OR this config' as a RUNTIME check, not a schema requirement — schema-valid does NOT mean a no-args run is runnable.",
   "type": "object",
   "additionalProperties": false,
   "properties": {

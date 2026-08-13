@@ -1,8 +1,8 @@
 ---
 name: visual-qa
-description: Advisory Visual QA on a web UI — judge "does this page LOOK right vs the design intent" (visual fidelity), not whether it works. Use when reviewing a UI/front-end change for appearance, layout, spacing, or design-system fidelity, or when asked "does this page look right / look good / match the design", OR when invoked ad-hoc as `/visual-qa <surface-or-url> --anchor "<intent>"` to judge a specific surface NOW. Takes the target + the design-intent anchor at INVOCATION (inline), falling back to the project's declared config baseline; drives the page with the agent-browser plugin, screenshots the route(s), judges them against the anchor, and attaches a verdict + durable screenshots to the worktree evidence channel (attach_evidence). It NEVER gates a merge — it informs the parent. NOT functional/e2e correctness (that's the verify gate), NOT an accessibility audit, NOT for non-web/native/desktop UIs. Requires the agent-browser plugin installed alongside + a host Chrome; web-only.
+description: Advisory Visual QA on a web UI — judge "does this page LOOK right vs the design intent" (visual fidelity), not whether it works. Use when reviewing a UI/front-end change for appearance, layout, spacing, or design-system fidelity, or when asked "does this page look right / look good / match the design", OR when invoked ad-hoc as `/visual-qa <surface-or-url> --anchor "<intent>"` to judge a specific surface NOW. Takes the target + a run-specific design-intent anchor at INVOCATION (inline); when the project declares an anchor, both apply unless the invocation explicitly bypasses the project anchor. Drives the page with the agent-browser plugin, screenshots the route(s), judges them against the resolved anchor(s), and attaches a verdict + durable screenshots to the worktree evidence channel (attach_evidence). It NEVER gates a merge — it informs the parent. NOT functional/e2e correctness (that's the verify gate), NOT an accessibility audit, NOT for non-web/native/desktop UIs. Requires the agent-browser plugin installed alongside + a host Chrome; web-only.
 license: MIT
-argument-hint: '[<surface-or-url>] [--anchor "<intent>" | --anchor-path <doc> | --anchor-url <url>] [--viewport WxH]'
+argument-hint: '[<surface-or-url>] [--anchor "<intent>" | --anchor-path <doc> | --anchor-url <url>] [--ignore-project-anchor] [--viewport WxH]'
 ---
 
 # visual-qa — advisory Visual QA on a web UI
@@ -17,16 +17,19 @@ attach an advisory verdict + screenshots. It decides nothing — the verify gate
 - **Baseline (persistent / CI):** no args → run against the project's declared `config/visual-qa.json` (the spec-275
   baseline: a fixed anchor + route set judged every time).
 
-The invocation always WINS; the config is the fallback. The anchor discipline never relaxes — you just declare the
-anchor by TYPING it instead of editing a file.
+Invocation values still win for targets and viewports. Anchors are different: an invocation anchor is a
+**run-specific addition** to a declared project anchor, not a replacement for it. If the project has no anchor, the
+invocation anchor works alone exactly as before. To judge a deliberately divergent prototype, pass
+`--ignore-project-anchor` with an invocation anchor; the verdict must make that bypass visible.
 
 ## Resolution Algorithm (run this, in order — do NOT improvise)
 
-Resolve each input by precedence, then record where it came from. **invocation → config baseline → fallback.**
+Resolve each input by precedence, then record where it came from. Targets and viewports use
+**invocation → config baseline → fallback**. Anchors use the composition rules below.
 
 | input | from invocation | else config | else (fallback) |
 |---|---|---|---|
-| **anchor** | `--anchor "<text>"`, `--anchor-path <doc>`, or `--anchor-url <url>` (or stated in the ask) | `config.anchor` | — |
+| **anchor** | `--anchor "<text>"`, `--anchor-path <doc>`, or `--anchor-url <url>` (or stated in the ask) | compose with `config.anchor` when one exists; otherwise invocation alone | `config.anchor`, else — |
 | **target** | a direct URL, or a named surface | `config.routes` | — |
 | **viewports** | `--viewport WxH` | `config.viewports` | desktop `1440x900` |
 | **setup** | — | `config.setup` | none (assume reachable) |
@@ -34,12 +37,29 @@ Resolve each input by precedence, then record where it came from. **invocation �
 Fill a provenance table for the run — you attach it later:
 
 ```
-anchor_source   = invocation | config | human_followup | missing
+anchor_source   = invocation | config | composed | human_followup | missing
+project_anchor_disposition = absent | used | composed | ignored_explicitly
 target_source   = invocation | config | human_followup
 viewports_source = invocation | config | default
 setup_source    = config | none
-mixed_provenance = (anchor_source != target_source AND both ∈ {invocation,config})
+mixed_provenance = (target_source = invocation AND anchor_source = config)
 ```
+
+Resolve the anchor with these exhaustive cases:
+
+1. **No `config.anchor`:** use the invocation anchor alone. This is the invocation-driven mode promised by the
+   schema; `project_anchor_disposition = absent`. Nothing about this mode changes.
+2. **Only `config.anchor` exists:** use it alone; `anchor_source = config`,
+   `project_anchor_disposition = used`.
+3. **Both anchors exist:** apply the config anchor's text/path/url AND the invocation anchor together. Treat the project anchor as
+   the persistent design system/invariants and the invocation anchor as additional intent for this run;
+   `anchor_source = composed`, `project_anchor_disposition = composed`.
+4. **Explicit bypass:** `--ignore-project-anchor` is valid only when both a project anchor and an invocation anchor
+   exist. Use the invocation anchor
+   alone and set `project_anchor_disposition = ignored_explicitly`. The verdict `detail` MUST say
+   `Project anchor explicitly ignored for this run` and the verdict `data` MUST record the disposition. Without an
+   invocation anchor, reject the flag as unusable and return `unable_to_judge`; without a project anchor, reject it
+   as unnecessary. Never turn bypass into anchorless taste.
 
 Then apply the **runtime-readiness branches** (these are NOT schema errors — an empty config is valid):
 
@@ -108,8 +128,10 @@ the baseline suite".
    write-gate), return `unable_to_judge` for that route or ask the human — do not build an auto-click flow. Wait for
    network-idle / a known selector before shooting; note any volatile/animated regions as a limitation.
 
-2. **Judge against the ANCHOR — written intent, not a pixel oracle.** Read the anchor (`text`, the `path` doc, and/or
-   the `url`). Compare each screenshot to the intent and cite **concrete observations per dimension** — layout,
+2. **Judge against the resolved ANCHOR(S) — written intent, not a pixel oracle.** Read every applicable anchor
+   (`text`, the `path` doc, and/or the `url`). When composed, judge against both the persistent project intent and the
+   run-specific intent; neither cancels the other. Compare each screenshot to the intent and cite **concrete
+   observations per dimension** — layout,
    spacing, alignment, typography, color/contrast vs the design tokens, responsive behavior. Examples: "the settings
    card respects the 8px grid"; "primary button contrast is below the design token at the disabled state"; "header
    overlaps the content below 360px". A prior screenshot is CONTEXT, never canonical truth.
@@ -129,9 +151,10 @@ the baseline suite".
      severity:    "info" | "warn" | "error",
      summary:     "Visual QA: <verdict> — <one line>",
      detail:      "<the dimensions judged + concrete observations + what anchor you compared against;
-                   include the mixed-provenance note if mixed_provenance>",
+                   include the mixed-provenance note if mixed_provenance and the mandatory bypass note when ignored>",
      data:        { "anchor_source": "...", "target_source": "...", "viewports_source": "...",
-                    "setup_source": "...", "mixed_provenance": false },
+                    "setup_source": "...", "mixed_provenance": false,
+                    "project_anchor_disposition": "absent|used|composed|ignored_explicitly" },
      artifacts:   [".vqa/visual-qa/home-desktop.png", ...],   // worktree-relative; Tachyon copies them durably
    )
    ```
@@ -141,6 +164,10 @@ the baseline suite".
 ## Discipline
 
 - **Anchor or nothing.** No anchor from EITHER channel → `unable_to_judge`. Always cite the dimensions you judged.
+- **Project baselines accumulate.** A declared project anchor and an invocation anchor both apply unless
+  `--ignore-project-anchor` is explicit; projects without a declared anchor stay invocation-driven.
+- **Bypass is visible.** Ignoring a declared project anchor requires an invocation anchor and must appear in both the
+  verdict `detail` and `data.project_anchor_disposition`.
 - **Never silently borrow an anchor** for an ad-hoc target — ask, or note it + flag `mixed_provenance`.
 - **Ask, don't send to a file.** A missing target → ask for the URL inline; never "go edit the config".
 - **Advisory only.** Never block a merge on a Visual QA verdict.
