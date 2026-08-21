@@ -1,6 +1,6 @@
 {
   "name": "agent-browser",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Give an agent eyes + hands on the web through the pinned, checksum-verified agent-browser CLI: open pages, inspect accessibility snapshots, take screenshots, extract content (including with saved-session auth), and drive forms. On pinned CLI 0.31.0, confirmActions matches exact protocol action names. The shipped upload and download tokens hold those actions; eval does not hold JavaScript evaluation because its protocol name is evaluate. Keeping eval instead of enabling that gate is an explicit owner decision dated 2026-08-21. Other writes run immediately, so get human approval before issuing them. allowedDomains is a separate restraint that does hold: Tachyon force-feeds the human-owned config and blocks agents from widening it, so only a human decides where the browser may act. Needs host Chrome/Chromium.",
   "runtimes": [
     "claude",
