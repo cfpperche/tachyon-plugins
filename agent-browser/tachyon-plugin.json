@@ -1,7 +1,7 @@
 {
   "name": "agent-browser",
-  "version": "3.1.1",
-  "description": "Give an agent eyes + hands on the web through the pinned, checksum-verified agent-browser CLI: open pages, inspect accessibility snapshots, take screenshots, extract content (including with saved-session auth), and drive forms. On pinned CLI 0.31.0, confirmActions matches exact protocol action names. The shipped upload and download tokens hold those actions; eval does not hold JavaScript evaluation because its protocol name is evaluate. Keeping eval instead of enabling that gate is an explicit owner decision dated 2026-08-21. Other writes run immediately, so get human approval before issuing them. allowedDomains is a separate restraint that does hold: Tachyon force-feeds the human-owned config and blocks agents from widening it, so only a human decides where the browser may act. Needs host Chrome/Chromium.",
+  "version": "3.2.0",
+  "description": "Give an agent eyes + hands on the web through pinned agent-browser 0.34.0: inspect pages, take screenshots, extract content, and drive forms. confirmActions matches exact protocol names: shipped upload/download hold; eval does not because its protocol name is evaluate. Keeping eval is an explicit owner decision dated 2026-08-21. Get human approval before every write. allowedDomains is a human-owned global workspace mode that agents cannot widen. In 0.34 it cannot coexist with state load, --state, or --restore: saved state can replay origins before the allowlist verifies them. Default to allowedDomains; switching to saved-state auth requires the human to remove it in Plugins → Config, which removes the host boundary for every invocation using that config. Needs host Chrome/Chromium.",
   "runtimes": [
     "claude",
     "codex",
@@ -14,7 +14,7 @@
   "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/agent-browser",
   "tools": {
     "agent-browser": {
-      "version": "0.31.0",
+      "version": "0.34.0",
       "launchPolicy": {
         "configArg": "--config",
         "scrubEnv": [
@@ -48,28 +48,28 @@
       },
       "platforms": {
         "linux-x64-glibc": {
-          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-linux-x64",
-          "sha256": "71dbe415ab3ded286c71eca67933575eb9f451be9155283a2e3a1ab878d75eff"
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.34.0/agent-browser-linux-x64",
+          "sha256": "69eadf5d8d6003a06a5cd2f914ebb261c7754fe1335a9190122c334e91909789"
         },
         "linux-x64-musl": {
-          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-linux-musl-x64",
-          "sha256": "8d355ca93f95d3bae47aad6509433ab2312384fee81eb39a903ad5fade38f4e8"
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.34.0/agent-browser-linux-musl-x64",
+          "sha256": "dd4752ba1def81c7443504c284b6559d28dad8ecd02b5faeca6caf4fc1fb948e"
         },
         "linux-arm64-glibc": {
-          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-linux-arm64",
-          "sha256": "bb2827dede43536e402cba8bc74249cdaa5af9aee291d185083c7bbdb7d62b14"
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.34.0/agent-browser-linux-arm64",
+          "sha256": "ca70bf7c2d269a152b3824cbb65befb7b8258b8aa1cf34767c64ada2abc3d7c8"
         },
         "linux-arm64-musl": {
-          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-linux-musl-arm64",
-          "sha256": "0506cb206c39c75b746d16571a75dc2752cd9968e154dcb8a0e203614552d392"
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.34.0/agent-browser-linux-musl-arm64",
+          "sha256": "c0864fb206e321af48a46fb8331cf08ae60b3fcc1046232c1d1c842db4fc40ca"
         },
         "darwin-x64": {
-          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-darwin-x64",
-          "sha256": "a53b1156dd36f1a11e324a1aa45636f481b09aa690ea774d10776446dc758bfa"
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.34.0/agent-browser-darwin-x64",
+          "sha256": "dad3c9f9e67791a44a768a98847510c61a7b568a0499c602632b8aee411101e7"
         },
         "darwin-arm64": {
-          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.31.0/agent-browser-darwin-arm64",
-          "sha256": "21da37d1e3707786ca5ceb04455bdeccaf93fa9077e3983a6f4dcce52817c4d8"
+          "url": "https://github.com/vercel-labs/agent-browser/releases/download/v0.34.0/agent-browser-darwin-arm64",
+          "sha256": "d680a7a96ab86e9ab9d2b571b12919b761e93682ad1de714bbd5ac849c8d7c9c"
         }
       }
     }

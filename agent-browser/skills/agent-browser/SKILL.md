@@ -1,7 +1,6 @@
 ---
 name: agent-browser
-description: Drive a real Chrome browser to inspect pages, take screenshots, extract web content (including from pages behind a login), AND drive forms — using the pinned, checksum-verified agent-browser CLI. Use when a task needs to see, read, or interact with a web page (visual inspection, scraping rendered content, reading auth-gated content, filling/submitting a form, checking a deployed UI). Reads are free. Writes (click/fill/type/submit/upload/eval/download) RUN IMMEDIATELY — the CLI's confirmation feature is inert on the pinned version, so nothing holds a write for review; get the human's go-ahead yourself before any write. The one restraint that does hold is allowedDomains in the human-owned config, which you cannot widen. Needs a host Chrome/Chromium.
-compatibility: Runtime-neutral. Works on any runtime that can run a bundled skill's shell scripts (claude, codex, grok). Invokes the browser only through the plugin-scoped launcher; resolves it relative to the workspace root — no host-specific path assumptions.
+description: Drive a real Chrome browser to inspect pages, take screenshots, extract web content (including from pages behind a login), and drive forms with the pinned, checksum-verified agent-browser CLI. Use for visual inspection, rendered-page extraction, auth-gated content, form filling, or deployed-UI checks. Reads are free. Most writes run immediately; the shipped exact upload/download tokens hold only those actions. Get human approval before every write. allowedDomains is a human-owned global workspace mode that agents cannot widen; on pinned 0.34 it cannot be combined with saved-state replay. Needs host Chrome/Chromium.
 license: MIT
 ---
 
@@ -84,7 +83,18 @@ AB --session "$SESSION" close                 # or: AB --session "$SESSION" quit
 
 ## Reading auth-gated content (the headline capability)
 
-The agent **never handles credentials**. A human logs in once; the agent reuses the saved session headlessly.
+The agent **never handles credentials**. A human logs in once; the agent can reuse saved state headlessly — but
+on 0.34 this is a **workspace-mode choice**, not a per-session option.
+
+**Before using `state load`, `--state`, or `--restore`, ask the human to check Tachyon's Plugins → Config.** If
+`allowedDomains` is present, stop: 0.34 refuses saved-state replay because restored state can replay origins
+before the allowlist verifies them. Tachyon force-feeds that one human-owned config to every invocation and
+blocks agents from overriding it, so changing the mode affects the whole workspace.
+
+Default to keeping `allowedDomains`. Use saved-state replay only after the human explicitly removes
+`allowedDomains` in Plugins → Config and accepts that every invocation using this plugin config loses the
+mechanical host boundary. If the task requires both persisted authentication and an allowlist, stop and report
+that 0.34 cannot provide both; do not bypass the refusal or silently discard either restraint.
 
 0. **Prepare the store (once).** Create the credential-class dir with tight perms and confirm it is git-ignored —
    these files are equivalent to a saved password and must never be committed:
@@ -120,24 +130,25 @@ The agent **never handles credentials**. A human logs in once; the agent reuses 
 - **Expiry:** if a previously-working authenticated nav now returns 401/403 or redirects to a login page, the
   session expired. Do **not** silently retry — remove the stale state file and ask the human to log in again.
 
-## Form-driving — NOTHING holds your writes. YOU are the gate.
+## Form-driving — get approval before every write
 
-Reads (navigate, `snapshot`, `screenshot`, `get text/html`) are free. **Writes are not held.** `click`, `fill`,
-`type`, `press`, `select`, `check`, `upload`, `drag`, `eval`, `download` — every one of them **executes the
-instant you issue it**, against the real page.
+Reads (navigate, `snapshot`, `screenshot`, `get text/html`) are free. Most writes — `click`, `fill`, `type`,
+`press`, `select`, `check`, `drag`, and `eval` — execute when issued against the real page. The shipped exact
+`upload` and `download` tokens hold those two protocol actions for confirmation. Do not treat that narrow hold
+as a general write gate: get the human's go-ahead before every write.
 
 > Why this section changed (plugin v3): the CLI has a `confirmActions` feature and Tachyon does force-feed the
-> human-owned config to it. On the pinned CLI **0.31.0 that feature is inert on the CLI surface** — measured:
-> `confirmActions` in the config, `--confirm-actions eval,upload,download`, `--confirm-actions all`, and
-> `--confirm-interactive` all produce the same result — `eval "1+1"` returns `2` and `click` clicks. No
-> `confirmation_required` is ever returned. Earlier versions of this skill told you writes were held for a human.
-> **They were not.** Do not rely on any mechanical hold.
+> human-owned config to it. On pinned CLI **0.34.0**, matching uses exact protocol action names. The shipped
+> `upload` and `download` tokens hold; the shipped `eval` token does not hold JavaScript evaluation because that
+> protocol action is named `evaluate`. Keeping `eval` rather than enabling that gate is an explicit owner
+> decision dated 2026-08-21. `all` and documentation-category names are not a general gate.
 
 **The contract (do this exactly):**
 
 1. **Before the first write of a task, ask the human.** Name the host, the page, and what the write will do
    ("fill the login form on staging.example.com and submit it"). Wait for an explicit go-ahead. A write is
-   irreversible from your side — there is no pending state, no `confirm`, no 60-second auto-deny to save you.
+   irreversible from your side unless the exact action is one of the two held tokens; never assume a hold will
+   appear.
 2. **Read before you write.** `snapshot -i` first, so the `@eN` ref you act on is the element you think it is.
 3. **Keep an action trail.** Append each write's `--json` result (action, target, url, outcome) to a gitignored
    log so what the agent did on the web is auditable:
@@ -149,7 +160,7 @@ instant you issue it**, against the real page.
 
 ### The restraint that IS mechanical — `allowedDomains`
 
-The human-owned config can pin the set of hosts the browser may reach. That one **is honoured** by 0.31.0 — a
+The human-owned config can pin the set of hosts the browser may reach. That one **is honoured** by 0.34.0 — a
 navigation outside it fails with `Domain '<host>' is not in the allowed domains list`. Tachyon feeds that config
 with a forced `--config` and blocks your ability to widen it: `--allowed-domains` is refused and
 `AGENT_BROWSER_ALLOWED_DOMAINS` is stripped from your environment. So this is a real boundary, not a suggestion.
@@ -161,8 +172,13 @@ config via Tachyon's **Plugins → Config** editor:
 { "confirmActions": "eval,upload,download", "allowedDomains": ["staging.example.com", "localhost"] }
 ```
 
-(`confirmActions` is kept in the shipped config so the hold starts working the day the CLI honours it. Today it
-does nothing — do not read its presence as protection.)
+(`confirmActions` is kept with the owner's chosen tokens. It holds only exact `upload` and `download`; do not
+read its presence as a general write gate.)
+
+This setting is the **global workspace mode**. While `allowedDomains` is present, 0.34 refuses `state load`,
+`--state`, and `--restore` for every session. Only the human can switch modes in Plugins → Config, and removing
+the setting removes the host boundary from every invocation using that config. Never ask for a session-local
+exception: Tachyon deliberately prevents one.
 
 **Prefer staging.** And still get explicit human go-ahead before extracting from an **authenticated** page or
 acting on a **sensitive** domain (admin/banking/destructive) — `allowedDomains` bounds *where* you can act, never
