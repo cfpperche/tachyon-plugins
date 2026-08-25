@@ -5,9 +5,9 @@ description: Local-first text-to-speech. Use when the user wants to turn text in
 
 # audio — local-first text-to-speech
 
-Turn text into a spoken `wav`/`mp3`, fully on-device. System tools (espeak-ng, ffmpeg) + the pinned voice are resolved
-through Tachyon's shims (never off the bare PATH); the `uvx` RUNNER is resolved on the ambient PATH (like `npx` — uv
-installs to a user dir). The skill never downloads the pinned voice itself.
+Turn text into a spoken `wav`/`mp3`, fully on-device. `espeak-ng`, `ffmpeg` and the `uvx` runner come from PATH; the
+default voice is fetched once from a pinned revision, checksum-verified, and cached under the repo. Nothing is ever
+used unverified, and a missing piece is always `unavailable` with the command that fixes it.
 
 ## Invocation
 
@@ -30,18 +30,20 @@ bash "<this-skill-dir>"/scripts/audio.sh "<text>" [--engine piper|kokoro] [--voi
 ## What it does (and the contract it upholds)
 
 1. Resolves **uvx** (uv's runner) on the ambient PATH (like a runner — uv installs to a user dir; missing → `unavailable`).
-2. **piper:** for the default voice, resolves the pinned `.onnx` + `.onnx.json` via `_tachyon-data audio voice-onnx`
-   / `voice-config` (hash-verified, read-only) and materializes them as the sibling pair piper expects; a non-default
-   voice is fetched on-demand from HF (unpinned, allowlisted name). Acquires piper via pinned `uvx --from piper-tts==X`.
-3. **kokoro:** presence-gates **espeak-ng** via `_tachyon-external audio espeak-ng`, then runs the shipped
+2. **piper:** the default voice's `.onnx` + `.onnx.json` are fetched once from a PINNED HF revision, each verified
+   against its sha256 before use, and cached at `<repo>/.tachyon/models/audio/` (resolved via
+   `git rev-parse --git-common-dir`, so a linked worktree shares the authority's cache). A non-default voice is
+   fetched on-demand, unpinned, as it always was. Acquires piper via pinned `uvx --from piper-tts==X`.
+3. **kokoro:** presence-gates **espeak-ng** on PATH (`AUDIO_ESPEAK` overrides), then runs the shipped
    `audio-kokoro.py` via pinned `uvx --with kokoro==X --with soundfile==X python …`.
-4. Encodes to `wav`/`mp3` (mp3 via ffmpeg resolved through the shim; falls back to wav).
+4. Encodes to `wav`/`mp3` (mp3 via `ffmpeg` from PATH; falls back to wav).
 
 ## Fail-closed behavior (never a fake audio file)
 
-- Missing **uvx** → `unavailable` (assisted install on the card, or the official uv installer).
+- Missing **uvx** → `unavailable` (install uv: https://docs.astral.sh/uv/getting-started/installation/).
 - kokoro without **espeak-ng** → `unavailable` (distinct hint; suggests `--engine piper`).
-- Missing shim / unprovisioned voice → `unavailable` (reinstall / Rehydrate).
+- A voice download that fails, or whose sha256 does not match the pin → `unavailable`, naming the mismatch. A
+  partial download is written to a `.part` file and never moved into the cache.
 - A present engine erroring → `error` with the underlying log. Never writes an empty file.
 
 ## Trust note (honest about the uvx lane)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # dep-audit — on-demand detector for known-vulnerable INSTALLED dependencies.
-# Engine: osv-scanner (OSV-backed), PROVISIONED by Tachyon as a pinned, checksum-
-# verified binary and invoked through the plugin-scoped launcher.
+# Engine: osv-scanner (OSV-backed), expected on PATH. Tachyon names it in the
+# manifest's `requires`; the OPERATOR installs it (see the plugin README).
 #
 # Philosophy: do NOT gate install or commit. Detect vulnerable locked deps on
 # demand, report + propose, never auto-fix. Human-in-loop.
@@ -20,14 +20,17 @@
 # Result statuses (first-class, decoupled from exit code):
 #   clean       engine ran, no known-vulnerable deps in its corpus
 #   findings    engine ran, >=1 known-vulnerable dep
-#   unavailable osv-scanner is not provisioned (the launcher / pinned binary is absent)
+#   unavailable osv-scanner is not on PATH
 #   failed      engine ran but errored / produced unparseable output
 #
-# Tool resolution (Tachyon plugin contract): osv-scanner is invoked via the
-# plugin-scoped launcher at "<repo-root>/.tachyon/bin/_tachyon-tool dep-audit
-# osv-scanner …", which re-validates the binary's hash before every exec. A fresh
-# clone before provisioning has no launcher → status=unavailable (rehydrate it by
-# syncing the plugin). Set DEP_AUDIT_ENGINE=<path> to bypass the launcher (tests/CI).
+# Tool resolution: `osv-scanner` on PATH. Tachyon no longer downloads third-party
+# binaries — the manifest NAMES the tool in `requires` and the operator installs it.
+# Absent → status=unavailable (never "clean": the distinction is the whole point of
+# having a status). Set DEP_AUDIT_ENGINE=<path> to point at a specific binary.
+#
+# What this trades away, said plainly: the old launcher re-hashed a pinned binary
+# before every exec. On PATH there is no pin and no checksum — osv-scanner is trusted
+# the same way every other tool on the operator's machine is.
 #
 # Source-completeness caveat: reports "known vulnerabilities found by osv-scanner",
 # NOT "all vulnerabilities known anywhere".
@@ -72,30 +75,18 @@ while [ $# -gt 0 ]; do
 done
 
 # ---------------------------------------------------------------------------
-# Engine resolution — the provisioned osv-scanner via the Tachyon launcher.
-#   DEP_AUDIT_ENGINE overrides (tests/CI inject a fake binary; bypasses launcher).
+# Engine resolution — osv-scanner on PATH.
+#   DEP_AUDIT_ENGINE overrides with a specific binary (tests/CI inject a fake).
 # ---------------------------------------------------------------------------
-ENGINE_OVERRIDE="${DEP_AUDIT_ENGINE:-}"
-REPO_ROOT="$(git -C "$SCAN_PATH" rev-parse --show-toplevel 2>/dev/null \
-  || git rev-parse --show-toplevel 2>/dev/null \
-  || pwd)"
-LAUNCHER="$REPO_ROOT/.tachyon/bin/_tachyon-tool"
+ENGINE_OVERRIDE="${DEP_AUDIT_ENGINE:-osv-scanner}"
 ENGINE_DISPLAY="osv-scanner"
 
 engine() {
-  if [ -n "$ENGINE_OVERRIDE" ]; then
-    "$ENGINE_OVERRIDE" "$@"
-  else
-    "$LAUNCHER" dep-audit osv-scanner "$@"
-  fi
+  "$ENGINE_OVERRIDE" "$@"
 }
 
 engine_available() {
-  if [ -n "$ENGINE_OVERRIDE" ]; then
-    command -v "$ENGINE_OVERRIDE" >/dev/null 2>&1
-  else
-    [ -x "$LAUNCHER" ]
-  fi
+  command -v "$ENGINE_OVERRIDE" >/dev/null 2>&1
 }
 
 # severity rank for floor comparisons
@@ -193,18 +184,20 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------------------
-# Engine provisioned?
+# Engine on PATH?
 # ---------------------------------------------------------------------------
 if ! engine_available; then
   eco_str="$(ecosystems_list | paste -sd, - | sed 's/,/, /g')"
   [ -z "$eco_str" ] && eco_str="(no recognised lockfiles found)"
   if [ "$OUT_JSON" -eq 1 ]; then
     jq -n --arg path "$SCAN_PATH" --arg eco "$eco_str" \
-      '{status:"unavailable", scanned_path:$path, coverage:{found:[],covered:[],skipped:[]}, findings:[], ecosystems_present:$eco, advisory:("osv-scanner is not provisioned; would have scanned: "+$eco)}'
+      '{status:"unavailable", scanned_path:$path, coverage:{found:[],covered:[],skipped:[]}, findings:[], ecosystems_present:$eco, advisory:("osv-scanner is not on PATH; would have scanned: "+$eco)}'
   else
     echo "dep-audit: status=unavailable"
-    echo "  osv-scanner is not provisioned (the Tachyon launcher is absent at .tachyon/bin/_tachyon-tool)."
-    echo "  Sync/reinstall the dep-audit plugin so Tachyon fetches the pinned binary; a fresh clone rehydrates it."
+    echo "  osv-scanner is not on PATH. This is NOT 'no vulnerabilities' — nothing was scanned."
+    echo "  Install it:  brew install osv-scanner"
+    echo "               go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest"
+    echo "               or a release binary from https://github.com/google/osv-scanner/releases"
     echo "  Would have scanned ecosystems: $eco_str"
   fi
   emit_exit unavailable
@@ -249,10 +242,10 @@ if [ "$STATUS" = "failed" ]; then
     echo "dep-audit: status=failed"
     echo "  $ENGINE_DISPLAY exited $ENGINE_EXIT and did not produce parseable results."
     if [ -n "$ERR_EXCERPT" ]; then
-      echo "  engine stderr (first 10 lines — includes any launcher hash-revalidation refusal):"
+      echo "  engine stderr (first 10 lines):"
       printf '%s\n' "$ERR_EXCERPT" | sed 's/^/    /'
     fi
-    echo "  Re-run manually for diagnostics: .tachyon/bin/_tachyon-tool dep-audit osv-scanner scan --recursive \"$SCAN_PATH\""
+    echo "  Re-run manually for diagnostics: osv-scanner scan --recursive \"$SCAN_PATH\""
   fi
   emit_exit failed
 fi

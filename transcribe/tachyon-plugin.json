@@ -1,78 +1,15 @@
 {
   "name": "transcribe",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local speech-to-text: turn an audio or video file into a transcript, fully on-device via whisper.cpp. Tachyon provisions the pinned, checksummed ggml model (read-only) and detects + assist-installs the whisper-cli and ffmpeg system tools it needs. The audio content never leaves the machine; only the model weights are fetched once, pinned. Outputs txt (default) or srt/vtt/json. Not text-to-speech, not remote/paid transcription.",
   "runtimes": [
     "claude",
     "codex",
     "grok"
   ],
-  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/transcribe",
-  "data": {
-    "model": {
-      "version": "base",
-      "fileName": "ggml-base.bin",
-      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.bin",
-      "sha256": "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe"
-    }
-  },
-  "externalTools": {
-    "whisper-cli": {
-      "detect": [
-        "--help"
-      ],
-      "install": {
-        "brew": {
-          "argv": [
-            "brew",
-            "install",
-            "whisper-cpp"
-          ]
-        }
-      },
-      "manual": "Install whisper.cpp's whisper-cli — Debian/Ubuntu: `sudo apt install whisper.cpp` (ships /usr/bin/whisper-cli); macOS: `brew install whisper-cpp`; otherwise build from https://github.com/ggerganov/whisper.cpp (the binary must be named whisper-cli, on a root-owned system PATH dir)."
-    },
-    "ffmpeg": {
-      "detect": [
-        "-version"
-      ],
-      "install": {
-        "apt": {
-          "argv": [
-            "sudo",
-            "apt-get",
-            "install",
-            "-y",
-            "ffmpeg"
-          ]
-        },
-        "dnf": {
-          "argv": [
-            "sudo",
-            "dnf",
-            "install",
-            "-y",
-            "ffmpeg"
-          ]
-        },
-        "pacman": {
-          "argv": [
-            "sudo",
-            "pacman",
-            "-S",
-            "--noconfirm",
-            "ffmpeg"
-          ]
-        },
-        "brew": {
-          "argv": [
-            "brew",
-            "install",
-            "ffmpeg"
-          ]
-        }
-      },
-      "manual": "Install ffmpeg from https://ffmpeg.org/download.html"
-    }
-  }
+  "requires": [
+    "ffmpeg",
+    "whisper-cli"
+  ],
+  "docs": "https://github.com/cfpperche/tachyon-plugins/tree/main/transcribe"
 }

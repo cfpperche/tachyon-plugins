@@ -1,63 +1,15 @@
 {
   "name": "audio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local-first text-to-speech: turn text into spoken wav/mp3, fully on-device. Two engines — piper (default, self-contained, a pinned checksummed voice model) and kokoro (opt-in, higher quality + multilingual incl pt-BR, needs espeak-ng). Both run via uv's tool runner (uvx, acquired at pinned versions); only model weights/voices are fetched. Degrades to a clear unavailable hint when a dependency is missing. Not music/SFX, not voice cloning, not remote/paid TTS.",
   "runtimes": [
     "claude",
     "codex",
     "grok"
   ],
-  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/audio",
-  "data": {
-    "voice-onnx": {
-      "version": "en_US-lessac-medium",
-      "fileName": "en_US-lessac-medium.onnx",
-      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/e21c7de8d4eab79b902f0d61e662b3f21664b8d2/en/en_US/lessac/medium/en_US-lessac-medium.onnx",
-      "sha256": "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f"
-    },
-    "voice-config": {
-      "version": "en_US-lessac-medium",
-      "fileName": "en_US-lessac-medium.onnx.json",
-      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/e21c7de8d4eab79b902f0d61e662b3f21664b8d2/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json",
-      "sha256": "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0"
-    }
-  },
-  "externalTools": {
-    "espeak-ng": {
-      "detect": ["--version"],
-      "install": {
-        "apt": {
-          "argv": ["sudo", "apt-get", "install", "-y", "espeak-ng"]
-        },
-        "dnf": {
-          "argv": ["sudo", "dnf", "install", "-y", "espeak-ng"]
-        },
-        "pacman": {
-          "argv": ["sudo", "pacman", "-S", "--noconfirm", "espeak-ng"]
-        },
-        "brew": {
-          "argv": ["brew", "install", "espeak-ng"]
-        }
-      },
-      "manual": "Install espeak-ng (the phonemizer Kokoro needs) — Debian/Ubuntu `sudo apt install espeak-ng`; Fedora `sudo dnf install espeak-ng`; Arch `sudo pacman -S espeak-ng`; macOS `brew install espeak-ng`. Only required for --engine kokoro."
-    },
-    "ffmpeg": {
-      "detect": ["-version"],
-      "install": {
-        "apt": {
-          "argv": ["sudo", "apt-get", "install", "-y", "ffmpeg"]
-        },
-        "dnf": {
-          "argv": ["sudo", "dnf", "install", "-y", "ffmpeg"]
-        },
-        "pacman": {
-          "argv": ["sudo", "pacman", "-S", "--noconfirm", "ffmpeg"]
-        },
-        "brew": {
-          "argv": ["brew", "install", "ffmpeg"]
-        }
-      },
-      "manual": "Install ffmpeg from https://ffmpeg.org/download.html (only needed for mp3 output; wav works without it)."
-    }
-  }
+  "requires": [
+    "espeak-ng",
+    "ffmpeg"
+  ],
+  "docs": "https://github.com/cfpperche/tachyon-plugins/tree/main/audio"
 }

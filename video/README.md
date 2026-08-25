@@ -8,7 +8,7 @@ half of the split video capability; its deterministic/free sibling is the `hyper
 
 - **`FAL_KEY`** (https://fal.ai) — a SECRET; read first from env and then from `.tachyon/secrets.env`, never
   stored/echoed (passed via a 0600 `curl --config`).
-- **curl** + **jq** — declared external tools (resolved trusted via `_tachyon-external`, never bare).
+- **curl** + **jq** — named in `requires`, resolved from PATH (`VIDEO_CURL` / `VIDEO_JQ` override).
 - A source **image** (https URL) for the image→video tiers (`draft`/`standard`) — e.g. an `image`-plugin output you
   host publicly. `premium` (Veo) can be text-only.
 

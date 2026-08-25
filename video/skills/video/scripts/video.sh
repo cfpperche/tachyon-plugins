@@ -18,15 +18,15 @@ usage() { echo "usage: video <submit \"<prompt>\" --tier draft|standard|premium 
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$ROOT" ] || { echo "video: unavailable: not inside a git work tree (Tachyon shims live at <repo>/.tachyon/bin)" >&2; exit 1; }
-EXT_SHIM="$ROOT/.tachyon/bin/_tachyon-external"
+# Ferramentas externas vêm do PATH: o Tachyon não provisiona mais, e o manifesto só as NOMEIA em `requires`.
 JOBS_DIR="$ROOT/.tachyon/video-jobs"; LEDGER="$JOBS_DIR/ledger.jsonl"; LOCK="$JOBS_DIR/lock"
 OUT_DIR="$ROOT/assets/generated/videos"
 
 resolve_tools() {
-  CURL="${VIDEO_CURL:-}"; [ -n "$CURL" ] || CURL="$("$EXT_SHIM" "$PLUGIN" curl 2>/dev/null || true)"
-  JQ="${VIDEO_JQ:-}";     [ -n "$JQ" ]   || JQ="$("$EXT_SHIM" "$PLUGIN" jq 2>/dev/null || true)"
-  [ -n "$CURL" ] && [ -x "$CURL" ] || { echo "video: unavailable: curl not installed/trusted — the card offers an assisted install" >&2; exit 1; }
-  [ -n "$JQ" ] && [ -x "$JQ" ] || { echo "video: unavailable: jq not installed/trusted — the card offers an assisted install" >&2; exit 1; }
+  CURL="${VIDEO_CURL:-}"; [ -n "$CURL" ] || CURL="$(command -v curl 2>/dev/null || true)"
+  JQ="${VIDEO_JQ:-}";     [ -n "$JQ" ]   || JQ="$(command -v jq 2>/dev/null || true)"
+  [ -n "$CURL" ] && [ -x "$CURL" ] || { echo "video: unavailable: curl not on PATH — install it (see the plugin README)" >&2; exit 1; }
+  [ -n "$JQ" ] && [ -x "$JQ" ] || { echo "video: unavailable: jq not on PATH — install it (see the plugin README)" >&2; exit 1; }
 }
 load_fal_key_from_secrets() {
   [ -n "${FAL_KEY:-}" ] && return 0

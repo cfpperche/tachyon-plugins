@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # diagram (spec 288) — deterministic Mermaid → SVG/PNG/PDF, local + free. Resolves a system browser through Tachyon's
-# _tachyon-external shim (a trusted path; multi-candidate google-chrome/chromium/... via spec 289), acquires mmdc at a
+# PATH (multi-candidate google-chrome/chromium/…; DIAGRAM_CHROME overrides), acquires mmdc at a
 # PINNED version via npx (PUPPETEER_SKIP_DOWNLOAD=1 so it reuses the system browser, + ignore-scripts to block npm
 # lifecycle scripts). First run fetches mmdc from npm — a lower-trust, NON-engine-checksummed acquisition lane (the
 # pinned version is the only integrity anchor). Degrades to structural validation (the .mmd source is always kept)
@@ -88,9 +88,10 @@ record() {  # $1 = status, $2 = output path (or "")
 if [ -n "$DIAGRAM_CHROME_BIN" ]; then
   CHROME="$DIAGRAM_CHROME_BIN"
 else
-  EXT_SHIM="$ROOT/.tachyon/bin/_tachyon-external"
-  [ -x "$EXT_SHIM" ] || { record unavailable ""; echo "diagram: unavailable: the _tachyon-external shim is missing — reinstall the diagram plugin (or Rehydrate after a fresh clone). Source kept at $SRC" >&2; exit 1; }
-  CHROME="$("$EXT_SHIM" "$PLUGIN" chrome 2>/dev/null)" || { record unavailable ""; echo "diagram: unavailable: no trusted system browser (google-chrome/chromium) — the plugin's card offers a consent-gated assisted install. Source VALIDATED + kept at $SRC" >&2; exit 1; }
+  # Ferramentas externas vêm do PATH: o Tachyon não provisiona mais, e o manifesto só as NOMEIA em `requires`.
+  CHROME="${DIAGRAM_CHROME:-}"
+  if [ -z "$CHROME" ]; then for c in google-chrome google-chrome-stable chromium chromium-browser; do CHROME="$(command -v "$c" 2>/dev/null || true)"; [ -n "$CHROME" ] && break; done; fi
+  [ -n "$CHROME" ] || { record unavailable ""; echo "diagram: unavailable: no Chromium-based browser on PATH (google-chrome/chromium) — apt/dnf/pacman install chromium, or brew install --cask google-chrome. Source VALIDATED + kept at $SRC" >&2; exit 1; }
 fi
 
 # ── resolve mmdc: test-only override → pinned npx. NO unpinned host-global fast path (codex HIGH/D1 — running a host

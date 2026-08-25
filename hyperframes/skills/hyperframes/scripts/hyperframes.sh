@@ -19,7 +19,7 @@ SUB="${1:-}"; [ $# -gt 0 ] && shift || true
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$ROOT" ] || { echo "hyperframes: unavailable: not inside a git work tree (Tachyon shims live at <repo>/.tachyon/bin)" >&2; exit 1; }
-EXT_SHIM="$ROOT/.tachyon/bin/_tachyon-external"
+# Ferramentas externas vêm do PATH: o Tachyon não provisiona mais, e o manifesto só as NOMEIA em `requires`.
 
 # ── shared dependency checks ──
 NPX=""
@@ -32,8 +32,7 @@ need_node22() {
 resolve_ffmpeg() {  # TRUSTED ffmpeg via the shim (override for tests), or unavailable. Must be executable.
   if [ -n "${HYPERFRAMES_FFMPEG_BIN:-}" ]; then FFMPEG="$HYPERFRAMES_FFMPEG_BIN"
   else
-    [ -x "$EXT_SHIM" ] || { echo "hyperframes: unavailable: the _tachyon-external shim is missing — reinstall the plugin (or Rehydrate)" >&2; exit 1; }
-    FFMPEG="$("$EXT_SHIM" "$PLUGIN" ffmpeg 2>/dev/null)" || { echo "hyperframes: unavailable: ffmpeg not installed/trusted — the plugin's card offers an assisted install (apt/dnf/pacman/brew)" >&2; exit 1; }
+    FFMPEG="${HYPERFRAMES_FFMPEG_BIN:-$(command -v ffmpeg 2>/dev/null)}"; [ -n "$FFMPEG" ] || { echo "hyperframes: unavailable: ffmpeg is not on PATH — apt/dnf/pacman/brew install ffmpeg" >&2; exit 1; }
   fi
   [ -x "$FFMPEG" ] || { echo "hyperframes: unavailable: resolved ffmpeg '$FFMPEG' is not executable" >&2; exit 1; }
 }
@@ -58,7 +57,7 @@ case "$SUB" in
     need_node22; need_npx
     echo "hyperframes — capability check"
     echo "  [ ok ] node: $(node -v 2>/dev/null)  | npx: present"
-    if [ -n "${HYPERFRAMES_FFMPEG_BIN:-}" ] || { [ -x "$EXT_SHIM" ] && "$EXT_SHIM" "$PLUGIN" ffmpeg >/dev/null 2>&1; }; then echo "  [ ok ] ffmpeg: trusted (via shim)"; else echo "  [warn] ffmpeg: not installed/trusted — the card offers an assisted install"; fi
+    if [ -n "${HYPERFRAMES_FFMPEG_BIN:-}" ] || command -v ffmpeg >/dev/null 2>&1; then echo "  [ ok ] ffmpeg: on PATH"; else echo "  [warn] ffmpeg: not on PATH — apt/dnf/pacman/brew install ffmpeg"; fi
     echo "  [info] running 'hyperframes@$HF_PIN doctor --json' (relevant checks only; Docker checks ignored)…"
     "$NPX" --yes "hyperframes@$HF_PIN" doctor --json 2>/dev/null | { command -v jq >/dev/null 2>&1 && jq -r '(.checks // .results // .) | tostring' 2>/dev/null || cat; } | head -c 1200 || echo "  (hyperframes doctor unavailable — first run fetches the engine)"
     echo

@@ -7,18 +7,19 @@
 # A lista não pode apodrecer: se um pacote listado passar a carregar, o portão RECUSA e manda tirar
 # o nome daqui. Cobertura silenciosa é exatamente o que este repositório não quer.
 #
-# O QUE REALMENTE TRAVA ESTES SEIS, medido em 2026-08-25: não é o manifesto. A 516 apagou o sistema
-# de provisionamento e com ele os dois lançadores — `.tachyon/bin/_tachyon-tool` (binário) e
-# `_tachyon-data` (artefato). Nada os emite nem os escreve mais. Seis pacotes foram escritos em cima
-# deles, e o `transcribe` chega a declarar a lei antiga na primeira linha da skill: *"NEVER runs a
-# tool off the bare PATH"*. O formato novo tem `requires`, que NOMEIA a ferramenta — mas não existe
-# convenção escrita de como uma skill invoca uma ferramenta que o operador instalou. Enquanto essa
-# convenção não existir, migrar o manifesto destes seis produz um pacote que instala e não funciona.
-#
-# Cada linha: <pacote>  # o que falta
-agent-browser  # invoca tudo por `_tachyon-tool`, que morreu; + `tools` (binário fixado com sha256)
-dep-audit      # idem, via scripts/audit.sh; + `tools`
-audio          # `_tachyon-data` para a voz ONNX (~60 MB); + `data` + `externalTools`
-transcribe     # `_tachyon-data` para o modelo whisper (~150 MB); + `data` + `externalTools`
-secrets-guard  # `tools` (gitleaks fixado) + `gitHooks`, que saíram da v1 e voltam como sistema próprio
-verify-gate    # `gitHooks` — sem substituto até isso voltar
+# Cada linha: <pacote>  # o que falta, e por quê
+agent-browser  # o lançador não era só resolução: era POLÍTICA. `launchPolicy.mode = "force"` limpava
+               # 10 variáveis de ambiente e negava 13 argumentos/subcomandos — `--allowed-domains`,
+               # `--action-policy`, `--confirm-actions`, `connect`, `cdp`, `mcp`, `batch` — para que o
+               # agente não pudesse alargar a própria permissão. Invocar do PATH devolve o CLI inteiro
+               # ao agente. É a única categoria que a migração para PATH não atende, e é decisão do dono.
+secrets-guard  # `tools` (gitleaks) + `gitHooks`. Um git hook não é capacidade concedida a um agente:
+               # dispara para todo mundo, inclusive sem agente nenhum rodando. Provável saída é sair do
+               # catálogo e virar script do repositório — decisão do dono, ainda não tomada.
+verify-gate    # `gitHooks`, pelo mesmo motivo. Mesma decisão pendente.
+
+# Dependente da decisão do agent-browser, mas NÃO travado por ela:
+# `product-foundation` carrega e funciona. O passo opcional de verificação visual dele testa o
+# lançador morto num portão fail-closed, então hoje sempre responde "indisponível" e é pulado — o
+# plugin entrega o resto. Aquele portão se conserta junto com o agent-browser, não antes: escrever
+# `command -v agent-browser` ali seria decidir, por tabela, que o CLI inteiro fica exposto ao agente.

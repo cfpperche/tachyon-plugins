@@ -29,7 +29,7 @@ bash "$HF" render my-clip [--quality draft|high] [--name <out-slug>]
 
 ## What it does (and the contract it upholds)
 
-1. Verifies **Node 22+** + **npx**; resolves **ffmpeg** via `_tachyon-external hyperframes ffmpeg` (trusted path).
+1. Verifies **Node 22+** + **npx**; resolves **ffmpeg** from PATH (`HYPERFRAMES_FFMPEG_BIN` overrides).
 2. Renders from inside the composition dir via `npx hyperframes@<pin> render` (its bundled Chromium + your ffmpeg).
 3. Writes the MP4 to a contained, gitignored generated dir; the `.mmd`-equivalent (your `index.html` + project) stays
    tracked. Never `git add`s.
@@ -43,7 +43,7 @@ their authoring system.
 
 ## Fail-closed behavior
 
-- No npx / Node < 22 → `unavailable` (install Node 22+). No ffmpeg → `unavailable` (the card offers an assisted install).
+- No npx / Node < 22 → `unavailable` (install Node 22+). No ffmpeg → `unavailable` (apt/dnf/pacman/brew install ffmpeg).
 - On Linux ARM with no browser, HyperFrames would try a system package install → the wrapper **refuses** (install a
   browser yourself). A render error → `error` with the log tail; never an empty MP4.
 

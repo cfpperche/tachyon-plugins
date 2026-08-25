@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # sound (spec 291) — PAID creative audio (music + SFX) via the fal.ai REST API. Model/body/price come from a bundled
-# tier ORACLE (references/sound-tiers.json — D5). curl + jq (+ optional ffmpeg) resolved via _tachyon-external (TRUSTED
+# tier ORACLE (references/sound-tiers.json — D5). curl + jq (+ optional ffmpeg) resolved from PATH (SOUND_CURL /
 # paths, never bare — D1). Needs FAL_KEY (env or .tachyon/secrets.env; never stored/echoed — D4). Cost = price x
 # duration, PRINTED before the call; a HARD --confirm-cost-usd gate is REQUIRED above the oracle threshold (D3) —
 # checked BEFORE any network call.
@@ -43,14 +43,14 @@ case "$FORMAT" in mp3|wav) ;; *) echo "sound: unknown --format '$FORMAT' (mp3|wa
 [ -z "$DURATION" ] || echo "$DURATION" | grep -Eq '^[0-9]{1,4}$' || { echo "sound: --duration must be whole seconds (1–9999)" >&2; exit 64; }
 [ -z "$CONFIRM" ] || echo "$CONFIRM" | grep -Eq '^[0-9]+(\.[0-9]+)?$' || { echo "sound: --confirm-cost-usd must be a number" >&2; exit 64; }
 
-# ── repo root + resolve curl/jq via the shim (TRUSTED; never bare — D1) ──
+# ── repo root + resolve curl/jq from PATH ──
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$ROOT" ] || { echo "sound: unavailable: not inside a git work tree (the Tachyon shims live at <repo>/.tachyon/bin)" >&2; exit 1; }
-EXT_SHIM="$ROOT/.tachyon/bin/_tachyon-external"
-CURL="${SOUND_CURL:-}"; [ -n "$CURL" ] || CURL="$("$EXT_SHIM" "$PLUGIN" curl 2>/dev/null || true)"
-JQ="${SOUND_JQ:-}";     [ -n "$JQ" ]   || JQ="$("$EXT_SHIM" "$PLUGIN" jq 2>/dev/null || true)"
-[ -n "$CURL" ] || { echo "sound: unavailable: curl not installed/trusted — the card offers an assisted install" >&2; exit 1; }
-[ -n "$JQ" ]   || { echo "sound: unavailable: jq not installed/trusted — the card offers an assisted install" >&2; exit 1; }
+# Ferramentas externas vêm do PATH: o Tachyon não provisiona mais, e o manifesto só as NOMEIA em `requires`.
+CURL="${SOUND_CURL:-}"; [ -n "$CURL" ] || CURL="$(command -v curl 2>/dev/null || true)"
+JQ="${SOUND_JQ:-}";     [ -n "$JQ" ]   || JQ="$(command -v jq 2>/dev/null || true)"
+[ -n "$CURL" ] || { echo "sound: unavailable: curl not on PATH — install it (see the plugin README)" >&2; exit 1; }
+[ -n "$JQ" ]   || { echo "sound: unavailable: jq not on PATH — install it (see the plugin README)" >&2; exit 1; }
 [ -f "$ORACLE" ] || { echo "sound: error: tier oracle missing ($ORACLE) — reinstall the sound plugin" >&2; exit 1; }
 
 # ── resolve the tier from the oracle (default per --kind) ──
@@ -144,7 +144,7 @@ TMP_OUT="$(mktemp -- "$OUT_REAL/.sound-XXXXXX")"
 if [ "$FORMAT" = "wav" ]; then
   cp -- "$WORK/audio.src" "$TMP_OUT" || { rm -f -- "$TMP_OUT"; echo "sound: error: could not write the output file" >&2; exit 1; }
 else
-  FFMPEG="${SOUND_FFMPEG_BIN:-}"; [ -n "$FFMPEG" ] || FFMPEG="$("$EXT_SHIM" "$PLUGIN" ffmpeg 2>/dev/null || true)"
+  FFMPEG="${SOUND_FFMPEG_BIN:-}"; [ -n "$FFMPEG" ] || FFMPEG="$(command -v ffmpeg 2>/dev/null || true)"
   if [ -n "$FFMPEG" ] && "$FFMPEG" -nostdin -y -i "$WORK/audio.src" -f mp3 "$TMP_OUT" >/dev/null 2>&1 && [ -s "$TMP_OUT" ]; then :; else
     cp -- "$WORK/audio.src" "$TMP_OUT" || { rm -f -- "$TMP_OUT"; echo "sound: error: could not write the output file" >&2; exit 1; }
     OUTPUT="$OUT_REAL/$STEM.wav"; FORMAT="wav"

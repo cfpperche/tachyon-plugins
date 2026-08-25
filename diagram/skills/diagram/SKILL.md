@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Deterministic technical diagrams from a Mermaid source. Use when the user wants an architecture, flowchart, sequence, ER, class, or state diagram rendered to a real, tracked SVG/PNG/PDF asset — for a design doc, spec, README, or slide. Renders locally + free via the Mermaid CLI (mmdc) in a system headless Chrome; the browser is detected and (if missing) offered as a consent-gated assisted install. Degrades to structural validation (the .mmd source is always kept) when no browser is present. NOT organic/photo imagery, NOT motion/video, NOT custom visual-design craft.
+description: Deterministic technical diagrams from a Mermaid source. Use when the user wants an architecture, flowchart, sequence, ER, class, or state diagram rendered to a real, tracked SVG/PNG/PDF asset — for a design doc, spec, README, or slide. Renders locally + free via the Mermaid CLI (mmdc) in a system headless Chrome; the browser must be on PATH and is named in `requires`. Degrades to structural validation (the .mmd source is always kept) when no browser is present. NOT organic/photo imagery, NOT motion/video, NOT custom visual-design craft.
 ---
 
 # diagram — deterministic technical diagrams
@@ -26,7 +26,7 @@ bash "<this-skill-dir>"/scripts/diagram.sh "<source.mmd | mermaid text>" [--form
 
 ## What it does (and the contract it upholds)
 
-1. Resolves a system **browser** via `.tachyon/bin/_tachyon-external diagram chrome` (a trusted absolute path; tries
+1. Resolves a system **browser** from PATH (`DIAGRAM_CHROME` overrides; tries
    google-chrome / google-chrome-stable / chromium / chromium-browser; never the bare PATH).
 2. Acquires **mmdc** at a pinned version via `npx -p @mermaid-js/mermaid-cli@<pinned> mmdc`
    (`PUPPETEER_SKIP_DOWNLOAD=1` — no bundled Chromium; reuses the system browser). **First run fetches it from npm**
@@ -36,7 +36,7 @@ bash "<this-skill-dir>"/scripts/diagram.sh "<source.mmd | mermaid text>" [--form
 ## Fail-closed behavior (the source is never lost)
 
 - No system browser → **`status=unavailable`**: the source is structurally validated and **kept**; relay the
-  install hint (the plugin's card/drawer offers a consent-gated assisted install where your OS prompts for your
+  install hint (install the browser with your package manager
   password — Tachyon never sees it).
 - No `npx` (Node not installed) → **`status=unavailable`**: source kept; install Node and re-run.
 - Source is not valid Mermaid, or mmdc errors (syntax) → **`status=error`**: the source is kept for you to fix.

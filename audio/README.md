@@ -2,9 +2,22 @@
 
 A Tachyon marketplace plugin that turns text into spoken **wav/mp3**, **fully on-device**. Two engines:
 
-- **piper** (default) — self-contained; a pinned, checksummed voice model (a 284 data artifact, offline after install).
-- **kokoro** (`--engine kokoro`) — higher quality + multilingual (incl pt-BR); needs **espeak-ng** + a shipped Python
-  shim; the kokoro weights are fetched by the package on first run.
+- **piper** (default) — a pinned, checksummed voice model the plugin fetches once (63 MB) and caches at
+  `<repo>/.tachyon/models/audio/`; offline afterwards.
+- **kokoro** (`--engine kokoro`) — higher quality + multilingual (incl pt-BR); needs **espeak-ng** on PATH plus a
+  shipped Python helper; the kokoro weights are fetched by the package on first run.
+
+## Requirements
+
+Tachyon installs none of these — the manifest names them in `requires` and the operator provides them.
+
+- **`ffmpeg`** (mp3 output; wav works without it) — `sudo apt-get install -y ffmpeg` · `brew install ffmpeg`
+- **`espeak-ng`** (kokoro only) — `sudo apt-get install -y espeak-ng` · `brew install espeak-ng` · `AUDIO_ESPEAK` overrides
+- **`uvx`** (uv's tool runner) — https://docs.astral.sh/uv/getting-started/installation/
+
+The default voice is **not** a requirement: the plugin downloads it on first run from a pinned Hugging Face revision
+and refuses to use it unless the sha256 matches. Tachyon used to do that verification; the plugin does it now, and
+prints the mismatch rather than continuing.
 
 Both engines run through **`uvx`** (uv's tool runner — the Python analog of `npx`); the Python packages (piper-tts,
 kokoro, soundfile) are acquired at **pinned exact versions**. **Local-only** — there is no paid/remote lane (an

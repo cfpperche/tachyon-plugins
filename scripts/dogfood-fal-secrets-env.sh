@@ -10,7 +10,7 @@ trap 'rm -rf "$WORK"' EXIT
 
 cd "$WORK"
 git init -q
-mkdir -p .tachyon/bin .tachyon assets/generated/mockups
+mkdir -p .tachyon assets/generated/mockups
 
 FAKE_CURL="$WORK/fake-curl"
 AUTH_LOG="$WORK/auth.log"
@@ -42,17 +42,10 @@ fi
 SH
 chmod +x "$FAKE_CURL"
 
-cat > .tachyon/bin/_tachyon-external <<SH
-#!/usr/bin/env bash
-set -euo pipefail
-case "\${2:-}" in
-  curl) printf '%s\n' "$FAKE_CURL" ;;
-  jq) printf '%s\n' "$JQ_BIN" ;;
-  ffmpeg) printf '%s\n' "" ;;
-  *) exit 1 ;;
-esac
-SH
-chmod +x .tachyon/bin/_tachyon-external
+# Os scripts resolvem curl/jq do PATH, com um override por env que existe justamente para isto.
+# Injetar por ali exercita o caminho REAL de resolução, em vez de um shim que já não existe.
+export IMAGE_CURL="$FAKE_CURL" SOUND_CURL="$FAKE_CURL" VIDEO_CURL="$FAKE_CURL"
+export IMAGE_JQ="$JQ_BIN"      SOUND_JQ="$JQ_BIN"      VIDEO_JQ="$JQ_BIN"
 
 IMAGE="$ROOT/image/skills/image/scripts/image.sh"
 SOUND="$ROOT/sound/skills/sound/scripts/sound.sh"

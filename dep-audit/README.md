@@ -6,8 +6,8 @@ CVEs/advisories and **reports + proposes upgrades** — it never auto-fixes, nev
 **never gates install or commit**.
 
 This is the first **skill-primary** plugin that combines two capabilities: a `skills` payload (the `/dep-audit`
-command + its engine script) and a provisioned `tools` binary (osv-scanner, pinned + checksum-verified). The skill
-invokes the tool through Tachyon's plugin-scoped launcher, which re-validates the binary's hash before every run.
+command + its engine script). The engine, `osv-scanner`, is NOT shipped and NOT downloaded by Tachyon:
+the manifest names it in `requires` and the operator installs it.
 
 ## Install
 
@@ -17,13 +17,24 @@ Via the Tachyon **Plugins View** → *Add by source*, with a pinned git ref:
 github:cfpperche/tachyon-plugins@<ref>#path=dep-audit
 ```
 
-The consent drawer shows the **runtimes** the skill installs into (claude/codex/grok) and the **tool** (osv-scanner:
-resolved platform + URL + checksum + publisher) behind its acknowledgement. On confirm, Tachyon downloads
-osv-scanner for your platform, verifies it, installs it read-only + content-addressed under `.tachyon/bin/`, and
-materializes the skill. A fresh clone rehydrates the binary from the lockfile.
+Installing the plugin materializes the skill. It does **not** install the engine.
 
-> **Host requirement:** `jq` must be on your `PATH` (the engine parses osv-scanner's JSON with it). It is not
-> provisioned — install it via your package manager if absent.
+## Requirements
+
+Two tools must be on your `PATH`. Tachyon names them in the manifest's `requires` and installs neither.
+
+### `osv-scanner` — the engine
+
+- **brew** — `brew install osv-scanner`
+- **go** — `go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest`
+- **release binary** — https://github.com/google/osv-scanner/releases (no distro packages it)
+
+### `jq` — the script parses the engine's JSON with it
+
+- **apt** — `sudo apt-get install -y jq` · **dnf** — `sudo dnf install -y jq` · **pacman** — `sudo pacman -S --noconfirm jq` · **brew** — `brew install jq`
+
+> Without `osv-scanner` the skill reports `unavailable`, never `clean`. That distinction is deliberate: a scanner
+> that did not run has found nothing, and "found nothing" must never read as "there is nothing".
 
 ## Use
 
@@ -45,7 +56,7 @@ Run the skill on demand:
 |---|---|
 | `clean` | osv-scanner ran; no known-vulnerable deps in its corpus |
 | `findings` | osv-scanner ran; ≥1 known-vulnerable dep (with proposed fixes for fixable direct deps) |
-| `unavailable` | osv-scanner is **not provisioned** (the launcher/binary is absent) — sync the plugin; **not** "clean" |
+| `unavailable` | osv-scanner is **not on PATH** — install it; **not** "clean", nothing was scanned |
 | `failed` | the engine ran but errored / produced unparseable output |
 
 ## Ecosystem / lockfile coverage
@@ -87,10 +98,10 @@ done
 bash "$S" --exit-code --severity high || exit 1
 ```
 
-…or call the provisioned binary directly through the launcher in your own git-hook:
+…or call the engine directly in your own git-hook:
 
 ```sh
-.tachyon/bin/_tachyon-tool dep-audit osv-scanner scan --recursive .
+osv-scanner scan --recursive .
 ```
 
 ## Remediation discipline

@@ -4,12 +4,33 @@ A Tachyon marketplace plugin that turns an audio/video file into a transcript, *
 [whisper.cpp](https://github.com/ggerganov/whisper.cpp). The audio content never leaves the machine; only the model
 weights are fetched once (pinned + checksum-verified).
 
-It is the first plugin to use **both** of Tachyon's newest engine capabilities together:
+It needs two things Tachyon does not provide, and says so plainly when either is absent.
 
-- a **data artifact** — the `ggml` model file, pinned by `{url, sha256}`, installed read-only + content-addressed,
-  resolved via the `_tachyon-data` shim;
-- **external tools** — `whisper-cli` + `ffmpeg`, detected spoof-resistantly, assist-installable (your OS prompts for
-  the password in a visible terminal — Tachyon never handles it), resolved via the `_tachyon-external` shim.
+## Requirements
+
+### `whisper-cli` and `ffmpeg` — on PATH
+
+- **apt** — `sudo apt install whisper.cpp` (ships `/usr/bin/whisper-cli`) and `sudo apt-get install -y ffmpeg`
+- **brew** — `brew install whisper-cpp ffmpeg`
+- Override with `TRANSCRIBE_WHISPER` / `TRANSCRIBE_FFMPEG` to point at a specific binary.
+
+### The ggml model — a file you download once (147 MB)
+
+```sh
+mkdir -p .tachyon/models/transcribe
+curl -L -o .tachyon/models/transcribe/ggml-base.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.bin
+
+sha256sum .tachyon/models/transcribe/ggml-base.bin
+# expected: 60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe
+```
+
+The revision in that URL is pinned and the checksum is the one this plugin was built against — **verify it**.
+Tachyon used to do that verification for you; now the check is yours, which is why the expected digest is printed
+here and by the script itself. Point `TRANSCRIBE_MODEL` at a ggml model you already have to use that instead.
+
+The script resolves the repo root with `git rev-parse --git-common-dir`, so a linked worktree reads the model from
+the authority checkout — one download, every worktree.
 
 ## Install
 
@@ -21,13 +42,13 @@ Install through the Tachyon Plugins view. On install you'll see:
 
 ### Getting whisper-cli
 
-- **macOS:** `brew install whisper-cpp` (installs `whisper-cli`) — offered as an assisted install.
+- **macOS:** `brew install whisper-cpp` (installs `whisper-cli`).
 - **Debian sid:** `sudo apt install whisper.cpp-tools` (ships `/usr/bin/whisper-cli`) — manual (package naming is
   distro-specific).
 - **Otherwise:** build from [whisper.cpp](https://github.com/ggerganov/whisper.cpp); the binary must be named
   `whisper-cli`.
 
-`ffmpeg` is offered as an assisted install on apt/dnf/pacman/brew.
+`ffmpeg` comes from your package manager: apt/dnf/pacman/brew.
 
 ## Usage
 

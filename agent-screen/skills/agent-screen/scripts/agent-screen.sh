@@ -28,17 +28,9 @@ resolve_root() {
 }
 
 resolve_external() {
-  local name="$1" shim resolved
-  shim="$ROOT/.tachyon/bin/_tachyon-external"
-  if [ -x "$shim" ]; then
-    resolved="$("$shim" "$PLUGIN" "$name" 2>/dev/null || true)"
-    if [ -n "$resolved" ] && [ -x "$resolved" ]; then
-      printf '%s\n' "$resolved"
-      return 0
-    fi
-  fi
-
-  # Development fallback for running from the plugin repo before install. Installed Tachyon runs should resolve via shim.
+  # PATH is the resolution: Tachyon no longer provisions tools, so the manifest NAMES them in `requires` and the
+  # operator installs them. This was already the fallback branch here; it is now the whole function.
+  local name="$1" resolved
   resolved="$(command -v "$name" 2>/dev/null || true)"
   [ -n "$resolved" ] && [ -x "$resolved" ] || return 1
   printf '%s\n' "$resolved"

@@ -2,7 +2,7 @@
 # audio (spec 290) — LOCAL-first text-to-speech. Two on-device engines: piper (DEFAULT, self-contained, a pinned
 # checksummed voice) and kokoro (opt-in, higher quality + multilingual, needs espeak-ng). Both run through uv's tool
 # runner `uvx` (acquired at PINNED package versions — a lower-trust, NON-engine-checksummed lane, the diagram-npx
-# analog). System tools are resolved through Tachyon's shims (_tachyon-external for espeak-ng/ffmpeg, _tachyon-data
+# analog). espeak-ng/ffmpeg come from PATH; the pinned default voice is fetched once and checksum-verified (data
 # for the default voice); the uvx RUNNER is resolved on the ambient PATH (like npx — uv installs to a user dir).
 # Fail-closed: `unavailable` (a dep is missing) vs `error` (a present engine failed); never an
 # empty/fake audio file. NO paid/remote lane (ElevenLabs lives in a separate integration plugin).
@@ -61,11 +61,12 @@ fi
 # D4 — STRICT allowlist BEFORE any path/URL construction (no traversal via the voice name)
 echo "$VOICE" | grep -Eq '^[A-Za-z0-9_-]{1,64}$' || { echo "audio: invalid --voice '$VOICE' (allowed: letters/digits/_/-, ≤64)" >&2; exit 64; }
 
-# ── repo root + shims (workspace-relative; cwd-independent) ──
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-[ -n "$ROOT" ] || { echo "audio: unavailable: not inside a git work tree (the Tachyon shims live at <repo>/.tachyon/bin)" >&2; exit 1; }
-EXT_SHIM="$ROOT/.tachyon/bin/_tachyon-external"
-DATA_SHIM="$ROOT/.tachyon/bin/_tachyon-data"
+# ── repo root. `--git-common-dir` points into the PRIMARY checkout's .git even from a linked worktree, so its
+#    parent is the authority root: one voice cache, shared by every worktree, no copy to drift. ──
+COMMON="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+[ -n "$COMMON" ] || { echo "audio: unavailable: not inside a git work tree (the voice cache lives at <repo>/.tachyon/models/$PLUGIN)" >&2; exit 1; }
+ROOT="$(cd "$(dirname "$COMMON")" && pwd -P)"
+VOICE_DIR="$ROOT/.tachyon/models/$PLUGIN"
 
 # ── output dir: default assets/audio/, CONTAINED to the workspace ──
 OUT_DIR="${OUT_DIR:-assets/audio}"
@@ -103,13 +104,40 @@ WAV="$WORK/out.wav"
 if [ "$ENGINE" = "piper" ]; then
   # ── piper: a pinned default voice (284 data) copied to sibling names, or an on-demand HF fetch for other voices ──
   if [ "$VOICE" = "$PINNED_VOICE" ]; then
-    [ -x "$DATA_SHIM" ] || { record unavailable ""; echo "audio: unavailable: the _tachyon-data shim is missing — reinstall the audio plugin (or Rehydrate)" >&2; exit 1; }
-    ONNX="$("$DATA_SHIM" "$PLUGIN" voice-onnx 2>/dev/null)"   || { record unavailable ""; echo "audio: unavailable: the default voice model is not provisioned — reinstall the audio plugin (or Rehydrate)" >&2; exit 1; }
-    CFG="$("$DATA_SHIM" "$PLUGIN" voice-config 2>/dev/null)"  || { record unavailable ""; echo "audio: unavailable: the default voice config is not provisioned — reinstall the audio plugin (or Rehydrate)" >&2; exit 1; }
-    # Tachyon stores data by content hash (the two files are NOT on-disk siblings) → materialize them as the
-    # sibling pair piper expects (D3).
-    cp -- "$ONNX" "$WORK/$VOICE.onnx"      2>/dev/null || { record unavailable ""; echo "audio: unavailable: could not materialize the voice model (unreadable data artifact) — reinstall the audio plugin (or Rehydrate)" >&2; exit 1; }
-    cp -- "$CFG"  "$WORK/$VOICE.onnx.json" 2>/dev/null || { record unavailable ""; echo "audio: unavailable: could not materialize the voice config (unreadable data artifact) — reinstall the audio plugin (or Rehydrate)" >&2; exit 1; }
+    # The DEFAULT voice keeps its pin: a fixed HF revision plus a sha256 for each of the two files, verified before
+    # first use and cached under the authority root. That is what the old provisioning gave, kept here rather than
+    # traded away — the non-default branch below is, and always was, unpinned.
+    PIN_REV="e21c7de8d4eab79b902f0d61e662b3f21664b8d2"
+    PIN_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/$PIN_REV/en/en_US/lessac/medium/$PINNED_VOICE"
+    PIN_SHA_ONNX="5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f"
+    PIN_SHA_CFG="efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0"
+
+    sha_of() {
+      if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+      elif command -v shasum >/dev/null 2>&1;   then shasum -a 256 "$1" | cut -d' ' -f1
+      else echo ""; fi
+    }
+    fetch_pinned() {   # $1=url $2=dest $3=expected-sha $4=label
+      local part="$2.part.$$" got
+      command -v curl >/dev/null 2>&1 || { record unavailable ""; echo "audio: unavailable: curl is needed to fetch the default voice on first run" >&2; exit 1; }
+      curl -fsSL -o "$part" "$1" || { rm -f "$part"; record unavailable ""; echo "audio: unavailable: could not download the $4 ($1)" >&2; exit 1; }
+      got="$(sha_of "$part")"
+      [ -n "$got" ] || { rm -f "$part"; record unavailable ""; echo "audio: unavailable: no sha256sum/shasum to verify the $4 against its pin" >&2; exit 1; }
+      [ "$got" = "$3" ] || { rm -f "$part"; record unavailable ""; echo "audio: unavailable: the downloaded $4 does not match its pin (got $got)" >&2; exit 1; }
+      mv -- "$part" "$2" || { rm -f "$part"; record unavailable ""; echo "audio: unavailable: could not install the $4 at $2" >&2; exit 1; }
+    }
+
+    mkdir -p -- "$VOICE_DIR" || { record unavailable ""; echo "audio: unavailable: cannot create $VOICE_DIR" >&2; exit 1; }
+    ONNX="$VOICE_DIR/$PINNED_VOICE.onnx"
+    CFG="$VOICE_DIR/$PINNED_VOICE.onnx.json"
+    if [ ! -f "$ONNX" ] || [ ! -f "$CFG" ]; then
+      echo "audio: first-run setup — fetching the pinned voice '$PINNED_VOICE' (63 MB, once)…" >&2
+      [ -f "$ONNX" ] || fetch_pinned "$PIN_BASE.onnx"      "$ONNX" "$PIN_SHA_ONNX" "voice model"
+      [ -f "$CFG"  ] || fetch_pinned "$PIN_BASE.onnx.json" "$CFG"  "$PIN_SHA_CFG"  "voice config"
+    fi
+    # piper wants the pair as on-disk siblings next to the model it is given.
+    cp -- "$ONNX" "$WORK/$VOICE.onnx"      2>/dev/null || { record unavailable ""; echo "audio: unavailable: could not stage the voice model" >&2; exit 1; }
+    cp -- "$CFG"  "$WORK/$VOICE.onnx.json" 2>/dev/null || { record unavailable ""; echo "audio: unavailable: could not stage the voice config" >&2; exit 1; }
   else
     # on-demand, UNPINNED HF fetch for a non-default voice (the voice name is allowlist-validated above → safe to
     # build the nested rhasspy/piper-voices path). VOICE = <locale>-<name>-<quality>, e.g. en_US-lessac-medium.
@@ -125,7 +153,7 @@ if [ "$ENGINE" = "piper" ]; then
   fi
 else
   # ── kokoro: needs espeak-ng (presence-gated via the shim) + the shipped python helper, run via uvx ──
-  ESPEAK="$("$EXT_SHIM" "$PLUGIN" espeak-ng 2>/dev/null)" || { record unavailable ""; echo "audio: unavailable: kokoro needs espeak-ng (a system tool) — the plugin's card offers an assisted install (apt/dnf/pacman/brew). Or use --engine piper (self-contained)." >&2; exit 1; }
+  ESPEAK="$(command -v "${AUDIO_ESPEAK:-espeak-ng}" 2>/dev/null)" || { record unavailable ""; echo "audio: unavailable: kokoro needs espeak-ng on PATH — apt/dnf/pacman/brew install espeak-ng. Or use --engine piper." >&2; exit 1; }
   [ -f "$HERE/audio-kokoro.py" ] || { record error ""; echo "audio: error: kokoro helper missing from the plugin payload ($HERE/audio-kokoro.py)" >&2; exit 1; }
   # bind kokoro's phonemizer to the TRUSTED espeak-ng (codex HIGH): run with a sanitized PATH that puts the resolved
   # espeak's dir first + only system dirs after — never the workspace/cwd, so a planted espeak-ng can't be picked up.
@@ -144,7 +172,7 @@ TMP_OUT="$(mktemp -- "$OUT_DIR/.audio-XXXXXX")"
 if [ "$FORMAT" = "wav" ]; then
   cp -- "$WAV" "$TMP_OUT"
 else
-  FFMPEG="${AUDIO_FFMPEG_BIN:-}"; [ -n "$FFMPEG" ] || FFMPEG="$("$EXT_SHIM" "$PLUGIN" ffmpeg 2>/dev/null || true)"
+  FFMPEG="${AUDIO_FFMPEG_BIN:-}"; [ -n "$FFMPEG" ] || FFMPEG="$(command -v ffmpeg 2>/dev/null || true)"
   if [ -n "$FFMPEG" ] && "$FFMPEG" -nostdin -y -i "$WAV" -f mp3 "$TMP_OUT" >/dev/null 2>&1 && [ -s "$TMP_OUT" ]; then :; else
     cp -- "$WAV" "$TMP_OUT"; OUTPUT="$OUT_DIR/$STEM.wav"; FORMAT="wav"
     echo "audio: note: ffmpeg unavailable/failed for mp3 — wrote wav instead ($OUTPUT)" >&2

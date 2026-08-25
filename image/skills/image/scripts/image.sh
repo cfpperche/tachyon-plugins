@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # image (spec 291) — PAID AI image generation via the fal.ai REST API. Resolves curl + jq through Tachyon's
-# _tachyon-external shim (TRUSTED paths, never bare names — spec 291 D1). Needs FAL_KEY (env or
+# PATH (IMAGE_CURL / IMAGE_JQ override). Needs FAL_KEY (env or
 # .tachyon/secrets.env; never stored/echoed — D4). PRINTS the estimated cost BEFORE any paid request fires (D3).
 # Fail-closed: `unavailable` (no key / missing tool) vs `error` (a present call failed); never a silent paid call.
 set -euo pipefail
@@ -55,12 +55,12 @@ case "$ASPECT" in
   portrait)  IMAGE_SIZE="portrait_16_9";  DIMS="576x1024" ;;
 esac
 
-# ── repo root + resolve curl/jq via the shim (TRUSTED; never bare — D1) ──
+# ── repo root + resolve curl/jq from PATH ──
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$ROOT" ] || { echo "image: unavailable: not inside a git work tree (the Tachyon shims live at <repo>/.tachyon/bin)" >&2; exit 1; }
-EXT_SHIM="$ROOT/.tachyon/bin/_tachyon-external"
-CURL="${IMAGE_CURL:-}"; [ -n "$CURL" ] || CURL="$("$EXT_SHIM" "$PLUGIN" curl 2>/dev/null || true)"
-JQ="${IMAGE_JQ:-}";     [ -n "$JQ" ]   || JQ="$("$EXT_SHIM" "$PLUGIN" jq 2>/dev/null || true)"
+# Ferramentas externas vêm do PATH: o Tachyon não provisiona mais, e o manifesto só as NOMEIA em `requires`.
+CURL="${IMAGE_CURL:-}"; [ -n "$CURL" ] || CURL="$(command -v curl 2>/dev/null || true)"
+JQ="${IMAGE_JQ:-}";     [ -n "$JQ" ]   || JQ="$(command -v jq 2>/dev/null || true)"
 [ -n "$CURL" ] || { echo "image: unavailable: curl not installed/trusted — the plugin's card offers an assisted install (apt/dnf/pacman/brew)" >&2; exit 1; }
 [ -n "$JQ" ]   || { echo "image: unavailable: jq not installed/trusted — the plugin's card offers an assisted install (apt/dnf/pacman/brew)" >&2; exit 1; }
 

@@ -11,9 +11,7 @@ imagery, not motion, not custom visual-design craft.
 
 - **A system browser** — declared as an **external tool** with candidate names `google-chrome` /
   `google-chrome-stable` / `chromium` / `chromium-browser` (Tachyon spec 289 multi-name detection). Detected
-  spoof-resistantly (trusted absolute path) and resolved via the `_tachyon-external` shim. A missing browser is
-  offered as a **consent-gated assisted install** — your OS prompts for the password in a visible terminal; Tachyon
-  never handles it.
+  on PATH. A missing browser is reported as `unavailable` with the install line for your platform (see Requirements).
 - **Node / `npx`** — assumed present (Tachyon already runs on Node). `mmdc` is acquired at a **pinned exact version**
   via `npx -p @mermaid-js/mermaid-cli@<pinned> mmdc` with `PUPPETEER_SKIP_DOWNLOAD=1` (reuse the system browser) and
   `npm_config_ignore_scripts=true` (block npm lifecycle scripts).

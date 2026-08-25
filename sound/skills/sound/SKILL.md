@@ -45,7 +45,7 @@ An exported `FAL_KEY` wins over the file. The file is parsed as data and is neve
 
 ## Fail-closed
 
-- `FAL_KEY` missing from env and `.tachyon/secrets.env` → `unavailable`. curl/jq missing → `unavailable` (card offers an assisted install).
+- `FAL_KEY` missing from env and `.tachyon/secrets.env` → `unavailable`. curl/jq missing → `unavailable` (apt/dnf/pacman/brew install curl jq).
 - Over-threshold without confirm → refused before any call. Non-200 fal / no audio URL → `error`.
 
 ## When NOT to use
