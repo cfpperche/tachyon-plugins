@@ -46,3 +46,32 @@ Cost is printed before any network call; above the oracle threshold ($0.25) the 
 ## Not
 
 Spoken voice/narration (the audio plugin); free/local audio (paid only).
+
+## Requirements
+
+Tachyon no longer installs external tools; the manifest only **names** them in `requires`.
+Install these before using the plugin:
+
+### `curl`
+
+- **apt** — `sudo apt-get install -y curl`
+- **dnf** — `sudo dnf install -y curl`
+- **pacman** — `sudo pacman -S --noconfirm curl`
+- **brew** — `brew install curl`
+- Install curl (the HTTP client for the fal.ai REST API) — apt/dnf/pacman `curl`; macOS ships it.
+
+### `jq`
+
+- **apt** — `sudo apt-get install -y jq`
+- **dnf** — `sudo dnf install -y jq`
+- **pacman** — `sudo pacman -S --noconfirm jq`
+- **brew** — `brew install jq`
+- Install jq (reads the tier oracle + builds the body + extracts the audio URL) — apt/dnf/pacman `jq`; macOS `brew install jq`.
+
+### `ffmpeg`
+
+- **apt** — `sudo apt-get install -y ffmpeg`
+- **dnf** — `sudo dnf install -y ffmpeg`
+- **pacman** — `sudo pacman -S --noconfirm ffmpeg`
+- **brew** — `brew install ffmpeg`
+- Install ffmpeg from https://ffmpeg.org/download.html (only for mp3 output; wav works without it).

@@ -60,3 +60,16 @@ bash "<this-skill-dir>"/scripts/diagram.sh \
 
 mermaid-cli + Mermaid are MIT-licensed. The renderer is fetched from npm at the pinned version; nothing is bundled in
 git.
+
+## Requirements
+
+Tachyon no longer installs external tools; the manifest only **names** them in `requires`.
+Install these before using the plugin:
+
+### `chrome`
+
+- **apt** — `sudo apt-get install -y chromium`
+- **dnf** — `sudo dnf install -y chromium`
+- **pacman** — `sudo pacman -S --noconfirm chromium`
+- **brew** — `brew install --cask google-chrome`
+- Install a Chromium-based browser so mmdc can render headlessly — Debian `sudo apt install chromium`; Ubuntu ships it as a snap (`sudo snap install chromium`); Fedora `sudo dnf install chromium`; Arch `sudo pacman -S chromium`; macOS `brew install --cask google-chrome`. Any of google-chrome / google-chrome-stable / chromium / chromium-browser on a system PATH works.

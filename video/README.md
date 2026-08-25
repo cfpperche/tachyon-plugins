@@ -52,3 +52,24 @@ Deterministic/free code video (the `hyperframes` plugin); music/SFX (`sound`); s
 
 Tier endpoints/prices are representative + dated; the `premium` (Veo) endpoint/body is UNVERIFIED. Confirm via fal
 docs before a real premium call — the oracle is the single edit point.
+
+## Requirements
+
+Tachyon no longer installs external tools; the manifest only **names** them in `requires`.
+Install these before using the plugin:
+
+### `curl`
+
+- **apt** — `sudo apt-get install -y curl`
+- **dnf** — `sudo dnf install -y curl`
+- **pacman** — `sudo pacman -S --noconfirm curl`
+- **brew** — `brew install curl`
+- Install curl (the HTTP client for the fal.ai queue REST API) — apt/dnf/pacman `curl`; macOS ships it.
+
+### `jq`
+
+- **apt** — `sudo apt-get install -y jq`
+- **dnf** — `sudo dnf install -y jq`
+- **pacman** — `sudo pacman -S --noconfirm jq`
+- **brew** — `brew install jq`
+- Install jq (reads the tier oracle + builds the body + parses the queue responses) — apt/dnf/pacman `jq`; macOS `brew install jq`.

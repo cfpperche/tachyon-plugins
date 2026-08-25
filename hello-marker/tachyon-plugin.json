@@ -1,14 +1,10 @@
 {
   "name": "hello-marker",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Benign round-trip proof plugin: wires a harmless no-op PreToolUse marker into claude + codex. Exercises the full install/wire/update/remove lifecycle without touching security, secrets, or project state.",
   "runtimes": [
     "claude",
     "codex"
   ],
-  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/hello-marker",
-  "blocks": {
-    "claude": "claude/",
-    "codex": "codex/"
-  }
+  "docs": "https://github.com/cfpperche/tachyon-plugins/tree/main/hello-marker"
 }

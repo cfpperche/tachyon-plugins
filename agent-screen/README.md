@@ -62,3 +62,23 @@ The v1 backends are:
 - `xdotool` + `xwininfo` for optional window targeting
 
 Other platforms should fail closed until a platform-specific backend is implemented.
+
+## Requirements
+
+Tachyon no longer installs external tools; the manifest only **names** them in `requires`.
+Install these before using the plugin:
+
+### `ffmpeg`
+
+- **apt** — `sudo apt-get install -y ffmpeg`
+- **dnf** — `sudo dnf install -y ffmpeg`
+- **pacman** — `sudo pacman -S --noconfirm ffmpeg`
+- **brew** — `brew install ffmpeg`
+- Install ffmpeg from https://ffmpeg.org/download.html. agent-screen v1 uses ffmpeg's x11grab input on Linux/WSLg.
+
+### `xdotool`
+
+- **apt** — `sudo apt-get install -y xdotool x11-utils`
+- **dnf** — `sudo dnf install -y xdotool xorg-x11-utils`
+- **pacman** — `sudo pacman -S --noconfirm xdotool xorg-xdpyinfo xorg-xwininfo`
+- Install xdotool plus X11 utilities (xdpyinfo and xwininfo). Debian/Ubuntu: `sudo apt install xdotool x11-utils`; Fedora: `sudo dnf install xdotool xorg-x11-utils`; Arch: `sudo pacman -S xdotool xorg-xdpyinfo xorg-xwininfo`.

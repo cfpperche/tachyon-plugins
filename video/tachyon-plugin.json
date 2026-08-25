@@ -1,33 +1,15 @@
 {
   "name": "video",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "PAID generative AI video via the fal.ai queue REST API — needs FAL_KEY in env or .tachyon/secrets.env. Generate organic/photoreal motion (Wan/Kling/Veo class) from a prompt (+ a source image for image-to-video tiers). ASYNC and fire-and-forget — submit queues a job (~5 min), poll reaps it; a clip costs $0.50-$3 so a HARD --confirm-cost-usd gate is required on every submit. NOT deterministic/free code video (that is the hyperframes plugin); NOT music/SFX (sound) or images (image).",
   "runtimes": [
     "claude",
     "codex",
     "grok"
   ],
-  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/video",
-  "externalTools": {
-    "curl": {
-      "detect": ["--version"],
-      "install": {
-        "apt": { "argv": ["sudo", "apt-get", "install", "-y", "curl"] },
-        "dnf": { "argv": ["sudo", "dnf", "install", "-y", "curl"] },
-        "pacman": { "argv": ["sudo", "pacman", "-S", "--noconfirm", "curl"] },
-        "brew": { "argv": ["brew", "install", "curl"] }
-      },
-      "manual": "Install curl (the HTTP client for the fal.ai queue REST API) — apt/dnf/pacman `curl`; macOS ships it."
-    },
-    "jq": {
-      "detect": ["--version"],
-      "install": {
-        "apt": { "argv": ["sudo", "apt-get", "install", "-y", "jq"] },
-        "dnf": { "argv": ["sudo", "dnf", "install", "-y", "jq"] },
-        "pacman": { "argv": ["sudo", "pacman", "-S", "--noconfirm", "jq"] },
-        "brew": { "argv": ["brew", "install", "jq"] }
-      },
-      "manual": "Install jq (reads the tier oracle + builds the body + parses the queue responses) — apt/dnf/pacman `jq`; macOS `brew install jq`."
-    }
-  }
+  "requires": [
+    "curl",
+    "jq"
+  ],
+  "docs": "https://github.com/cfpperche/tachyon-plugins/tree/main/video"
 }

@@ -40,3 +40,16 @@ is a thin Tachyon-native wrapper, not a re-implementation of their authoring sys
 HyperFrames (`heygen-com/hyperframes`) is **Apache-2.0**. The minimal composition template here is adapted from the
 HyperFrames composition shape; see `CREDITS.md`. The engine is fetched from npm at the pinned version via `npx` —
 nothing is bundled in git.
+
+## Requirements
+
+Tachyon no longer installs external tools; the manifest only **names** them in `requires`.
+Install these before using the plugin:
+
+### `ffmpeg`
+
+- **apt** — `sudo apt-get install -y ffmpeg`
+- **dnf** — `sudo dnf install -y ffmpeg`
+- **pacman** — `sudo pacman -S --noconfirm ffmpeg`
+- **brew** — `brew install ffmpeg`
+- Install ffmpeg (HyperFrames requires it for MP4 encoding) — Debian/Ubuntu `sudo apt install ffmpeg`; Fedora `sudo dnf install ffmpeg`; Arch `sudo pacman -S ffmpeg`; macOS `brew install ffmpeg`. (HyperFrames manages its own headless Chromium — no separate browser install needed.)

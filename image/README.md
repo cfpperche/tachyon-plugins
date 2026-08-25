@@ -47,3 +47,24 @@ has authorized the spend. Each run records `{tier,model,cost_estimate_usd,output
 ## Not
 
 Free/local imagery (paid only); music/SFX (the sound plugin); technical diagrams (the diagram plugin).
+
+## Requirements
+
+Tachyon no longer installs external tools; the manifest only **names** them in `requires`.
+Install these before using the plugin:
+
+### `curl`
+
+- **apt** — `sudo apt-get install -y curl`
+- **dnf** — `sudo dnf install -y curl`
+- **pacman** — `sudo pacman -S --noconfirm curl`
+- **brew** — `brew install curl`
+- Install curl (the HTTP client for the fal.ai REST API) — Debian/Ubuntu `sudo apt install curl`; Fedora `sudo dnf install curl`; Arch `sudo pacman -S curl`; macOS ships it (or `brew install curl`).
+
+### `jq`
+
+- **apt** — `sudo apt-get install -y jq`
+- **dnf** — `sudo dnf install -y jq`
+- **pacman** — `sudo pacman -S --noconfirm jq`
+- **brew** — `brew install jq`
+- Install jq (builds the request body + extracts the image URL) — Debian/Ubuntu `sudo apt install jq`; Fedora `sudo dnf install jq`; Arch `sudo pacman -S jq`; macOS `brew install jq`.

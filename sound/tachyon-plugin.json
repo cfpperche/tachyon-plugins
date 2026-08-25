@@ -1,43 +1,16 @@
 {
   "name": "sound",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "PAID creative audio generation (music + sound effects) via the fal.ai REST API — needs FAL_KEY in env or .tachyon/secrets.env. Music (--kind music: standard ~$0.02/min, premium ~$0.80/min) or SFX (--kind sfx ~$0.002/sec) from a text prompt. Cost = price x duration; a hard --confirm-cost-usd gate is required above $0.25. Every call prints the estimated cost BEFORE it fires. PAID — only run when the user authorized the spend. NOT speech (audio plugin), NOT free/local.",
   "runtimes": [
     "claude",
     "codex",
     "grok"
   ],
-  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/sound",
-  "externalTools": {
-    "curl": {
-      "detect": ["--version"],
-      "install": {
-        "apt": { "argv": ["sudo", "apt-get", "install", "-y", "curl"] },
-        "dnf": { "argv": ["sudo", "dnf", "install", "-y", "curl"] },
-        "pacman": { "argv": ["sudo", "pacman", "-S", "--noconfirm", "curl"] },
-        "brew": { "argv": ["brew", "install", "curl"] }
-      },
-      "manual": "Install curl (the HTTP client for the fal.ai REST API) — apt/dnf/pacman `curl`; macOS ships it."
-    },
-    "jq": {
-      "detect": ["--version"],
-      "install": {
-        "apt": { "argv": ["sudo", "apt-get", "install", "-y", "jq"] },
-        "dnf": { "argv": ["sudo", "dnf", "install", "-y", "jq"] },
-        "pacman": { "argv": ["sudo", "pacman", "-S", "--noconfirm", "jq"] },
-        "brew": { "argv": ["brew", "install", "jq"] }
-      },
-      "manual": "Install jq (reads the tier oracle + builds the body + extracts the audio URL) — apt/dnf/pacman `jq`; macOS `brew install jq`."
-    },
-    "ffmpeg": {
-      "detect": ["-version"],
-      "install": {
-        "apt": { "argv": ["sudo", "apt-get", "install", "-y", "ffmpeg"] },
-        "dnf": { "argv": ["sudo", "dnf", "install", "-y", "ffmpeg"] },
-        "pacman": { "argv": ["sudo", "pacman", "-S", "--noconfirm", "ffmpeg"] },
-        "brew": { "argv": ["brew", "install", "ffmpeg"] }
-      },
-      "manual": "Install ffmpeg from https://ffmpeg.org/download.html (only for mp3 output; wav works without it)."
-    }
-  }
+  "requires": [
+    "curl",
+    "ffmpeg",
+    "jq"
+  ],
+  "docs": "https://github.com/cfpperche/tachyon-plugins/tree/main/sound"
 }

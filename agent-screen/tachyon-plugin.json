@@ -1,94 +1,15 @@
 {
   "name": "agent-screen",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "OS-level screenshot primitive for non-web Visual QA and installed-app dogfood. Captures a real desktop PNG explicitly on demand, preferring Windows host capture from WSL with window inventory, DWM bounds, timeout-guarded screen/window targeting, explicit minimized-window restore, active-window fallback, and blank-frame warnings; falls back to ffmpeg x11grab plus X11 window helpers. V1 is screenshot-only; bounded screen recording is deliberately deferred.",
   "runtimes": [
     "claude",
     "codex",
     "grok"
   ],
-  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/agent-screen",
-  "externalTools": {
-    "ffmpeg": {
-      "detect": [
-        "-version"
-      ],
-      "install": {
-        "apt": {
-          "argv": [
-            "sudo",
-            "apt-get",
-            "install",
-            "-y",
-            "ffmpeg"
-          ]
-        },
-        "dnf": {
-          "argv": [
-            "sudo",
-            "dnf",
-            "install",
-            "-y",
-            "ffmpeg"
-          ]
-        },
-        "pacman": {
-          "argv": [
-            "sudo",
-            "pacman",
-            "-S",
-            "--noconfirm",
-            "ffmpeg"
-          ]
-        },
-        "brew": {
-          "argv": [
-            "brew",
-            "install",
-            "ffmpeg"
-          ]
-        }
-      },
-      "manual": "Install ffmpeg from https://ffmpeg.org/download.html. agent-screen v1 uses ffmpeg's x11grab input on Linux/WSLg."
-    },
-    "xdotool": {
-      "detect": [
-        "--version"
-      ],
-      "install": {
-        "apt": {
-          "argv": [
-            "sudo",
-            "apt-get",
-            "install",
-            "-y",
-            "xdotool",
-            "x11-utils"
-          ]
-        },
-        "dnf": {
-          "argv": [
-            "sudo",
-            "dnf",
-            "install",
-            "-y",
-            "xdotool",
-            "xorg-x11-utils"
-          ]
-        },
-        "pacman": {
-          "argv": [
-            "sudo",
-            "pacman",
-            "-S",
-            "--noconfirm",
-            "xdotool",
-            "xorg-xdpyinfo",
-            "xorg-xwininfo"
-          ]
-        }
-      },
-      "manual": "Install xdotool plus X11 utilities (xdpyinfo and xwininfo). Debian/Ubuntu: `sudo apt install xdotool x11-utils`; Fedora: `sudo dnf install xdotool xorg-x11-utils`; Arch: `sudo pacman -S xdotool xorg-xdpyinfo xorg-xwininfo`."
-    }
-  }
+  "requires": [
+    "ffmpeg",
+    "xdotool"
+  ],
+  "docs": "https://github.com/cfpperche/tachyon-plugins/tree/main/agent-screen"
 }

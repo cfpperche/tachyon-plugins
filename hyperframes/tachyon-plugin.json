@@ -1,23 +1,14 @@
 {
   "name": "hyperframes",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Deterministic, LOCAL, FREE video from code — render an HTML/CSS/JS composition to MP4 via the HyperFrames CLI (npx, pinned, Apache-2.0) in a bundled headless Chromium + system ffmpeg. Zero inference cost; the composition source is git-tracked and the MP4 is regenerable. Best for structured motion graphics (product demos, changelog clips, explainers). Needs Node 22+. NOT generative/paid AI video (that is the separate video plugin); NOT a still image (diagram/image).",
   "runtimes": [
     "claude",
     "codex",
     "grok"
   ],
-  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/hyperframes",
-  "externalTools": {
-    "ffmpeg": {
-      "detect": ["-version"],
-      "install": {
-        "apt": { "argv": ["sudo", "apt-get", "install", "-y", "ffmpeg"] },
-        "dnf": { "argv": ["sudo", "dnf", "install", "-y", "ffmpeg"] },
-        "pacman": { "argv": ["sudo", "pacman", "-S", "--noconfirm", "ffmpeg"] },
-        "brew": { "argv": ["brew", "install", "ffmpeg"] }
-      },
-      "manual": "Install ffmpeg (HyperFrames requires it for MP4 encoding) — Debian/Ubuntu `sudo apt install ffmpeg`; Fedora `sudo dnf install ffmpeg`; Arch `sudo pacman -S ffmpeg`; macOS `brew install ffmpeg`. (HyperFrames manages its own headless Chromium — no separate browser install needed.)"
-    }
-  }
+  "requires": [
+    "ffmpeg"
+  ],
+  "docs": "https://github.com/cfpperche/tachyon-plugins/tree/main/hyperframes"
 }

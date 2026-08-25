@@ -1,33 +1,15 @@
 {
   "name": "image",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "PAID AI image generation via the fal.ai REST API — needs FAL_KEY in env or .tachyon/secrets.env. Produce a mockup, brand asset, or hero image from a prompt. Three tiers: draft (FLUX schnell, ~$0.003, throwaway/gitignored), brand-text (gpt-image-2, ~$0.04+, crisp typography, tracked), brand-photo (Imagen 4 Ultra, ~$0.06, photo-real, tracked). Every call prints the estimated cost BEFORE generation fires. NOT free/local, NOT music/SFX (that is the sound plugin), NOT technical diagrams (that is diagram).",
   "runtimes": [
     "claude",
     "codex",
     "grok"
   ],
-  "docsUrl": "https://github.com/cfpperche/tachyon-plugins/tree/main/image",
-  "externalTools": {
-    "curl": {
-      "detect": ["--version"],
-      "install": {
-        "apt": { "argv": ["sudo", "apt-get", "install", "-y", "curl"] },
-        "dnf": { "argv": ["sudo", "dnf", "install", "-y", "curl"] },
-        "pacman": { "argv": ["sudo", "pacman", "-S", "--noconfirm", "curl"] },
-        "brew": { "argv": ["brew", "install", "curl"] }
-      },
-      "manual": "Install curl (the HTTP client for the fal.ai REST API) — Debian/Ubuntu `sudo apt install curl`; Fedora `sudo dnf install curl`; Arch `sudo pacman -S curl`; macOS ships it (or `brew install curl`)."
-    },
-    "jq": {
-      "detect": ["--version"],
-      "install": {
-        "apt": { "argv": ["sudo", "apt-get", "install", "-y", "jq"] },
-        "dnf": { "argv": ["sudo", "dnf", "install", "-y", "jq"] },
-        "pacman": { "argv": ["sudo", "pacman", "-S", "--noconfirm", "jq"] },
-        "brew": { "argv": ["brew", "install", "jq"] }
-      },
-      "manual": "Install jq (builds the request body + extracts the image URL) — Debian/Ubuntu `sudo apt install jq`; Fedora `sudo dnf install jq`; Arch `sudo pacman -S jq`; macOS `brew install jq`."
-    }
-  }
+  "requires": [
+    "curl",
+    "jq"
+  ],
+  "docs": "https://github.com/cfpperche/tachyon-plugins/tree/main/image"
 }
