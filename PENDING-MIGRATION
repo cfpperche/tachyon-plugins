@@ -7,12 +7,18 @@
 # A lista não pode apodrecer: se um pacote listado passar a carregar, o portão RECUSA e manda tirar
 # o nome daqui. Cobertura silenciosa é exatamente o que este repositório não quer.
 #
+# O QUE REALMENTE TRAVA ESTES SEIS, medido em 2026-08-25: não é o manifesto. A 516 apagou o sistema
+# de provisionamento e com ele os dois lançadores — `.tachyon/bin/_tachyon-tool` (binário) e
+# `_tachyon-data` (artefato). Nada os emite nem os escreve mais. Seis pacotes foram escritos em cima
+# deles, e o `transcribe` chega a declarar a lei antiga na primeira linha da skill: *"NEVER runs a
+# tool off the bare PATH"*. O formato novo tem `requires`, que NOMEIA a ferramenta — mas não existe
+# convenção escrita de como uma skill invoca uma ferramenta que o operador instalou. Enquanto essa
+# convenção não existir, migrar o manifesto destes seis produz um pacote que instala e não funciona.
+#
 # Cada linha: <pacote>  # o que falta
-agent-browser       # tools — Tachyon não baixa mais binário fixado; decidir se `requires` cobre
-dep-audit           # tools — idem
-secrets-guard       # tools + gitHooks — depende de git hooks, que saíram da v1
-audio               # data — modelo de voz de ~60 MB, não cabe no payload
-transcribe          # data — modelo whisper de ~150 MB, idem
-verify-gate         # gitHooks — sem substituto até git hooks voltarem
-product-foundation  # dependencies — sem resolvedor; virar frase na description
-visual-qa           # dependencies + config
+agent-browser  # invoca tudo por `_tachyon-tool`, que morreu; + `tools` (binário fixado com sha256)
+dep-audit      # idem, via scripts/audit.sh; + `tools`
+audio          # `_tachyon-data` para a voz ONNX (~60 MB); + `data` + `externalTools`
+transcribe     # `_tachyon-data` para o modelo whisper (~150 MB); + `data` + `externalTools`
+secrets-guard  # `tools` (gitleaks fixado) + `gitHooks`, que saíram da v1 e voltam como sistema próprio
+verify-gate    # `gitHooks` — sem substituto até isso voltar
