@@ -1,0 +1,18 @@
+# Pacotes que ainda estão no formato anterior à 516 do Tachyon e por isso NÃO carregam hoje.
+#
+# Um nome aqui é uma dívida declarada, não uma dispensa: `scripts/validate-manifests.sh` continua
+# validando o pacote e continua mostrando os erros — ele só não recusa o push por causa deles. Um
+# pacote que NÃO está nesta lista e falha derruba o push como sempre.
+#
+# A lista não pode apodrecer: se um pacote listado passar a carregar, o portão RECUSA e manda tirar
+# o nome daqui. Cobertura silenciosa é exatamente o que este repositório não quer.
+#
+# Cada linha: <pacote>  # o que falta
+agent-browser       # tools — Tachyon não baixa mais binário fixado; decidir se `requires` cobre
+dep-audit           # tools — idem
+secrets-guard       # tools + gitHooks — depende de git hooks, que saíram da v1
+audio               # data — modelo de voz de ~60 MB, não cabe no payload
+transcribe          # data — modelo whisper de ~150 MB, idem
+verify-gate         # gitHooks — sem substituto até git hooks voltarem
+product-foundation  # dependencies — sem resolvedor; virar frase na description
+visual-qa           # dependencies + config

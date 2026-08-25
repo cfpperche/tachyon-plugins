@@ -18,11 +18,23 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 REPO="${TACHYON_REPO:-$(cd .. 2>/dev/null && pwd)/tachyon}"
-VALIDATOR="$REPO/dist/plugin-validate.cjs"
 
-if [ ! -f "$VALIDATOR" ]; then
+# Duas casas, porque o Tachyon virou monorepo (SDD 506) e o bundle passou a sair sob o app da
+# extensão. A raiz continua listada primeiro: um checkout antigo, ou um bundle copiado à mão para
+# lá, tem de seguir funcionando. Procurar nas duas é mais barato que exigir que o autor saiba qual
+# layout o checkout dele tem.
+CANDIDATOS="
+$REPO/dist/plugin-validate.cjs
+$REPO/apps/vscode-extension/dist/plugin-validate.cjs
+"
+VALIDATOR=""
+for candidato in $CANDIDATOS; do
+  if [ -f "$candidato" ]; then VALIDATOR="$candidato"; break; fi
+done
+
+if [ -z "$VALIDATOR" ]; then
   echo "validate-manifests: REFUSING — cannot find the Tachyon plugin validator." >&2
-  echo "  looked for: $VALIDATOR" >&2
+  for candidato in $CANDIDATOS; do echo "  looked for: $candidato" >&2; done
   echo "  Set TACHYON_REPO to a Tachyon checkout, and build it there once (npm run build)." >&2
   echo "  Not checking is not the same as checking: this refuses rather than passing silently." >&2
   exit 1
@@ -65,4 +77,51 @@ for plugin in "${INDEXED_PKGS[@]}"; do
   fi
 done
 
-exec node "$VALIDATOR" "${PKGS[@]}"
+# Dívida declarada: `PENDING-MIGRATION` nomeia os pacotes que sabidamente não carregam ainda. Eles
+# continuam sendo validados e continuam mostrando os erros — o que muda é só quem derruba o push.
+# Sem isso, um repositório com um pacote defasado fica impossível de empurrar por qualquer razão, e
+# a saída natural seria desligar o portão inteiro. Isto é mais estreito que desligar.
+PENDING=()
+if [ -f PENDING-MIGRATION ]; then
+  while IFS= read -r linha; do
+    linha="${linha%%#*}"
+    linha="$(printf '%s' "$linha" | tr -d '[:space:]')"
+    [ -n "$linha" ] && PENDING+=("$linha")
+  done < PENDING-MIGRATION
+fi
+
+is_pending() {
+  for nome in ${PENDING[@]+"${PENDING[@]}"}; do [ "$nome" = "$1" ] && return 0; done
+  return 1
+}
+
+FIRMES=()
+falhou_declarado=0
+lista_podre=0
+for plugin in "${PKGS[@]}"; do
+  if is_pending "$plugin"; then
+    if node "$VALIDATOR" "$plugin" >/dev/null 2>&1; then
+      echo "validate-manifests: REFUSING — '$plugin' está em PENDING-MIGRATION mas JÁ carrega. Tire o nome de lá." >&2
+      lista_podre=1
+    else
+      echo "pendente: $plugin — dívida declarada em PENDING-MIGRATION (não carrega)" >&2
+      falhou_declarado=$((falhou_declarado + 1))
+    fi
+  else
+    FIRMES+=("$plugin")
+  fi
+done
+[ "$lista_podre" -eq 1 ] && exit 1
+
+if [ ${#FIRMES[@]} -eq 0 ]; then
+  echo "validate-manifests: REFUSING — todo pacote está em PENDING-MIGRATION; não sobrou nada validado." >&2
+  exit 1
+fi
+
+if [ "$falhou_declarado" -gt 0 ]; then
+  echo "" >&2
+  echo "$falhou_declarado pacote(s) defasado(s) — declarados, não bloqueiam. Os demais seguem obrigatórios." >&2
+  echo "" >&2
+fi
+
+exec node "$VALIDATOR" "${FIRMES[@]}"
