@@ -1,4 +1,6 @@
 {
+  "schemaVersion": 1,
+  "class": "observability",
   "hooks": {
     "PreToolUse": [
       {
