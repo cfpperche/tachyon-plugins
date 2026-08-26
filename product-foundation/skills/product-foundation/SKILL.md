@@ -184,14 +184,13 @@ The v2/v3 per-route screen-writer fan-out is **deleted**. `/product-foundation` 
 2. **Layer-1 validate → update `.state.json` → run the quality judge** — run the Layer-1 floor check (§ Layer-1 validation) on `screen-atlas.md` (Step 15a) before recording; a `schema-incomplete` atlas is re-dispatched, NOT recorded. Then append `15-screen-atlas` to `completed_steps`; record any BLOCKED to `blocked_steps` (per `delegation-briefs.md § Failure handling`: 15a BLOCKED → ABORT the run; 15b / 15c BLOCKED → degrade gracefully, Phase 5 still runs). Then run the **quality judge** over the three judge-units `15a-screen-atlas` / `15b-hifi-mood` / `15c-fixture-spec` per § Quality judge. Phase 4 has no gate — a `fail` surfaces in `REPORT.md § Quality concerns` + the Phase 5 handoff message, not a gate `iterate`.
 3. **Best-effort visual check (via the agent-browser plugin).** This skill bundles NO browser — the visual check is delegated to the **agent-browser plugin** (a declared optional dependency). It navigates `file://` natively, so there is NO localhost HTTP server and NO MCP.
 
-   - **Availability gate (fail-closed).** The agent-browser plugin is present iff its launcher shim resolves — `.tachyon/bin/_tachyon-tool agent-browser agent-browser --help` exits 0:
+   - **Availability gate (fail-closed).** The agent-browser CLI is present iff it resolves on `PATH`:
 
      ```bash
-     if .tachyon/bin/_tachyon-tool agent-browser agent-browser --help >/dev/null 2>&1; then
-       AB=yes; else AB=no; fi
+     if command -v agent-browser >/dev/null 2>&1; then AB=yes; else AB=no; fi
      ```
 
-   - **When available (`AB=yes`).** For each hi-fi screen in `<out>/docs/screens/hifi/*.html`, drive the agent-browser plugin over a stable session (`AB=".tachyon/bin/_tachyon-tool agent-browser agent-browser"`):
+   - **When available (`AB=yes`).** For each hi-fi screen in `<out>/docs/screens/hifi/*.html`, drive the agent-browser CLI over a stable session (`AB="agent-browser"`):
 
      ```bash
      S="pf-visual"

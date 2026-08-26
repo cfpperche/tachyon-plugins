@@ -1,34 +1,26 @@
 #!/bin/sh
 # agent-browser plugin — preflight doctor.
 #
-# Delegates to the CLI's own `agent-browser doctor` (run through the plugin-scoped launcher), which does a REAL
+# Delegates to the CLI's own `agent-browser doctor` (resolved from PATH), which does a REAL
 # usability check — CLI version, Chrome detection, AND a headless launch test (about:blank) — not mere presence
-# detection. Chrome is NOT provisioned by the plugin (it is a multi-file browser runtime, not a single verifiable
+# detection. Chrome is NOT shipped by the plugin (it is a multi-file browser runtime, not a single verifiable
 # executable), so a Chrome/launch failure must FAIL LOUD here: this prints `BROWSER_RUNTIME_MISSING` + remediation
 # and exits non-zero, so the agent never pretends it can browse.
 #
 # Run from the workspace root (or anywhere inside it). POSIX sh; no bashisms.
 set -u
 
-# --- locate the plugin-scoped launcher by walking up to the workspace root ---
-find_launcher() {
-  d=$(pwd)
-  while [ -n "$d" ]; do
-    if [ -x "$d/.tachyon/bin/_tachyon-tool" ]; then printf '%s\n' "$d/.tachyon/bin/_tachyon-tool"; return 0; fi
-    [ "$d" = "/" ] && break
-    d=$(dirname "$d")
-  done
-  return 1
-}
-
-LAUNCHER=$(find_launcher) || {
-  echo "BROWSER_RUNTIME_MISSING: the agent-browser plugin launcher (.tachyon/bin/_tachyon-tool) was not found." >&2
-  echo "  Remediation: install the agent-browser plugin in this workspace via the Tachyon Plugins view, then re-run doctor." >&2
+# --- the CLI comes from PATH; Tachyon names it in `requires` and the operator installs it ---
+AB=${AGENT_BROWSER_BIN:-agent-browser}
+command -v "$AB" >/dev/null 2>&1 || {
+  echo "BROWSER_RUNTIME_MISSING: the agent-browser CLI is not on PATH." >&2
+  echo "  Remediation: npm i -g agent-browser  (or a release binary from" >&2
+  echo "               https://github.com/vercel-labs/agent-browser/releases), then re-run doctor." >&2
   exit 4
 }
 
 # --- run the CLI's own doctor (binary + Chrome + headless launch test) ---
-OUT=$("$LAUNCHER" agent-browser agent-browser doctor 2>&1)
+OUT=$("$AB" doctor 2>&1)
 RC=$?
 printf '%s\n' "$OUT"
 

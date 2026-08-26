@@ -8,18 +8,9 @@
 # o nome daqui. Cobertura silenciosa é exatamente o que este repositório não quer.
 #
 # Cada linha: <pacote>  # o que falta, e por quê
-agent-browser  # o lançador não era só resolução: era POLÍTICA. `launchPolicy.mode = "force"` limpava
-               # 10 variáveis de ambiente e negava 13 argumentos/subcomandos — `--allowed-domains`,
-               # `--action-policy`, `--confirm-actions`, `connect`, `cdp`, `mcp`, `batch` — para que o
-               # agente não pudesse alargar a própria permissão. Invocar do PATH devolve o CLI inteiro
-               # ao agente. É a única categoria que a migração para PATH não atende, e é decisão do dono.
+
 secrets-guard  # `tools` (gitleaks) + `gitHooks`. Um git hook não é capacidade concedida a um agente:
                # dispara para todo mundo, inclusive sem agente nenhum rodando. Provável saída é sair do
                # catálogo e virar script do repositório — decisão do dono, ainda não tomada.
 verify-gate    # `gitHooks`, pelo mesmo motivo. Mesma decisão pendente.
 
-# Dependente da decisão do agent-browser, mas NÃO travado por ela:
-# `product-foundation` carrega e funciona. O passo opcional de verificação visual dele testa o
-# lançador morto num portão fail-closed, então hoje sempre responde "indisponível" e é pulado — o
-# plugin entrega o resto. Aquele portão se conserta junto com o agent-browser, não antes: escrever
-# `command -v agent-browser` ali seria decidir, por tabela, que o CLI inteiro fica exposto ao agente.

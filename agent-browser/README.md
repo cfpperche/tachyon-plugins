@@ -1,18 +1,44 @@
 # agent-browser (Tachyon plugin)
 
-Give a Tachyon agent **eyes + hands on the web**. The plugin provisions the pinned, checksum-verified
-[`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (a native Chrome-over-CDP binary) and ships a
-runtime-neutral skill that teaches the open → snapshot → act loop. An agent acts **by intent** against an
+Give a Tachyon agent **eyes + hands on the web**. The plugin ships a runtime-neutral skill that teaches the
+open → snapshot → act loop for the [`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (a native
+Chrome-over-CDP binary), which **you** install. An agent acts **by intent** against an
 accessibility snapshot with `@eN` element refs — not brittle CSS selectors.
 
 ## What it ships
 
-- **A pinned tool** — the `agent-browser` v0.34.0 binary, per platform (linux x64/arm64 glibc+musl, macOS
-  x64/arm64), fetched over HTTPS, sha256-verified, content-addressed, and re-validated by the plugin launcher
-  before every run. Invoke it only through `.tachyon/bin/_tachyon-tool agent-browser agent-browser …`.
 - **A thin skill** (`claude` + `codex` + `grok`) — the read loop, form-driving, per-agent session naming, the auth-state
   workflow, and a preflight `doctor`. The authoritative, version-matched command reference is the binary's own
   `--help` / `<command> --help` (the standalone binary ships no `skills` dir).
+
+## Requirements
+
+Tachyon does not install these — the manifest names the CLI in `requires` and you provide both.
+
+### `agent-browser` — the CLI
+
+- **npm** — `npm i -g agent-browser` (also the only install that ships `agent-browser skills`)
+- **release binary** — https://github.com/vercel-labs/agent-browser/releases
+- `AGENT_BROWSER_BIN` overrides the resolved binary.
+
+This skill was written against **v0.34.0**; newer versions are expected to work, and `agent-browser doctor` is
+the check that matters. Tachyon used to fetch a pinned, sha256-verified build and re-validate it before every
+run — it no longer downloads third-party binaries, so the version you get is the version you installed.
+
+### Chrome or Chromium — the browser runtime
+
+Not shipped (a multi-file browser runtime is not a single verifiable executable). `AB doctor` fails loud with
+`BROWSER_RUNTIME_MISSING` when it is absent; `agent-browser install --with-deps` can fetch a Chrome-for-Testing.
+
+## Configuration is yours
+
+The CLI reads a config file (`--config <file>`, or `AGENT_BROWSER_CONFIG`) that can set `confirmActions`,
+`allowedDomains`, an action policy, and more. An example ships at `config/agent-browser.json`.
+
+Tachyon used to force one config onto every invocation and strip the flags an agent could use to widen it. **It
+no longer does.** The tool is fully usable, and the restraints are the project's to choose — put a config where
+your project wants it, point the agent at it, and write the rule in your own project instructions. The skill is
+written to honour a config it is given and never to loosen one.
 
 ## v3 — the write gate was withdrawn (breaking)
 
@@ -20,7 +46,7 @@ Navigation, inspection (`snapshot`), screenshots, and content extraction remain 
 saved state now requires the global workspace-mode choice documented below; the LLM never sees a credential.
 
 **v2 claimed that every state-mutating action was mechanically held for human confirmation. That claim was
-false**, and v3 removes it. On pinned v0.34.0, `confirmActions` matches exact protocol action names. The shipped
+false**, and v3 removes it. `confirmActions` matches exact protocol action names. The shipped
 `upload` and `download` tokens hold those actions, while `eval` does not hold JavaScript evaluation because its
 protocol name is `evaluate`. Keeping `eval` instead of enabling that gate is an explicit owner decision dated
 2026-08-21. Most writes therefore still run immediately; get human approval before every write.
@@ -66,8 +92,8 @@ cannot provide both, and agents cannot bypass or narrow the global choice.
 
 ## Requirements
 
-- A host **Chrome/Chromium** (the plugin does NOT provision the browser). The bundled `doctor` fails loud with
-  `BROWSER_RUNTIME_MISSING` + remediation when it is absent. `agent-browser install` can fetch a pinned
+- A host **Chrome/Chromium** (not shipped). The bundled `doctor` fails loud with
+  `BROWSER_RUNTIME_MISSING` + remediation when it is absent. `agent-browser install` can fetch a
   Chrome-for-Testing if you prefer.
 
 ## Security
